@@ -6,6 +6,7 @@ import { FilterBar } from './components/FilterBar';
 import { ProjectCard } from './components/ProjectCard';
 import { TokenModal } from './components/TokenModal';
 import { BookmarksModal } from './components/BookmarksModal';
+import { RepoDetailPanel } from './components/RepoDetailPanel';
 import { OneGitVaultLogo } from './components/OneGitVaultLogo';
 import { CATEGORIES, CURATED_PROJECTS } from './data/curatedProjects';
 import { 
@@ -76,10 +77,10 @@ export const App: React.FC = () => {
   const [onlyBookmarked, setOnlyBookmarked] = useState<boolean>(false);
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
 
-  // Pagination & Streaming State
-  const [repositories, setRepositories] = useState<Repository[]>([]);
+  // Pagination & Streaming State (pre-populated with curated projects for instant 0ms startup)
+  const [repositories, setRepositories] = useState<Repository[]>(() => CURATED_PROJECTS.slice(0, 40));
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalCount, setTotalCount] = useState<number>(0);
+  const [totalCount, setTotalCount] = useState<number>(() => CURATED_PROJECTS.length);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
@@ -90,6 +91,7 @@ export const App: React.FC = () => {
   // Modals & Storage
   const [isTokenModalOpen, setIsTokenModalOpen] = useState<boolean>(false);
   const [isBookmarksOpen, setIsBookmarksOpen] = useState<boolean>(false);
+  const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const [bookmarks, setBookmarks] = useState<Repository[]>(() => {
     try {
       const saved = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
@@ -129,7 +131,6 @@ export const App: React.FC = () => {
 
   // Initial Fetch & Filter Reset
   const loadInitialData = useCallback(async () => {
-    setIsLoading(true);
     setCurrentPage(1);
     try {
       const result = await fetchRepositories(
@@ -231,6 +232,14 @@ export const App: React.FC = () => {
 
   const handleClearAllBookmarks = () => {
     setBookmarks([]);
+  };
+
+  const handleImportBookmarks = (repos: Repository[]) => {
+    setBookmarks(prev => {
+      const existingIds = new Set(prev.map(b => b.id));
+      const merged = [...prev, ...repos.filter(r => !existingIds.has(r.id))];
+      return merged;
+    });
   };
 
   const handleSelectTopic = (topic: string) => {
@@ -455,6 +464,7 @@ export const App: React.FC = () => {
                 isBookmarked={bookmarks.some(b => b.id === repo.id)}
                 onToggleBookmark={handleToggleBookmark}
                 onSelectTopic={handleSelectTopic}
+                onOpenDetail={(r) => setSelectedRepo(r)}
               />
             ))}
           </div>
@@ -571,6 +581,14 @@ export const App: React.FC = () => {
         bookmarks={bookmarks}
         onRemoveBookmark={handleRemoveBookmark}
         onClearAll={handleClearAllBookmarks}
+        onImportBookmarks={handleImportBookmarks}
+      />
+
+      <RepoDetailPanel
+        repo={selectedRepo}
+        isBookmarked={selectedRepo ? bookmarks.some(b => b.id === selectedRepo.id) : false}
+        onClose={() => setSelectedRepo(null)}
+        onToggleBookmark={handleToggleBookmark}
       />
 
     </div>

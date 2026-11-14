@@ -1,7 +1,7 @@
 {
   "name": "onegitvault",
   "productName": "OneGitVault",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Unified Open-Source Observatory — Stream, discover and bookmark open-source GitHub repositories",
   "main": "electron/main.cjs",
   "type": "module",
@@ -13,10 +13,13 @@
     "desktop": "node scripts/start-electron.cjs",
     "installer": "npm run build && electron-builder --win --x64",
     "installer:dir": "npm run build && electron-builder --win --dir --x64",
-    "package": "npm run build && electron-packager . OneGitVault --platform=win32 --arch=x64 --out=release --overwrite --prune=true"
+    "bump": "node scripts/bump-version.cjs",
+    "package": "npm run build && electron-packager . OneGitVault --platform=win32 --arch=x64 --icon=assets/icons/onegitvault.ico --out=release --overwrite --prune=true",
+    "release": "cmd /c build-installer.bat"
   },
   "dependencies": {
     "lucide-react": "^1.16.0",
+    "marked": "^18.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

@@ -1,15 +1,18 @@
 ; ============================================================
 ;  OneGitVault — Inno Setup Script
-;  Wraps the electron-builder win-unpacked folder into a
-;  single distributable Setup .exe — no admin/symlinks needed.
+;  Auto-configured for seamless upgrades, version tracking,
+;  and custom amber vault branding.
 ; ============================================================
 
+#ifndef AppVersion
+  #define AppVersion "1.0.1"
+#endif
+
 #define AppName      "OneGitVault"
-#define AppVersion   "1.0.0"
 #define AppPublisher "VKaddala"
 #define AppURL       "https://github.com/VKaddala/OneGitVault"
 #define AppExeName   "OneGitVault.exe"
-#define SourceDir    "release\installer\win-unpacked"
+#define SourceDir    "release\OneGitVault-win32-x64"
 
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
@@ -23,13 +26,18 @@ DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 AllowNoIcons=yes
 OutputDir=release\setup
-OutputBaseFilename=OneGitVault-Setup-1.0.0
+OutputBaseFilename=OneGitVault-Setup-{#AppVersion}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 DisableProgramGroupPage=yes
+UsePreviousAppDir=yes
+CloseApplications=yes
+CloseApplicationsFilter=*.exe,{#AppExeName}
+RestartApplications=no
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
+SetupIconFile=assets\icons\onegitvault.ico
 UninstallDisplayName={#AppName}
 UninstallDisplayIcon={app}\{#AppExeName}
 ShowLanguageDialog=no
@@ -40,8 +48,12 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
 
+[InstallDelete]
+; Clean out previous application bundle to prevent stale cache on upgrade
+Type: filesandordirs; Name: "{app}\resources\app\dist"
+
 [Files]
-; Include entire win-unpacked folder
+; Copy all files from the updated build directory, overwriting any previous version
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
@@ -49,7 +61,7 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
 ; Desktop shortcut (optional, based on task)
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
 ; Offer to launch the app after install

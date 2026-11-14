@@ -1,8 +1,9 @@
 import { Repository, CategoryId, SortOption } from '../types';
 import { CURATED_PROJECTS } from '../data/curatedProjects';
 
-const CACHE_PREFIX = 'gitpulse_v3_';
-const TOKEN_KEY = 'gitpulse_github_pat';
+const CACHE_PREFIX = 'onegitvault_cache_v1_';
+const TOKEN_KEY = 'onegitvault_github_pat';
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours persistent cache
 
 export interface RateLimitInfo {
   limit: number;
@@ -144,26 +145,28 @@ export async function fetchRepositories(
 
   const cacheKey = `${CACHE_PREFIX}${query}_${sortParam}_${page}_${perPage}`;
 
-  // Try reading from sessionStorage
+  // Try reading from persistent localStorage (instant 0ms response on launch)
   try {
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      return {
-        repositories: parsed.repositories,
-        isOfflineFallback: false,
-        totalCount: parsed.totalCount || parsed.repositories.length,
-        hasMore: parsed.hasMore ?? (page * perPage < (parsed.totalCount || 0)),
-        page,
-      };
+    const cachedStr = localStorage.getItem(cacheKey);
+    if (cachedStr) {
+      const cached = JSON.parse(cachedStr);
+      if (Date.now() - (cached.timestamp || 0) < CACHE_TTL_MS && Array.isArray(cached.repositories) && cached.repositories.length > 0) {
+        return {
+          repositories: cached.repositories,
+          isOfflineFallback: false,
+          totalCount: cached.totalCount || cached.repositories.length,
+          hasMore: cached.hasMore ?? (page * perPage < (cached.totalCount || 0)),
+          page,
+        };
+      }
     }
   } catch (e) {
-    // ignore sessionStorage errors
+    // ignore storage errors
   }
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 7500);
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout for fast fallback
 
     const res = await fetch(url, { headers, signal: controller.signal });
     clearTimeout(timeoutId);
@@ -221,14 +224,15 @@ export async function fetchRepositories(
 
     const hasMore = items.length === perPage && page * perPage < Math.min(totalCount, 1000);
 
-    // Save to cache
+    // Save to persistent cache
     try {
-      sessionStorage.setItem(
+      localStorage.setItem(
         cacheKey,
         JSON.stringify({
           repositories: mapped,
           totalCount,
           hasMore,
+          timestamp: Date.now(),
         })
       );
     } catch (e) {

@@ -1,64 +1,69 @@
 @echo off
 rem ============================================================
-rem  Build OneGitVault installer using Inno Setup
-rem  Run this AFTER: npm run build && npm run package
+rem  OneGitVault Installer Builder
+rem  Auto-increments version, packages Electron, & builds Inno Setup
 rem ============================================================
 
-set "PROJECT_DIR=C:\Users\javku\Desktop\gemini\OneGitVault"
+set "PROJECT_DIR=%~dp0"
+if "%PROJECT_DIR:~-1%"=="\" set "PROJECT_DIR=%PROJECT_DIR:~0,-1%"
 set "ISS_FILE=%PROJECT_DIR%\OneGitVault.iss"
 
-rem Common Inno Setup install locations
+rem Locate Inno Setup compiler
 set "ISCC=C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 if not exist "%ISCC%" set "ISCC=C:\Program Files\Inno Setup 6\ISCC.exe"
 if not exist "%ISCC%" set "ISCC=C:\Program Files (x86)\Inno Setup 5\ISCC.exe"
 
 if not exist "%ISCC%" (
     echo.
-    echo [ERROR] Inno Setup not found!
-    echo Please download and install it from: https://jrsoftware.org/isdl.php
-    echo Then run this bat again.
+    echo [ERROR] Inno Setup compiler not found!
+    echo Please install Inno Setup 6 from: https://jrsoftware.org/isdl.php
     echo.
     pause
     exit /b 1
 )
 
-echo.
-echo ============================================================
-echo  Building OneGitVault Setup installer...
-echo ============================================================
-echo.
-
 cd /d "%PROJECT_DIR%"
 
-rem Step 1 — Build web app
-echo [1/3] Building React web app...
+echo.
+echo ============================================================
+echo  1/4  Auto-incrementing Build Version...
+echo ============================================================
+for /f "delims=" %%v in ('node scripts\bump-version.cjs') do set "APP_VERSION=%%v"
+
+if "%APP_VERSION%"=="" (
+    echo [ERROR] Could not bump version. Falling back to package.json.
+    set "APP_VERSION=1.0.1"
+)
+echo New Build Version: v%APP_VERSION%
+
+echo.
+echo ============================================================
+echo  2/4  Compiling React Production Bundle (Vite)...
+echo ============================================================
 call npm.cmd run build
 if errorlevel 1 (
-    echo [ERROR] Web build failed.
+    echo [ERROR] React build failed.
     pause
     exit /b 1
 )
 
-rem Step 2 — Package with electron-builder (dir only, skip NSIS)
 echo.
-echo [2/3] Packaging Electron app (directory)...
-call npx.cmd electron-builder --win --dir --x64
+echo ============================================================
+echo  3/4  Packaging Standalone Electron Binary (v%APP_VERSION%)...
+echo ============================================================
+call npx.cmd electron-packager . OneGitVault --platform=win32 --arch=x64 --icon=assets/icons/onegitvault.ico --app-version=%APP_VERSION% --build-version=%APP_VERSION% --out=release --overwrite --prune=true
 if errorlevel 1 (
-    echo [WARNING] electron-builder exited with error but win-unpacked may still be valid.
-    echo Checking for win-unpacked...
-    if not exist "%PROJECT_DIR%\release\installer\win-unpacked\OneGitVault.exe" (
-        echo [ERROR] win-unpacked not found. Aborting.
-        pause
-        exit /b 1
-    )
-    echo win-unpacked exists — continuing.
+    echo [ERROR] Electron packaging failed.
+    pause
+    exit /b 1
 )
 
-rem Step 3 — Compile Inno Setup installer
 echo.
-echo [3/3] Compiling Inno Setup installer...
+echo ============================================================
+echo  4/4  Compiling Inno Setup Installer...
+echo ============================================================
 mkdir "%PROJECT_DIR%\release\setup" 2>nul
-"%ISCC%" "%ISS_FILE%"
+"%ISCC%" "/DAppVersion=%APP_VERSION%" "%ISS_FILE%"
 if errorlevel 1 (
     echo [ERROR] Inno Setup compilation failed.
     pause
@@ -67,8 +72,9 @@ if errorlevel 1 (
 
 echo.
 echo ============================================================
-echo  SUCCESS! Installer created at:
-echo  %PROJECT_DIR%\release\setup\OneGitVault-Setup-1.0.0.exe
+echo  SUCCESS!
+echo  Portable App:  %PROJECT_DIR%\release\OneGitVault-win32-x64\OneGitVault.exe
+echo  Setup Package: %PROJECT_DIR%\release\setup\OneGitVault-Setup-%APP_VERSION%.exe
 echo ============================================================
 echo.
 pause

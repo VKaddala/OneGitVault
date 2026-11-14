@@ -2,6 +2,195 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Slide-in panel animation ── */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.animate-slideInRight {
+  animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── README rendered markdown styles (marked HTML output) ── */
+.readme-body {
+  color: inherit;
+  line-height: 1.7;
+  font-size: 0.875rem;
+}
+
+.readme-body h1 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1.4rem 0 0.6rem;
+  border-bottom: 1px solid rgba(120, 120, 140, 0.2);
+  padding-bottom: 0.4rem;
+  color: inherit;
+}
+
+.readme-body h2 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 1.2rem 0 0.5rem;
+  border-bottom: 1px solid rgba(120, 120, 140, 0.15);
+  padding-bottom: 0.3rem;
+  color: inherit;
+}
+
+.readme-body h3 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 1rem 0 0.4rem;
+  color: #f59e0b;
+}
+
+.readme-body h4,
+.readme-body h5,
+.readme-body h6 {
+  font-weight: 600;
+  margin: 0.85rem 0 0.35rem;
+  color: inherit;
+}
+
+.readme-body p {
+  margin: 0.6rem 0;
+  line-height: 1.65;
+}
+
+.readme-body pre {
+  background: #0c0d10;
+  border: 1px solid #242634;
+  border-radius: 0.75rem;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  margin: 0.85rem 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.readme-body pre code {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: inherit;
+}
+
+.readme-body :not(pre) > code {
+  background: #161720;
+  border: 1px solid #242634;
+  border-radius: 0.35rem;
+  padding: 0.15em 0.45em;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8em;
+  color: #fbbf24;
+}
+
+.readme-body a {
+  color: #f59e0b;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+.readme-body a:hover {
+  color: #fbbf24;
+}
+
+.readme-body blockquote {
+  border-left: 3px solid #f59e0b;
+  padding: 0.5rem 1rem;
+  margin: 0.75rem 0;
+  background: rgba(245, 158, 11, 0.05);
+  border-radius: 0 0.5rem 0.5rem 0;
+  opacity: 0.9;
+}
+
+.readme-body ul {
+  margin: 0.5rem 0 0.5rem 1.4rem;
+  list-style-type: disc;
+}
+
+.readme-body ol {
+  margin: 0.5rem 0 0.5rem 1.4rem;
+  list-style-type: decimal;
+}
+
+.readme-body li {
+  margin: 0.25rem 0;
+  line-height: 1.6;
+}
+
+.readme-body hr {
+  border: none;
+  border-top: 1px solid rgba(120, 120, 140, 0.2);
+  margin: 1.25rem 0;
+}
+
+.readme-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.8rem;
+  overflow-x: auto;
+  display: block;
+}
+
+.readme-body th,
+.readme-body td {
+  border: 1px solid #242634;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.readme-body th {
+  background: #13141a;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: #fbbf24;
+}
+
+.readme-body tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.readme-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+  display: inline-block;
+}
+
+/* Light mode README overrides */
+:root:not(.dark) .readme-body pre {
+  background: #f4f3ef;
+  border-color: #e2e0d8;
+}
+:root:not(.dark) .readme-body pre code {
+  color: #1e293b;
+}
+:root:not(.dark) .readme-body :not(pre) > code {
+  background: #ebe9e1;
+  border-color: #ddd9cd;
+  color: #b45309;
+}
+:root:not(.dark) .readme-body blockquote {
+  background: rgba(245, 158, 11, 0.08);
+}
+:root:not(.dark) .readme-body th {
+  background: #eeece4;
+  color: #92400e;
+}
+:root:not(.dark) .readme-body th,
+:root:not(.dark) .readme-body td {
+  border-color: #e2e0d8;
+}
+
 :root {
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   color-scheme: dark;

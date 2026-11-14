@@ -19,6 +19,7 @@ interface ProjectCardProps {
   isBookmarked: boolean;
   onToggleBookmark: (repo: Repository) => void;
   onSelectTopic: (topic: string) => void;
+  onOpenDetail: (repo: Repository) => void;
 }
 
 export const ProjectCard: React.FC<ProjectCardProps> = ({
@@ -26,7 +27,8 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   viewMode,
   isBookmarked,
   onToggleBookmark,
-  onSelectTopic
+  onSelectTopic,
+  onOpenDetail,
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -60,10 +62,10 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
 
   if (viewMode === 'list') {
     return (
-      <div className="group relative flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl bg-white hover:bg-neutral-50/90 dark:bg-[#111217] dark:hover:bg-[#15161e] border border-neutral-200 dark:border-[#20212b] hover:border-neutral-300 dark:hover:border-[#2d2f3d] shadow-sm transition-all duration-150 gap-4">
+      <div className="group relative flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl bg-white hover:bg-neutral-50/90 dark:bg-[#111217] dark:hover:bg-[#15161e] border border-neutral-200 dark:border-[#20212b] hover:border-neutral-300 dark:hover:border-[#2d2f3d] shadow-sm transition-all duration-150 gap-4 cursor-pointer" onClick={() => onOpenDetail(repo)}>
         
         {/* Main Info */}
-        <div className="flex items-start gap-3.5 flex-1 min-w-0">
+        <div className="flex items-start gap-3.5 flex-1 min-w-0 cursor-pointer" onClick={() => onOpenDetail(repo)}>
           <img
             src={repo.owner.avatar_url}
             alt={repo.owner.login}
@@ -160,7 +162,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
 
   // Grid View
   return (
-    <div className="group relative flex flex-col justify-between p-5 rounded-2xl bg-white hover:bg-neutral-50/90 dark:bg-[#111217] dark:hover:bg-[#15161f] border border-neutral-200 dark:border-[#20212b] hover:border-neutral-300 dark:hover:border-[#2f3244] shadow-sm transition-all duration-150">
+    <div className="group relative flex flex-col justify-between p-5 rounded-2xl bg-white hover:bg-neutral-50/90 dark:bg-[#111217] dark:hover:bg-[#15161f] border border-neutral-200 dark:border-[#20212b] hover:border-neutral-300 dark:hover:border-[#2f3244] shadow-sm transition-all duration-150 cursor-pointer" onClick={() => onOpenDetail(repo)}>
       
       {/* Top Bar: Owner & Actions */}
       <div>

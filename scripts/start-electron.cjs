@@ -5,7 +5,7 @@ const path = require('path');
 const VITE_PORT = 5173;
 const DEV_URL = `http://localhost:${VITE_PORT}`;
 
-console.log('🚀 Starting GitPulse Desktop Development Server...');
+console.log('🚀 Starting OneGitVault Desktop Development Server...');
 
 // 1. Start Vite development server
 const viteCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';

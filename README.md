@@ -8,6 +8,10 @@
 A native **Windows Desktop Application** for discovering, streaming, and bookmarking high-impact open-source repositories — powered by the GitHub Search API, built with Electron + React 18 + TypeScript + Tailwind CSS.
 
 ---
+<img width="3712" height="1567" alt="image" src="https://github.com/user-attachments/assets/34cc194e-e24e-47de-9617-db383c93fbdb" />
+
+<img width="3715" height="1495" alt="image" src="https://github.com/user-attachments/assets/31315aff-06eb-4f3d-b49f-2c4d90cfba79" />
+
 
 ## ⚡ Quick Launch
 

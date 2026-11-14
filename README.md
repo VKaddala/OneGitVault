@@ -33,7 +33,7 @@ Featuring a Raycast/Arc-inspired **Warm Charcoal & Honey Amber** design language
 
 ### 1. Standalone Installer (Recommended)
 
-1. Download **`OneGitVault-Setup-1.0.0.exe`** from `release/setup/` (or [GitHub Releases](https://github.com/VKaddala/OneGitVault/releases)).
+1. Download **`OneGitVault-Setup-1.0.2.exe`** from `release/setup/` (or [GitHub Releases](https://github.com/VKaddala/OneGitVault/releases)).
 2. Double-click the installer and follow the setup wizard.
 3. Automatically creates Start Menu and Desktop shortcuts with the custom OneGitVault icon and installs an uninstaller in Windows *Add or remove programs*.
 
@@ -158,6 +158,15 @@ OneGitVault/
 ├── BLOG.md                          # Engineering deep-dive article
 └── README.md                        # Documentation
 ```
+
+---
+## Application look
+Light mode:
+<img width="3715" height="2157" alt="image" src="https://github.com/user-attachments/assets/e0ceb2d3-58a1-464a-a215-b616b1a56773" />
+<img width="3725" height="2145" alt="image" src="https://github.com/user-attachments/assets/b2ca6aea-49b0-4a8a-ad29-5cf87336b6f7" />
+
+Dark mode:
+<img width="3710" height="2130" alt="image" src="https://github.com/user-attachments/assets/5b6ff46e-c7ed-487a-9c55-0ed4a9a03a8a" />
 
 ---
 

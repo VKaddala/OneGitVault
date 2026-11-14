@@ -5,9 +5,13 @@
 [![Aesthetic](https://img.shields.io/badge/Theme-Warm%20Charcoal%20%26%20Honey%20Amber-f59e0b?style=for-the-badge)](https://github.com)
 [![License](https://img.shields.io/badge/License-MIT-emerald?style=for-the-badge)](https://github.com)
 
-A native **Windows Desktop Application** and modern web observatory for discovering, streaming, and bookmarking high-impact open-source software on GitHub. Built with a tactile **Warm Charcoal & Honey Amber (Raycast / Arc)** aesthetic, bespoke typography, and a live GitHub Search streaming engine.
+A native **Windows Desktop Application** and modern web observatory for discovering, streaming, and bookmarking high-impact open-source software on GitHub. Built with a live GitHub Search streaming engine.
 
 ---
+<img width="3712" height="1567" alt="image" src="https://github.com/user-attachments/assets/34cc194e-e24e-47de-9617-db383c93fbdb" />
+
+<img width="3715" height="1495" alt="image" src="https://github.com/user-attachments/assets/31315aff-06eb-4f3d-b49f-2c4d90cfba79" />
+
 
 ## ⚡ Direct Quick-Launch (Desktop)
 

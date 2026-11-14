@@ -1,219 +1,150 @@
-# OneGitVault — Unified Open-Source Observatory
+# OneGitVault
 
-[![Platform](https://img.shields.io/badge/Platform-Windows%20Desktop-blue?style=for-the-badge&logo=windows)](https://github.com/VKaddala/OneGitVault)
-[![Stack](https://img.shields.io/badge/Stack-React%2018%20%7C%20TypeScript%20%7C%20Vite%20%7C%20Electron-61dafb?style=for-the-badge&logo=react)](https://github.com/VKaddala/OneGitVault)
-[![Theme](https://img.shields.io/badge/Theme-Warm%20Charcoal%20%26%20Honey%20Amber-f59e0b?style=for-the-badge)](https://github.com/VKaddala/OneGitVault)
-[![License](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](LICENSE)
+[![Windows](https://img.shields.io/badge/platform-Windows-blue?logo=windows&logoColor=white)](https://github.com/VKaddala/OneGitVault)
+[![React](https://img.shields.io/badge/React-18-149eca?logo=react&logoColor=white)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Electron](https://img.shields.io/badge/Electron-33-47848f?logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![Version](https://img.shields.io/badge/version-1.0.0-informational)](package.json)
+[![GitHub stars](https://img.shields.io/github/stars/VKaddala/OneGitVault)](https://github.com/VKaddala/OneGitVault/stargazers)
+[![License](https://img.shields.io/github/license/VKaddala/OneGitVault)](LICENSE)
 
-A native **Windows Desktop Application** for discovering, streaming, and bookmarking high-impact open-source repositories — powered by the GitHub Search API, built with Electron + React 18 + TypeScript + Tailwind CSS.
+OneGitVault is a Windows desktop app for discovering and saving open-source repositories from GitHub. Search by category, keyword, language, or star count; sort results; and browse them in a grid or list.
 
----
-<img width="3712" height="1567" alt="image" src="https://github.com/user-attachments/assets/34cc194e-e24e-47de-9617-db383c93fbdb" />
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/34cc194e-e24e-47de-9617-db383c93fbdb" alt="OneGitVault repository discovery screen" width="100%">
+</p>
 
-<img width="3715" height="1495" alt="image" src="https://github.com/user-attachments/assets/31315aff-06eb-4f3d-b49f-2c4d90cfba79" />
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/31315aff-06eb-4f3d-b49f-2c4d90cfba79" alt="OneGitVault repository browsing screen" width="100%">
+</p>
 
+## Features
 
-## ⚡ Quick Launch
+- Search live GitHub repository data across curated categories.
+- Load additional results as you scroll, or use the manual load button.
+- Filter by language and minimum stars; sort by stars, forks, or last update.
+- Save repositories to a local bookmark vault and copy their `git clone` command.
+- Use an optional GitHub personal access token to increase API request limits.
+- Fall back to a curated repository list when GitHub is unavailable or rate-limited.
+- Switch between dark and light themes.
 
-### Option A — Run the Installer (Recommended)
+## Quick launch
 
-1. Download **`OneGitVault-Setup-1.0.0.exe`** from `release/setup/`
-2. Double-click it, follow the wizard
-3. App installs to `Program Files`, Desktop & Start Menu shortcuts created automatically
-4. Launch **OneGitVault** from Desktop or Start Menu
+### Install the Windows app
 
-### Option B — Run the Raw Executable (Portable)
+Download `OneGitVault-Setup-1.0.0.exe` from the [GitHub Releases page](https://github.com/VKaddala/OneGitVault/releases) when a release is available, then run it and follow the setup wizard. The Inno Setup installer supports a per-user installation, creates a Start Menu shortcut, offers a desktop shortcut, and can launch the app after setup.
 
-Navigate to and double-click:
-```
-release\installer\win-unpacked\OneGitVault.exe
-```
-> **Note:** You must keep the entire `win-unpacked` folder intact — the `.exe` alone will crash without its supporting DLLs.
+The installer bundles the Electron application and its runtime files. For a portable, non-installer build, use the complete application directory described below.
 
-### Option C — Developer Mode
+### Run from source
 
-```bash
-npm start        # Starts Vite dev server + opens Electron window with HMR
-```
+Prerequisites: Node.js 18 or later and npm.
 
----
-
-## 🛠️ Build from Source
-
-### Prerequisites
-
-| Tool | Version | Notes |
-|------|---------|-------|
-| Node.js | 18+ | https://nodejs.org |
-| npm | 9+ | Bundled with Node |
-| Inno Setup 6 | Latest | https://jrsoftware.org/isdl.php — required only for installer |
-| Git | Any | https://git-scm.com |
-
-### 1. Clone & Install
-
-```bash
+```powershell
 git clone https://github.com/VKaddala/OneGitVault.git
 cd OneGitVault
 npm install
-```
-
-### 2. Run in Development
-
-```bash
 npm start
-# Opens Electron window connected to Vite dev server (Hot Module Replacement enabled)
-# App available at http://localhost:5173/ in browser too
 ```
 
-### 3. Build Web App
+`npm start` starts the Vite development server and opens the Electron desktop window. To run only the browser version, use `npm run dev` and open the URL printed by Vite (by default, `http://localhost:5173`).
 
-```bash
+## GitHub token setup
+
+Live repository search works without a token, but GitHub applies stricter API rate limits to unauthenticated requests. To authenticate searches:
+
+1. In GitHub, create a [fine-grained personal access token](https://github.com/settings/tokens?type=beta). For public repository search, the app requests no private repository access; follow GitHub's current token requirements and grant only the minimum access needed.
+2. In OneGitVault, select the key/rate-limit control in the top-right of the window.
+3. Paste the token into the **Personal Access Token (PAT)** field and select **Save Token**.
+
+The app stores the token in local browser storage and sends it in the authorization header to `api.github.com` for search requests. It is not sent to any other service. Do not save a token on a shared device; use GitHub's expiration and revocation controls, and clear the token in the app when it is no longer needed.
+
+## Build from source
+
+Prerequisites: Node.js 18 or later and npm. Windows installer builds additionally require the relevant packaging tool described below.
+
+```powershell
 npm run build
-# Compiles TypeScript + Vite → outputs to dist/
 ```
 
-### 4. Build the Windows Installer (Single .exe)
+This type-checks the TypeScript application and creates the web build in `dist/`.
 
-> Requires **Inno Setup 6** installed at `C:\Program Files (x86)\Inno Setup 6\`
+To package a portable Windows application directory:
 
-```bash
-# Double-click build-installer.bat in the project root
-# OR run manually:
-
-npm run installer:dir          # Packages Electron app → release/installer/win-unpacked/
-# Then compile OneGitVault.iss with Inno Setup Compiler
-# Output: release/setup/OneGitVault-Setup-1.0.0.exe
-```
-
-The bat file `build-installer.bat` does all three steps end-to-end:
-1. `npm run build` → compiles React app
-2. `electron-builder --dir` → packages Electron (no admin needed)
-3. Inno Setup → compiles single-file installer
-
-### 5. Build Portable Folder (No Installer)
-
-```bash
+```powershell
 npm run package
-# Output: release/OneGitVault-win32-x64/   (entire folder is the portable app)
 ```
 
----
+The portable app directory is written to `release/OneGitVault-win32-x64/`. Run `OneGitVault.exe` from inside that directory; do not copy the executable out on its own because it needs the accompanying runtime files.
 
-## 📦 All NPM Scripts
+### Build an installer
 
-```bash
-npm start              # Dev: Vite server + Electron window (HMR)
-npm run dev            # Web only: http://localhost:5173/
-npm run build          # Compile TypeScript + Vite → dist/
-npm run installer      # Build + electron-builder NSIS (requires Developer Mode / admin)
-npm run installer:dir  # Build + electron-builder --dir only (no admin needed)
-npm run package        # Build + electron-packager portable folder
+There are two installer workflows:
+
+1. **electron-builder / NSIS:** Run the command below. It builds the web app and packages a Windows x64 NSIS installer under `release/installer/`. Installer configuration in `package.json` enables the installation directory chooser and creates Start Menu and desktop shortcuts.
+
+```powershell
+npm run installer
 ```
 
----
+2. **Inno Setup:** Install [Inno Setup 6](https://jrsoftware.org/isdl.php), then run `build-installer.bat`. It builds the renderer, creates `release/installer/win-unpacked/`, and wraps that directory using `OneGitVault.iss`. The resulting setup file is `release/setup/OneGitVault-Setup-1.0.0.exe`. The batch file currently contains this checkout's absolute project path; update its `PROJECT_DIR` value if you cloned the repository somewhere else.
 
-## 🎨 Design System
+The installer is unsigned. Windows may show a SmartScreen warning for builds that are not code-signed. See [BLOG.md](BLOG.md) for packaging details and [OneGitVault.iss](OneGitVault.iss) for the Inno Setup configuration.
 
-OneGitVault uses a distinctive **Warm Charcoal & Honey Amber** palette — inspired by Raycast and Arc Browser — avoiding generic AI-gradient templates.
+## NPM scripts
 
-### Typography
+| Command | Description |
+|---|---|
+| `npm start` | Start Vite and open the Electron development window |
+| `npm run dev` | Start the Vite web development server only |
+| `npm run build` | Type-check and create the production web build in `dist/` |
+| `npm run package` | Build the portable Windows application directory |
+| `npm run installer` | Build the Windows NSIS installer with electron-builder |
+| `npm run installer:dir` | Package the Electron app directory without building an installer |
+| `build-installer.bat` | Build the Inno Setup installer (requires Inno Setup 6) |
 
-| Role | Font | Usage |
-|------|------|-------|
-| Headlines & Logo | **Bricolage Grotesque** | Observatory title, section headers |
-| Body & Descriptions | **Plus Jakarta Sans** | Cards, descriptions, modals |
-| Data & Badges | **JetBrains Mono** | Star counts (`145.2k ★`), forks, language labels |
+## Technology
 
-### Colour Palette
+- React 18 and TypeScript
+- Vite
+- Electron
+- Tailwind CSS
+- GitHub REST API (repository search)
+- Lucide React icons
 
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `charcoal-950` | `#0c0d10` | Main background (dark) |
-| `charcoal-900` | `#111217` | Elevated surface |
-| `charcoal-800` | `#161720` | Card tiles |
-| `amber-brand` | `#f59e0b` | Primary accent, stars, CTAs |
-| `amber-glow` | `#fbbf24` | Hover states, luminous highlights |
+## Project structure
 
-### Dark / Light Mode
-
-Toggle via the ☀️ / 🌙 button in the header. Preference persists to `localStorage` (`onegitvault_theme_mode`).
-
----
-
-## 🚀 Features
-
-- **Live GitHub Search Streaming** — Infinite pagination in batches of 40, powered by `IntersectionObserver`
-- **7 Category Sectors** — AI/ML, Web & Frameworks, Cloud & DevOps, Developer Tools, Databases, Mobile & Desktop, Security
-- **Multi-Filter Engine** — Language, star tier (`10k+`, `50k+`, `100k+`), sort order
-- **Repository Vault** — Bookmark repos locally, one-click `git clone` copy
-- **GitHub Token Support** — Boosts API quota from 60 → 5,000 req/hour (stored locally only)
-- **Offline Fallback** — 30+ curated repos shown when API is unavailable
-- **External Link Interception** — GitHub links open in default browser, not inside the app
-
----
-
-## 📁 Project Structure
-
-```
+```text
 OneGitVault/
 ├── electron/
-│   ├── main.cjs                   # Electron main process, BrowserWindow config
-│   └── preload.cjs                # Secure context bridge
-├── src/
-│   ├── components/
-│   │   ├── Header.tsx             # Logo, search, theme toggle, vault button
-│   │   ├── Hero.tsx               # Observatory metrics & topic chips
-│   │   ├── CategoryNav.tsx        # Sector navigation tabs
-│   │   ├── FilterBar.tsx          # Language, stars, sort filters
-│   │   ├── ProjectCard.tsx        # Repository cards (grid & list)
-│   │   ├── TokenModal.tsx         # GitHub PAT dialog
-│   │   ├── BookmarksModal.tsx     # Saved repos drawer
-│   │   └── OneGitVaultLogo.tsx    # Custom SVG vault emblem
-│   ├── data/
-│   │   └── curatedProjects.ts     # Offline fallback repository list
-│   ├── services/
-│   │   └── githubApi.ts           # GitHub Search API engine & cache
-│   ├── types/
-│   │   └── index.ts               # TypeScript interfaces
-│   ├── App.tsx                    # Root component, theme & stream coordinator
-│   ├── index.css                  # Fonts, custom scrollbar
-│   └── main.tsx                   # React entry point
+│   ├── main.cjs              # Electron window, app lifecycle, external links
+│   └── preload.cjs           # Restricted renderer bridge
 ├── scripts/
-│   └── start-electron.cjs         # Dev server orchestrator
-├── release/
-│   ├── installer/
-│   │   └── win-unpacked/          # Electron-packaged app (portable)
-│   └── setup/
-│       └── OneGitVault-Setup-1.0.0.exe  # Single-file Windows installer
-├── OneGitVault.iss                # Inno Setup script
-├── build-installer.bat            # End-to-end installer build script
-├── .gitignore                     # Excludes node_modules, dist, release, certs
-├── .gitattributes                 # Line ending normalisation
-├── tailwind.config.js             # Custom colour tokens & dark mode config
-├── vite.config.ts                 # Vite + React plugin config
-├── tsconfig.json                  # TypeScript config
-├── package.json                   # Dependencies, scripts, electron-builder config
-├── BLOG.md                        # Engineering blog post
-└── README.md                      # This file
+│   └── start-electron.cjs    # Starts Vite and launches Electron in development
+├── src/
+│   ├── components/           # Search UI, filters, cards, and dialogs
+│   ├── data/
+│   │   └── curatedProjects.ts # Categories and offline fallback repositories
+│   ├── services/
+│   │   └── githubApi.ts      # Search API, caching, token, and fallback logic
+│   ├── types/
+│   │   └── index.ts          # Shared application types
+│   ├── App.tsx               # App state and feature coordination
+│   ├── index.css             # Global styles
+│   └── main.tsx              # React entry point
+├── release/                  # Packaged Windows builds
+├── OneGitVault.iss           # Optional Inno Setup installer definition
+├── package.json              # Dependencies, scripts, and electron-builder config
+├── tailwind.config.js        # Tailwind configuration
+├── vite.config.ts            # Vite configuration
+├── BLOG.md                   # Technical overview and dependency details
+└── README.md
 ```
 
----
+## Local data
 
-## 🔐 Code Signing
+Bookmarks and theme preference are stored in local browser storage and are not synchronized between devices. Token storage and transmission details are covered in [GitHub token setup](#github-token-setup).
 
-The installer is currently unsigned (self-signed workflow available). On first launch Windows SmartScreen may appear — click **More info → Run anyway**.
+## License
 
-To sign with a self-signed certificate, run:
-```bash
-# Located at Desktop/gemini/cert/
-run_sign_onegitvault.bat
-```
-
-For public distribution, obtain a standard or EV code-signing certificate from DigiCert / Sectigo.
-
----
-
-## 📄 License
-
-MIT License — crafted with precision by [VKaddala](https://github.com/VKaddala).  
-Read the full engineering story in [BLOG.md](BLOG.md).
+OneGitVault is licensed under the MIT License. See [LICENSE](LICENSE).

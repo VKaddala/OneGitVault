@@ -1,150 +1,215 @@
-# OneGitVault — Unified Open-Source Software Observatory
+# OneGitVault — Unified Open-Source Observatory
 
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Web-blue?style=for-the-badge&logo=windows)](https://github.com)
-[![Framework](https://img.shields.io/badge/Stack-React%2018%20%7C%20TypeScript%20%7C%20Vite%20%7C%20Electron-61dafb?style=for-the-badge&logo=react)](https://github.com)
-[![Aesthetic](https://img.shields.io/badge/Theme-Warm%20Charcoal%20%26%20Honey%20Amber-f59e0b?style=for-the-badge)](https://github.com)
-[![License](https://img.shields.io/badge/License-MIT-emerald?style=for-the-badge)](https://github.com)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20Desktop-blue?style=for-the-badge&logo=windows)](https://github.com/VKaddala/OneGitVault)
+[![Stack](https://img.shields.io/badge/Stack-React%2018%20%7C%20TypeScript%20%7C%20Vite%20%7C%20Electron-61dafb?style=for-the-badge&logo=react)](https://github.com/VKaddala/OneGitVault)
+[![Theme](https://img.shields.io/badge/Theme-Warm%20Charcoal%20%26%20Honey%20Amber-f59e0b?style=for-the-badge)](https://github.com/VKaddala/OneGitVault)
+[![License](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](LICENSE)
 
-A native **Windows Desktop Application** and modern web observatory for discovering, streaming, and bookmarking high-impact open-source software on GitHub. Built with a tactile **Warm Charcoal & Honey Amber (Raycast / Arc)** aesthetic, bespoke typography, and a live GitHub Search streaming engine.
-
----
-
-## ⚡ Direct Quick-Launch (Desktop)
-
-Inside the `Desktop/gemini/` directory on your computer, two launchers are pre-configured:
-
-| Launcher | Type | Description |
-|---|---|---|
-| 🚀 **`Run-OneGitVault.bat`** | **Standalone Windows App** | Launches the precompiled native **`OneGitVault.exe`** directly with zero terminal or Node.js dependencies. |
-| 🛠️ **`Launch-OneGitVault.bat`** | **Developer Environment** | Starts Vite development server and opens Electron with live **Hot Module Replacement (HMR)**. |
-
-You can also run the standalone executable directly from:  
-📁 `OneGitVault/release/OneGitVault-win32-x64/OneGitVault.exe`
+A native **Windows Desktop Application** for discovering, streaming, and bookmarking high-impact open-source repositories — powered by the GitHub Search API, built with Electron + React 18 + TypeScript + Tailwind CSS.
 
 ---
 
-## 🎨 Visual Design System
+## ⚡ Quick Launch
 
-OneGitVault moves away from generic purple AI gradient templates in favor of a tactile, high-craft developer interface:
+### Option A — Run the Installer (Recommended)
 
-### 1. Distinctive Typography
-- **Headlines & Insignia (`Bricolage Grotesque`)**: Gives the observatory an authoritative, editorial character with bespoke geometric curves.
-- **Data & Star Badges (`JetBrains Mono`)**: Formatted star counts (`145.2k ★`), fork ratios, language dots, and query qualifiers render with monospace clarity.
-- **Body & Descriptions (`Plus Jakarta Sans`)**: Clean, balanced micro-readability across cards and modals.
+1. Download **`OneGitVault-Setup-1.0.0.exe`** from `release/setup/`
+2. Double-click it, follow the wizard
+3. App installs to `Program Files`, Desktop & Start Menu shortcuts created automatically
+4. Launch **OneGitVault** from Desktop or Start Menu
 
-### 2. Warm Charcoal & Honey Amber Palette
-- **Substrate Surfaces**: Warm obsidian `#0c0d10`, elevated charcoal `#111217`, card tile `#161720`.
-- **Surgical Grid Borders**: 1px subtle borders `#20212b` and `#242634`.
-- **Amber Accents**: Honey amber (`#f59e0b`), luminous gold (`#fbbf24`), and deep bronze (`#d97706`).
+### Option B — Run the Raw Executable (Portable)
 
-### 3. Dark / Light Mode Switcher
-- Toggle between **Warm Charcoal Dark Mode** and **Sand / Porcelain Light Mode** with the Sun ☀️ / Moon 🌙 icon in the header.
-- Preferences are saved automatically in `localStorage` (`onegitvault_theme_mode`).
+Navigate to and double-click:
+```
+release\installer\win-unpacked\OneGitVault.exe
+```
+> **Note:** You must keep the entire `win-unpacked` folder intact — the `.exe` alone will crash without its supporting DLLs.
 
----
-
-## 🚀 Core Features
-
-- **Infinite Live Repository Streaming**:
-  - Automatically streams repositories in batches of 40 directly from GitHub Search API.
-  - Built with an `IntersectionObserver` sentinel for seamless auto-scrolling, with an optional **Auto-Stream ON/OFF** toggle switch.
-
-- **Multi-Sector Categorized Navigation**:
-  - **AI & Machine Learning**: `topic:machine-learning` *(over 268,000 repos)*
-  - **Web & Frameworks**: `topic:frontend` *(over 74,000 repos)*
-  - **Cloud & DevOps**: `topic:devops` *(over 51,000 repos)*
-  - **Developer Tools**: `topic:developer-tools` *(over 92,000 repos)*
-  - **Databases & Storage**: `topic:database` *(over 54,000 repos)*
-  - **Mobile & Desktop**: `topic:mobile` *(over 17,000 repos)*
-  - **Security & Privacy**: `topic:security` *(over 72,000 repos)*
-
-- **Precision Multi-Filter Engine**:
-  - **Language Selector**: Filter by Python, TypeScript, Rust, Go, C++, C, Java, Swift, Kotlin, and more.
-  - **Popularity Star Thresholds**: Filter by `All`, `10k+ ★`, `50k+ ★`, `100k+ ★`.
-  - **Sorting**: Most Stars, Most Forks, Recently Updated.
-  - **Dual Filter Execution**: Filters are applied both server-side on GitHub and client-side in memory for instant feedback.
-
-- **Local Repository Vault (Bookmarks)**:
-  - Save repositories locally to your device and view them in a sliding vault drawer.
-  - One-click copy for `git clone <url>.git` with visual clipboard confirmation.
-
-- **Rate-Limit Resilience & Security**:
-  - Includes a `sessionStorage` cache layer to protect API quota.
-  - Connect a read-only GitHub Personal Access Token (stored **strictly on your computer**) to boost quota to **5,000 requests/hour**.
-  - Built-in curated fallback collection so the app never shows blank screens if offline.
-
-- **External Link Interception**:
-  - Clicking any repository link or project homepage automatically opens it in your default system browser (Chrome, Edge, Brave), keeping the desktop app clean.
-
----
-
-## 🛠️ NPM Commands
-
-Run from the `OneGitVault` directory:
+### Option C — Developer Mode
 
 ```bash
-# 1. Start development server & launch native Electron window
-npm start
-
-# 2. Package standalone Windows executable (.exe)
-npm run package
-
-# 3. Run in browser-only mode (http://localhost:5173/)
-npm run dev
-
-# 4. Compile TypeScript & Vite production build to dist/
-npm run build
+npm start        # Starts Vite dev server + opens Electron window with HMR
 ```
 
 ---
 
-## 📖 In-Depth Technical Article
+## 🛠️ Build from Source
 
-For an architectural deep-dive into how we built the stream engine, resolved GitHub's query validator, and designed the UI:  
-📄 Read **[BLOG.md](BLOG.md)** — *"Building OneGitVault: A Raycast-Inspired Desktop Observatory for Exploring Open Source at Scale"*.
+### Prerequisites
+
+| Tool | Version | Notes |
+|------|---------|-------|
+| Node.js | 18+ | https://nodejs.org |
+| npm | 9+ | Bundled with Node |
+| Inno Setup 6 | Latest | https://jrsoftware.org/isdl.php — required only for installer |
+| Git | Any | https://git-scm.com |
+
+### 1. Clone & Install
+
+```bash
+git clone https://github.com/VKaddala/OneGitVault.git
+cd OneGitVault
+npm install
+```
+
+### 2. Run in Development
+
+```bash
+npm start
+# Opens Electron window connected to Vite dev server (Hot Module Replacement enabled)
+# App available at http://localhost:5173/ in browser too
+```
+
+### 3. Build Web App
+
+```bash
+npm run build
+# Compiles TypeScript + Vite → outputs to dist/
+```
+
+### 4. Build the Windows Installer (Single .exe)
+
+> Requires **Inno Setup 6** installed at `C:\Program Files (x86)\Inno Setup 6\`
+
+```bash
+# Double-click build-installer.bat in the project root
+# OR run manually:
+
+npm run installer:dir          # Packages Electron app → release/installer/win-unpacked/
+# Then compile OneGitVault.iss with Inno Setup Compiler
+# Output: release/setup/OneGitVault-Setup-1.0.0.exe
+```
+
+The bat file `build-installer.bat` does all three steps end-to-end:
+1. `npm run build` → compiles React app
+2. `electron-builder --dir` → packages Electron (no admin needed)
+3. Inno Setup → compiles single-file installer
+
+### 5. Build Portable Folder (No Installer)
+
+```bash
+npm run package
+# Output: release/OneGitVault-win32-x64/   (entire folder is the portable app)
+```
 
 ---
 
-## 📁 Repository Structure
+## 📦 All NPM Scripts
+
+```bash
+npm start              # Dev: Vite server + Electron window (HMR)
+npm run dev            # Web only: http://localhost:5173/
+npm run build          # Compile TypeScript + Vite → dist/
+npm run installer      # Build + electron-builder NSIS (requires Developer Mode / admin)
+npm run installer:dir  # Build + electron-builder --dir only (no admin needed)
+npm run package        # Build + electron-packager portable folder
+```
+
+---
+
+## 🎨 Design System
+
+OneGitVault uses a distinctive **Warm Charcoal & Honey Amber** palette — inspired by Raycast and Arc Browser — avoiding generic AI-gradient templates.
+
+### Typography
+
+| Role | Font | Usage |
+|------|------|-------|
+| Headlines & Logo | **Bricolage Grotesque** | Observatory title, section headers |
+| Body & Descriptions | **Plus Jakarta Sans** | Cards, descriptions, modals |
+| Data & Badges | **JetBrains Mono** | Star counts (`145.2k ★`), forks, language labels |
+
+### Colour Palette
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `charcoal-950` | `#0c0d10` | Main background (dark) |
+| `charcoal-900` | `#111217` | Elevated surface |
+| `charcoal-800` | `#161720` | Card tiles |
+| `amber-brand` | `#f59e0b` | Primary accent, stars, CTAs |
+| `amber-glow` | `#fbbf24` | Hover states, luminous highlights |
+
+### Dark / Light Mode
+
+Toggle via the ☀️ / 🌙 button in the header. Preference persists to `localStorage` (`onegitvault_theme_mode`).
+
+---
+
+## 🚀 Features
+
+- **Live GitHub Search Streaming** — Infinite pagination in batches of 40, powered by `IntersectionObserver`
+- **7 Category Sectors** — AI/ML, Web & Frameworks, Cloud & DevOps, Developer Tools, Databases, Mobile & Desktop, Security
+- **Multi-Filter Engine** — Language, star tier (`10k+`, `50k+`, `100k+`), sort order
+- **Repository Vault** — Bookmark repos locally, one-click `git clone` copy
+- **GitHub Token Support** — Boosts API quota from 60 → 5,000 req/hour (stored locally only)
+- **Offline Fallback** — 30+ curated repos shown when API is unavailable
+- **External Link Interception** — GitHub links open in default browser, not inside the app
+
+---
+
+## 📁 Project Structure
 
 ```
 OneGitVault/
-├── dist/                          # Production compiled bundle
 ├── electron/
-│   ├── main.cjs                   # Native Electron window & URL handler
+│   ├── main.cjs                   # Electron main process, BrowserWindow config
 │   └── preload.cjs                # Secure context bridge
-├── release/
-│   └── OneGitVault-win32-x64/     # Standalone Windows application package
-│       └── OneGitVault.exe        # Native standalone executable
-├── scripts/
-│   └── start-electron.cjs         # Development orchestrator
 ├── src/
 │   ├── components/
-│   │   ├── Header.tsx             # Brand, search, quota, theme toggle, and vault
+│   │   ├── Header.tsx             # Logo, search, theme toggle, vault button
 │   │   ├── Hero.tsx               # Observatory metrics & topic chips
 │   │   ├── CategoryNav.tsx        # Sector navigation tabs
-│   │   ├── FilterBar.tsx          # Sorting, languages, star tiers, and view modes
-│   │   ├── ProjectCard.tsx        # Grid & list repository cards
-│   │   ├── TokenModal.tsx         # GitHub Personal Access Token dialog
-│   │   ├── BookmarksModal.tsx     # Local repository vault drawer
-│   │   └── OneGitVaultLogo.tsx    # Bespoke amber & charcoal vault emblem
+│   │   ├── FilterBar.tsx          # Language, stars, sort filters
+│   │   ├── ProjectCard.tsx        # Repository cards (grid & list)
+│   │   ├── TokenModal.tsx         # GitHub PAT dialog
+│   │   ├── BookmarksModal.tsx     # Saved repos drawer
+│   │   └── OneGitVaultLogo.tsx    # Custom SVG vault emblem
 │   ├── data/
-│   │   └── curatedProjects.ts     # Verified fallback database & category topics
+│   │   └── curatedProjects.ts     # Offline fallback repository list
 │   ├── services/
-│   │   └── githubApi.ts           # GitHub REST Search API engine & rate tracker
+│   │   └── githubApi.ts           # GitHub Search API engine & cache
 │   ├── types/
-│   │   └── index.ts               # TypeScript data definitions
-│   ├── App.tsx                    # Main coordinator, theme manager & stream sentinel
-│   ├── index.css                  # Custom scrollbar & font declarations
-│   └── main.tsx                   # React root entry
-├── BLOG.md                        # Technical blog post
-├── package.json                   # Dependencies, scripts, and packager config
-├── tailwind.config.js             # Color palette tokens & typography mappings
-└── README.md                      # Project documentation
+│   │   └── index.ts               # TypeScript interfaces
+│   ├── App.tsx                    # Root component, theme & stream coordinator
+│   ├── index.css                  # Fonts, custom scrollbar
+│   └── main.tsx                   # React entry point
+├── scripts/
+│   └── start-electron.cjs         # Dev server orchestrator
+├── release/
+│   ├── installer/
+│   │   └── win-unpacked/          # Electron-packaged app (portable)
+│   └── setup/
+│       └── OneGitVault-Setup-1.0.0.exe  # Single-file Windows installer
+├── OneGitVault.iss                # Inno Setup script
+├── build-installer.bat            # End-to-end installer build script
+├── .gitignore                     # Excludes node_modules, dist, release, certs
+├── .gitattributes                 # Line ending normalisation
+├── tailwind.config.js             # Custom colour tokens & dark mode config
+├── vite.config.ts                 # Vite + React plugin config
+├── tsconfig.json                  # TypeScript config
+├── package.json                   # Dependencies, scripts, electron-builder config
+├── BLOG.md                        # Engineering blog post
+└── README.md                      # This file
 ```
+
+---
+
+## 🔐 Code Signing
+
+The installer is currently unsigned (self-signed workflow available). On first launch Windows SmartScreen may appear — click **More info → Run anyway**.
+
+To sign with a self-signed certificate, run:
+```bash
+# Located at Desktop/gemini/cert/
+run_sign_onegitvault.bat
+```
+
+For public distribution, obtain a standard or EV code-signing certificate from DigiCert / Sectigo.
 
 ---
 
 ## 📄 License
 
-MIT License. Crafted with precision.
+MIT License — crafted with precision by [VKaddala](https://github.com/VKaddala).  
+Read the full engineering story in [BLOG.md](BLOG.md).

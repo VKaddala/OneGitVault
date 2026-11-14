@@ -203,12 +203,6 @@ OneGitVault/
 
 The installer is currently unsigned (self-signed workflow available). On first launch Windows SmartScreen may appear — click **More info → Run anyway**.
 
-To sign with a self-signed certificate, run:
-```bash
-# Located at Desktop/gemini/cert/
-run_sign_onegitvault.bat
-```
-
 For public distribution, obtain a standard or EV code-signing certificate from DigiCert / Sectigo.
 
 ---

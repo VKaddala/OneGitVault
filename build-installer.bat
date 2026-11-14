@@ -51,6 +51,7 @@ echo.
 echo ============================================================
 echo  3/4  Packaging Standalone Electron Binary (v%APP_VERSION%)...
 echo ============================================================
+taskkill /F /IM OneGitVault.exe 2>nul
 call npx.cmd electron-packager . OneGitVault --platform=win32 --arch=x64 --icon=assets/icons/onegitvault.ico --app-version=%APP_VERSION% --build-version=%APP_VERSION% --out=release --overwrite --prune=true
 if errorlevel 1 (
     echo [ERROR] Electron packaging failed.

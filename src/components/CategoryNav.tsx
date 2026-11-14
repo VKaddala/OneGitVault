@@ -40,7 +40,7 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
   };
 
   return (
-    <div className="w-full bg-white dark:bg-[#0c0d10] border-b border-neutral-200 dark:border-[#20212b] sticky top-16 z-30 backdrop-blur-xl transition-colors duration-200">
+    <div className="w-full bg-[#FBE9D0]/95 dark:bg-[#101b20]/95 border-b border-[#e3d1ba] dark:border-[#1e343e] sticky top-16 z-30 backdrop-blur-xl transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2 overflow-x-auto py-3 no-scrollbar scroll-smooth">
           {categories.map((cat) => {
@@ -51,17 +51,17 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
                 onClick={() => onSelectCategory(cat.id)}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-[13px] font-sans font-medium whitespace-nowrap transition-all duration-150 ${
                   isActive
-                    ? 'bg-amber-500/15 text-amber-700 dark:bg-[#1b1c24] dark:text-amber-brand border border-amber-500/40 shadow-sm'
-                    : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-600 hover:text-neutral-900 border-neutral-200 dark:bg-[#121318] dark:hover:bg-[#181921] dark:text-charcoal-300 dark:hover:text-white dark:border-[#222430]'
+                    ? 'bg-[#E64833] text-white dark:bg-[#16272f] dark:text-[#ff5c47] border border-[#E64833] shadow-sm font-semibold'
+                    : 'bg-[#FFF9F0] hover:bg-[#F2DFCA] text-[#244855] border-[#e3d1ba] dark:bg-[#132229] dark:hover:bg-[#16272f] dark:text-[#90AEAD] dark:hover:text-[#FBE9D0] dark:border-[#203943]'
                 }`}
               >
-                <span className={isActive ? 'text-amber-600 dark:text-amber-brand' : 'text-neutral-500 dark:text-charcoal-400'}>
+                <span className={isActive ? 'text-white dark:text-[#ff5c47]' : 'text-[#874F41] dark:text-[#90AEAD]'}>
                   {getIcon(cat.icon)}
                 </span>
                 <span>{cat.name}</span>
                 {counts && counts[cat.id] !== undefined && (
                   <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
-                    isActive ? 'bg-amber-500/25 text-amber-800 dark:bg-amber-500/20 dark:text-amber-brand font-bold' : 'bg-neutral-200 text-neutral-600 dark:bg-charcoal-750 dark:text-charcoal-400'
+                    isActive ? 'bg-white/20 text-white dark:bg-[#E64833]/20 dark:text-[#ff5c47] font-bold' : 'bg-[#e8d5be] text-[#874F41] dark:bg-[#203943] dark:text-[#90AEAD]'
                   }`}>
                     {counts[cat.id]}
                   </span>

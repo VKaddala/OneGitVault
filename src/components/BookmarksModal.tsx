@@ -90,17 +90,17 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-2xl max-h-[90vh] bg-white dark:bg-[#111217] border border-neutral-200 dark:border-[#242634] rounded-2xl shadow-2xl flex flex-col text-neutral-900 dark:text-charcoal-100 overflow-hidden transition-colors duration-200">
+      <div className="relative w-full max-w-2xl max-h-[90vh] bg-[#FFF9F0] dark:bg-[#16272f] border border-[#e3d1ba] dark:border-[#244855] rounded-2xl shadow-2xl flex flex-col text-[#244855] dark:text-[#FBE9D0] overflow-hidden transition-colors duration-200">
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between p-5 border-b border-neutral-200 dark:border-[#20212b]">
+        <div className="flex items-center justify-between p-5 border-b border-[#e3d1ba] dark:border-[#244855]">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-brand">
-              <Bookmark className="w-5 h-5 fill-amber-600 dark:fill-amber-brand" />
+            <div className="p-2 rounded-xl bg-[#E64833]/10 border border-[#E64833]/25 text-[#E64833]">
+              <Bookmark className="w-5 h-5 fill-[#E64833]" />
             </div>
             <div>
-              <h3 className="font-display text-base font-bold text-neutral-900 dark:text-white">Repository Vault</h3>
-              <p className="text-xs font-mono text-neutral-500 dark:text-charcoal-400">{bookmarks.length} bookmarked repositories</p>
+              <h3 className="font-display text-base font-bold text-[#244855] dark:text-[#FBE9D0]">Repository Vault</h3>
+              <p className="text-xs font-mono text-[#874F41] dark:text-[#90AEAD]">{bookmarks.length} bookmarked repositories</p>
             </div>
           </div>
 
@@ -115,7 +115,7 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
             )}
             <button
               onClick={onClose}
-              className="p-1.5 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 dark:text-charcoal-400 dark:hover:text-white dark:hover:bg-[#1a1c26] rounded-lg transition-colors"
+              className="p-1.5 text-[#874F41] hover:text-[#244855] hover:bg-[#F2DFCA] dark:text-[#90AEAD] dark:hover:text-white dark:hover:bg-[#1c323c] rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -123,20 +123,20 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
         </div>
 
         {/* ── GitHub Gist Sync Banner ── */}
-        <div className={`px-5 py-3 border-b border-neutral-200 dark:border-[#20212b] ${hasToken ? 'bg-neutral-50 dark:bg-[#0d0e14]' : 'bg-neutral-50/60 dark:bg-[#13141a]'}`}>
+        <div className={`px-5 py-3 border-b border-[#e3d1ba] dark:border-[#244855] ${hasToken ? 'bg-[#FAF0E4] dark:bg-[#101b20]' : 'bg-[#FAF0E4]/70 dark:bg-[#101b20]/70'}`}>
           {hasToken ? (
             <div className="space-y-2.5">
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2 text-xs font-mono text-neutral-600 dark:text-charcoal-300">
-                  <Cloud className="w-3.5 h-3.5 text-amber-600 dark:text-amber-brand" />
-                  <span className="font-semibold text-neutral-900 dark:text-white">GitHub Gist Sync</span>
-                  <span className="text-neutral-500 dark:text-charcoal-500 hidden sm:inline">— back up & restore across devices</span>
+                <div className="flex items-center gap-2 text-xs font-mono text-[#874F41] dark:text-[#90AEAD]">
+                  <Cloud className="w-3.5 h-3.5 text-[#E64833]" />
+                  <span className="font-semibold text-[#244855] dark:text-[#FBE9D0]">GitHub Gist Sync</span>
+                  <span className="text-[#874F41]/70 dark:text-[#90AEAD]/70 hidden sm:inline">— back up & restore across devices</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={handlePull}
                     disabled={syncStatus === 'pushing' || syncStatus === 'pulling'}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono bg-white hover:bg-neutral-100 dark:bg-[#161720] dark:hover:bg-[#1d1f2b] border border-neutral-300 dark:border-[#2b2d3d] text-neutral-700 dark:text-charcoal-200 hover:text-neutral-900 dark:hover:text-white transition-all disabled:opacity-50 shadow-sm"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono bg-[#FFF9F0] hover:bg-white dark:bg-[#1c323c] dark:hover:bg-[#244855] border border-[#e3d1ba] dark:border-[#2d5564] text-[#244855] dark:text-[#FBE9D0] transition-all disabled:opacity-50 shadow-sm"
                     title="Pull bookmarks from your GitHub Gist"
                   >
                     <CloudDownload className="w-3.5 h-3.5" />
@@ -145,7 +145,7 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
                   <button
                     onClick={handlePush}
                     disabled={syncStatus === 'pushing' || syncStatus === 'pulling' || bookmarks.length === 0}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-800 dark:text-amber-brand transition-all disabled:opacity-50 font-semibold"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono bg-[#E64833] hover:bg-[#c73a27] text-white border border-[#E64833] transition-all disabled:opacity-50 font-semibold shadow-sm"
                     title="Push bookmarks to GitHub Gist"
                   >
                     <CloudUpload className="w-3.5 h-3.5" />
@@ -161,12 +161,12 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
                     ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/25 dark:text-emerald-400'
                     : syncStatus === 'error'
                     ? 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-500/10 dark:border-rose-500/25 dark:text-rose-400'
-                    : 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-brand'
+                    : 'bg-[#E64833]/10 border-[#E64833]/25 text-[#E64833]'
                 }`}>
                   {syncIcon()}
                   <span className="flex-1">{syncMessage || (syncStatus === 'pushing' ? 'Syncing to GitHub Gist…' : 'Fetching from GitHub Gist…')}</span>
                   {gistUrl && (
-                    <a href={gistUrl} target="_blank" rel="noreferrer" className="underline text-amber-700 dark:text-charcoal-300 hover:text-amber-900 dark:hover:text-white flex items-center gap-1">
+                    <a href={gistUrl} target="_blank" rel="noreferrer" className="underline text-[#E64833] hover:text-[#c73a27] flex items-center gap-1">
                       View Gist <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
@@ -174,8 +174,8 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-xs font-mono text-neutral-500 dark:text-charcoal-500">
-              <Cloud className="w-3.5 h-3.5 text-amber-600 dark:text-amber-brand" />
+            <div className="flex items-center gap-2 text-xs font-mono text-[#874F41] dark:text-[#90AEAD]">
+              <Cloud className="w-3.5 h-3.5 text-[#E64833]" />
               <span>Connect a GitHub Token to enable Gist Sync — back up your vault to GitHub</span>
             </div>
           )}
@@ -185,9 +185,9 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
         <div className="flex-1 overflow-y-auto p-5 space-y-3">
           {bookmarks.length === 0 ? (
             <div className="text-center py-12">
-              <Bookmark className="w-12 h-12 text-neutral-300 dark:text-charcoal-500 mx-auto mb-3 opacity-60" />
-              <h4 className="text-sm font-display font-semibold text-neutral-700 dark:text-charcoal-300">Your Vault is Empty</h4>
-              <p className="text-xs font-sans text-neutral-500 dark:text-charcoal-400 max-w-sm mx-auto mt-1">
+              <Bookmark className="w-12 h-12 text-[#874F41]/40 dark:text-[#90AEAD]/40 mx-auto mb-3 opacity-60" />
+              <h4 className="text-sm font-display font-semibold text-[#244855] dark:text-[#FBE9D0]">Your Vault is Empty</h4>
+              <p className="text-xs font-sans text-[#874F41] dark:text-[#90AEAD] max-w-sm mx-auto mt-1">
                 Click the bookmark icon on any project card to store it in your local OneGitVault.
               </p>
             </div>
@@ -195,39 +195,39 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
             bookmarks.map((repo) => (
               <div
                 key={repo.id}
-                className="flex items-center justify-between p-3.5 rounded-xl bg-neutral-50 hover:bg-neutral-100/80 dark:bg-[#161720] dark:hover:bg-[#1a1c27] border border-neutral-200 dark:border-[#242634] hover:border-neutral-300 dark:hover:border-[#2f3244] transition-all gap-4"
+                className="flex items-center justify-between p-3.5 rounded-xl bg-[#FAF0E4] hover:bg-white dark:bg-[#101b20] dark:hover:bg-[#132229] border border-[#e3d1ba] dark:border-[#203943] hover:border-[#874F41]/40 dark:hover:border-[#356374] transition-all gap-4"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <img
                     src={repo.owner.avatar_url}
                     alt={repo.owner.login}
-                    className="w-8 h-8 rounded-lg ring-1 ring-neutral-200 dark:ring-[#262836] bg-neutral-100 dark:bg-[#20212b] flex-shrink-0"
+                    className="w-8 h-8 rounded-lg ring-1 ring-[#e3d1ba] dark:ring-[#244855] bg-[#FFF9F0] dark:bg-[#16272f] flex-shrink-0"
                   />
                   <div className="min-w-0">
                     <a
                       href={repo.html_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-sm font-display font-bold text-neutral-900 dark:text-white hover:text-amber-600 dark:hover:text-amber-brand flex items-center gap-1.5 truncate transition-colors"
+                      className="text-sm font-display font-bold text-[#244855] dark:text-[#FBE9D0] hover:text-[#E64833] dark:hover:text-[#ff5c47] flex items-center gap-1.5 truncate transition-colors"
                     >
                       <span>{repo.full_name}</span>
-                      <ExternalLink className="w-3 h-3 text-neutral-400 dark:text-charcoal-400 flex-shrink-0" />
+                      <ExternalLink className="w-3 h-3 text-[#874F41] dark:text-[#90AEAD] flex-shrink-0" />
                     </a>
-                    <p className="text-xs text-neutral-600 dark:text-charcoal-400 truncate max-w-md font-sans">
+                    <p className="text-xs text-[#874F41] dark:text-[#90AEAD] truncate max-w-md font-sans">
                       {repo.description || 'No description provided.'}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <div className="flex items-center gap-1 text-xs font-mono font-bold text-amber-700 dark:text-amber-brand bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-md">
-                    <Star className="w-3 h-3 fill-amber-600 dark:fill-amber-brand text-amber-600 dark:text-amber-brand" />
+                  <div className="flex items-center gap-1 text-xs font-mono font-bold text-[#E64833] bg-[#E64833]/10 border border-[#E64833]/25 px-2 py-0.5 rounded-md">
+                    <Star className="w-3 h-3 fill-[#E64833] text-[#E64833]" />
                     <span>{repo.stargazers_count.toLocaleString()}</span>
                   </div>
 
                   <button
                     onClick={() => onRemoveBookmark(repo.id)}
-                    className="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 dark:text-charcoal-400 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
+                    className="p-1.5 text-[#874F41] hover:text-rose-600 hover:bg-rose-50 dark:text-[#90AEAD] dark:hover:text-rose-400 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
                     title="Remove from vault"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -239,10 +239,10 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
         </div>
 
         {/* ── Footer ── */}
-        <div className="p-4 border-t border-neutral-200 dark:border-[#20212b] bg-neutral-50 dark:bg-[#0e0f13] flex justify-end">
+        <div className="p-4 border-t border-[#e3d1ba] dark:border-[#244855] bg-[#FAF0E4] dark:bg-[#101b20] flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-mono font-semibold text-neutral-700 dark:text-charcoal-300 hover:text-neutral-900 dark:hover:text-white bg-white hover:bg-neutral-100 dark:bg-[#1a1c26] dark:hover:bg-[#222432] border border-neutral-300 dark:border-transparent rounded-xl transition-colors shadow-sm"
+            className="px-4 py-2 text-xs font-mono font-semibold text-[#244855] dark:text-[#FBE9D0] hover:text-[#E64833] dark:hover:text-white bg-[#FFF9F0] hover:bg-white dark:bg-[#1c323c] dark:hover:bg-[#244855] border border-[#e3d1ba] dark:border-[#2d5564] rounded-xl transition-colors shadow-sm"
           >
             Close
           </button>

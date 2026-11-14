@@ -11,6 +11,49 @@
   animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* ── Prometheus Typography & Smooth Defaults ── */
+:root {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  color-scheme: light dark;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  letter-spacing: -0.025em;
+}
+
+code, pre, .font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Prometheus Custom Scrollbars ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f6dfc0;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #101b20;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #90aead;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #244855;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #e64833;
+}
+
 /* ── README rendered markdown styles (marked HTML output) ── */
 .readme-body {
   color: inherit;
@@ -23,7 +66,7 @@
   font-size: 1.5rem;
   font-weight: 700;
   margin: 1.4rem 0 0.6rem;
-  border-bottom: 1px solid rgba(120, 120, 140, 0.2);
+  border-bottom: 1px solid rgba(144, 174, 173, 0.3);
   padding-bottom: 0.4rem;
   color: inherit;
 }
@@ -33,7 +76,7 @@
   font-size: 1.25rem;
   font-weight: 700;
   margin: 1.2rem 0 0.5rem;
-  border-bottom: 1px solid rgba(120, 120, 140, 0.15);
+  border-bottom: 1px solid rgba(144, 174, 173, 0.2);
   padding-bottom: 0.3rem;
   color: inherit;
 }
@@ -43,7 +86,7 @@
   font-size: 1.05rem;
   font-weight: 700;
   margin: 1rem 0 0.4rem;
-  color: #f59e0b;
+  color: #e64833;
 }
 
 .readme-body h4,
@@ -60,8 +103,8 @@
 }
 
 .readme-body pre {
-  background: #0c0d10;
-  border: 1px solid #242634;
+  background: #101b20;
+  border: 1px solid #244855;
   border-radius: 0.75rem;
   padding: 0.85rem 1rem;
   overflow-x: auto;
@@ -76,38 +119,38 @@
   background: transparent !important;
   border: none !important;
   padding: 0 !important;
-  color: #e2e8f0;
+  color: #fbe9d0;
   font-family: 'JetBrains Mono', monospace;
   font-size: inherit;
 }
 
 .readme-body :not(pre) > code {
-  background: #161720;
-  border: 1px solid #242634;
+  background: #16272f;
+  border: 1px solid #244855;
   border-radius: 0.35rem;
   padding: 0.15em 0.45em;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.8em;
-  color: #fbbf24;
+  color: #ff5c47;
 }
 
 .readme-body a {
-  color: #f59e0b;
+  color: #e64833;
   text-decoration: underline;
   text-underline-offset: 3px;
   transition: color 0.15s ease;
 }
 .readme-body a:hover {
-  color: #fbbf24;
+  color: #ff5c47;
 }
 
 .readme-body blockquote {
-  border-left: 3px solid #f59e0b;
+  border-left: 3px solid #e64833;
   padding: 0.5rem 1rem;
   margin: 0.75rem 0;
-  background: rgba(245, 158, 11, 0.05);
+  background: rgba(230, 72, 51, 0.08);
   border-radius: 0 0.5rem 0.5rem 0;
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 .readme-body ul {
@@ -127,7 +170,7 @@
 
 .readme-body hr {
   border: none;
-  border-top: 1px solid rgba(120, 120, 140, 0.2);
+  border-top: 1px solid rgba(144, 174, 173, 0.3);
   margin: 1.25rem 0;
 }
 
@@ -142,20 +185,20 @@
 
 .readme-body th,
 .readme-body td {
-  border: 1px solid #242634;
+  border: 1px solid #244855;
   padding: 0.5rem 0.75rem;
   text-align: left;
 }
 
 .readme-body th {
-  background: #13141a;
+  background: #1b2f37;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 600;
-  color: #fbbf24;
+  color: #fbe9d0;
 }
 
 .readme-body tr:nth-child(even) {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(36, 72, 85, 0.2);
 }
 
 .readme-body img {
@@ -168,58 +211,25 @@
 
 /* Light mode README overrides */
 :root:not(.dark) .readme-body pre {
-  background: #f4f3ef;
-  border-color: #e2e0d8;
+  background: #fdf8f0;
+  border-color: #d8c8b4;
 }
 :root:not(.dark) .readme-body pre code {
-  color: #1e293b;
+  color: #244855;
 }
 :root:not(.dark) .readme-body :not(pre) > code {
-  background: #ebe9e1;
-  border-color: #ddd9cd;
-  color: #b45309;
+  background: #f5e4ce;
+  border-color: #dfcdb7;
+  color: #c73a27;
 }
 :root:not(.dark) .readme-body blockquote {
-  background: rgba(245, 158, 11, 0.08);
+  background: rgba(230, 72, 51, 0.07);
 }
 :root:not(.dark) .readme-body th {
-  background: #eeece4;
-  color: #92400e;
+  background: #eedbc3;
+  color: #244855;
 }
 :root:not(.dark) .readme-body th,
 :root:not(.dark) .readme-body td {
-  border-color: #e2e0d8;
-}
-
-:root {
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-  color-scheme: dark;
-}
-
-h1, h2, h3, .font-display {
-  font-family: 'Bricolage Grotesque', sans-serif;
-  letter-spacing: -0.025em;
-}
-
-code, pre, .font-mono {
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* Warm Charcoal & Brass Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #0e0f13;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #20212b;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #292b37;
+  border-color: #d8c8b4;
 }

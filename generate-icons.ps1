@@ -9,14 +9,14 @@ function Create-LogoBitmap([float]$size) {
 
     [float]$scale = $size / 32.0
 
-    # Colors
-    $outerBg = [System.Drawing.ColorTranslator]::FromHtml("#14151c")
-    $outerBorder = [System.Drawing.ColorTranslator]::FromHtml("#282a38")
-    $archFill = [System.Drawing.ColorTranslator]::FromHtml("#1b1d28")
-    $amberBrand = [System.Drawing.ColorTranslator]::FromHtml("#f59e0b")
-    $amberGlow = [System.Drawing.ColorTranslator]::FromHtml("#fbbf24")
-    $bronze = [System.Drawing.ColorTranslator]::FromHtml("#d97706")
-    $lightGold = [System.Drawing.ColorTranslator]::FromHtml("#fde68a")
+    # Prometheus Palette Colors
+    $outerBg     = [System.Drawing.ColorTranslator]::FromHtml("#16272f") # Deep Petrol Slate
+    $outerBorder = [System.Drawing.ColorTranslator]::FromHtml("#244855") # Petrol Teal
+    $archFill    = [System.Drawing.ColorTranslator]::FromHtml("#244855") # Petrol
+    $flameBrand  = [System.Drawing.ColorTranslator]::FromHtml("#e64833") # Flame Vermilion
+    $cream       = [System.Drawing.ColorTranslator]::FromHtml("#fbe9d0") # Warm Cream
+    $terracotta  = [System.Drawing.ColorTranslator]::FromHtml("#874f41") # Terracotta
+    $sage        = [System.Drawing.ColorTranslator]::FromHtml("#90aead") # Dusty Sage
 
     # 1. Outer rounded tile
     [float]$radius = 8.0 * $scale
@@ -44,31 +44,31 @@ function Create-LogoBitmap([float]$size) {
 
     $brushArch = New-Object System.Drawing.SolidBrush($archFill)
     $g.FillPath($brushArch, $archPath)
-    $penArch = New-Object System.Drawing.Pen($amberBrand, [Math]::Max(1.0, 1.25 * $scale))
+    $penArch = New-Object System.Drawing.Pen($flameBrand, [Math]::Max(1.0, 1.3 * $scale))
     $g.DrawPath($penArch, $archPath)
 
     # 3. Stem forming '1'
-    $penStem = New-Object System.Drawing.Pen($amberGlow, [Math]::Max(1.5, 2.2 * $scale))
+    $penStem = New-Object System.Drawing.Pen($cream, [Math]::Max(1.5, 2.2 * $scale))
     $penStem.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
     $penStem.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
     $g.DrawLine($penStem, (13.0 * $scale), (11.0 * $scale), (16.0 * $scale), (8.0 * $scale))
     $g.DrawLine($penStem, (16.0 * $scale), (8.0 * $scale), (16.0 * $scale), (24.0 * $scale))
 
     # 4. Right branch arc
-    $penBranch = New-Object System.Drawing.Pen($bronze, [Math]::Max(1.2, 1.75 * $scale))
+    $penBranch = New-Object System.Drawing.Pen($terracotta, [Math]::Max(1.2, 1.8 * $scale))
     $penBranch.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
     $penBranch.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
     $g.DrawArc($penBranch, (11.5 * $scale), (15.0 * $scale), (9.0 * $scale), (9.0 * $scale), 270.0, 90.0)
 
     # 5. Nodes
     [float]$r = 1.8 * $scale
-    $b1 = New-Object System.Drawing.SolidBrush($lightGold)
+    $b1 = New-Object System.Drawing.SolidBrush($cream)
     $g.FillEllipse($b1, (16.0 * $scale - $r), (8.0 * $scale - $r), ($r * 2), ($r * 2))
 
-    $b2 = New-Object System.Drawing.SolidBrush($amberBrand)
+    $b2 = New-Object System.Drawing.SolidBrush($flameBrand)
     $g.FillEllipse($b2, (16.0 * $scale - $r), (24.0 * $scale - $r), ($r * 2), ($r * 2))
 
-    $b3 = New-Object System.Drawing.SolidBrush($amberGlow)
+    $b3 = New-Object System.Drawing.SolidBrush($sage)
     $g.FillEllipse($b3, (20.5 * $scale - $r), (19.5 * $scale - $r), ($r * 2), ($r * 2))
 
     $g.Dispose()
@@ -80,10 +80,10 @@ $bmp256 = Create-LogoBitmap 256.0
 $bmp256.Save("$outDir\onegitvault.png", [System.Drawing.Imaging.ImageFormat]::Png)
 
 $bmp128 = Create-LogoBitmap 128.0
-$bmp64 = Create-LogoBitmap 64.0
-$bmp48 = Create-LogoBitmap 48.0
-$bmp32 = Create-LogoBitmap 32.0
-$bmp16 = Create-LogoBitmap 16.0
+$bmp64  = Create-LogoBitmap 64.0
+$bmp48  = Create-LogoBitmap 48.0
+$bmp32  = Create-LogoBitmap 32.0
+$bmp16  = Create-LogoBitmap 16.0
 
 # Build multi-resolution ICO file
 $images = @($bmp256, $bmp128, $bmp64, $bmp48, $bmp32, $bmp16)
@@ -133,4 +133,8 @@ $bw.Flush()
 $bw.Dispose()
 $fs.Dispose()
 
-Write-Host "SUCCESS: Generated $outDir\onegitvault.ico and $outDir\onegitvault.png"
+# Also copy to public folder for web/Electron favicons
+Copy-Item "$outDir\onegitvault.png" "C:\Users\javku\Desktop\gemini\OneGitVault\public\favicon.png" -Force
+Copy-Item "$outDir\onegitvault.ico" "C:\Users\javku\Desktop\gemini\OneGitVault\public\favicon.ico" -Force
+
+Write-Host "SUCCESS: Regenerated Prometheus-themed icons."

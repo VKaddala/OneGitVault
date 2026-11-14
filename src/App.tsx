@@ -314,7 +314,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#fbfbf9] text-[#1c1c21] dark:bg-[#0c0d10] dark:text-[#ececee] flex flex-col font-sans transition-colors duration-200 selection:bg-amber-500/30 selection:text-amber-800 dark:selection:text-amber-200">
+    <div className="min-h-screen bg-[#FBE9D0] text-[#244855] dark:bg-[#101b20] dark:text-[#FBE9D0] flex flex-col font-sans transition-colors duration-200 selection:bg-flame-brand/30 selection:text-flame-brand">
       
       {/* Top Navigation */}
       <Header
@@ -351,21 +351,21 @@ export const App: React.FC = () => {
         
         {/* Offline / Rate Limit Notice */}
         {isOfflineFallback && (
-          <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 dark:bg-amber-950/20 dark:border-amber-500/25 flex items-start justify-between gap-4">
+          <div className="mb-6 p-4 rounded-2xl bg-[#E64833]/10 border border-[#E64833]/30 dark:bg-[#16272f] dark:border-[#244855] flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-brand flex-shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-[#E64833] flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-sm font-display font-bold text-amber-700 dark:text-amber-brand">
+                <h4 className="text-sm font-display font-bold text-[#244855] dark:text-[#FBE9D0]">
                   Curated Vault Active (GitHub IP Quota Limit)
                 </h4>
-                <p className="text-xs font-sans text-amber-800/80 dark:text-amber-200/80 mt-0.5 leading-relaxed">
+                <p className="text-xs font-sans text-[#874F41] dark:text-[#90AEAD] mt-0.5 leading-relaxed">
                   GitHub allows 60 queries/hour without authorization. Connect your Personal Access Token in the top-right corner to unlock 5,000 live requests/hr.
                 </p>
               </div>
             </div>
             <button
               onClick={() => setIsTokenModalOpen(true)}
-              className="text-xs font-mono font-medium px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-brand border border-amber-500/30 whitespace-nowrap transition-colors"
+              className="text-xs font-mono font-medium px-3 py-1.5 rounded-xl bg-[#E64833] hover:bg-[#c73a27] text-white border border-[#E64833] whitespace-nowrap transition-colors shadow-sm"
             >
               Add Token
             </button>
@@ -391,20 +391,20 @@ export const App: React.FC = () => {
         />
 
         {/* Live Streaming Info Banner */}
-        <div className="my-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#111217] border border-neutral-200 dark:border-[#20212b] rounded-2xl p-3.5 shadow-sm transition-colors duration-200">
+        <div className="my-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FFF9F0] dark:bg-[#16272f] border border-[#e3d1ba] dark:border-[#244855] rounded-2xl p-3.5 shadow-sm transition-colors duration-200">
           <div>
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-600 dark:bg-amber-brand animate-pulse" />
-              <h2 className="text-sm sm:text-base font-display font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#E64833] animate-pulse" />
+              <h2 className="text-sm sm:text-base font-display font-bold text-[#244855] dark:text-[#FBE9D0] flex items-center gap-2">
                 <span>{activeCategoryObj.name}</span>
                 {debouncedQuery && (
-                  <span className="text-xs font-mono font-normal text-neutral-500 dark:text-charcoal-400">
-                    matching "<span className="text-amber-700 dark:text-amber-brand">{debouncedQuery}</span>"
+                  <span className="text-xs font-mono font-normal text-[#874F41] dark:text-[#90AEAD]">
+                    matching "<span className="text-[#E64833]">{debouncedQuery}</span>"
                   </span>
                 )}
               </h2>
             </div>
-            <p className="text-xs font-mono text-neutral-500 dark:text-charcoal-400 mt-0.5">
+            <p className="text-xs font-mono text-[#874F41] dark:text-[#90AEAD] mt-0.5">
               {totalCount > 0 
                 ? `Loaded ${displayedRepositories.length} of ${totalCount.toLocaleString()} repositories from GitHub`
                 : activeCategoryObj.description}
@@ -417,12 +417,12 @@ export const App: React.FC = () => {
               onClick={() => setAutoScroll(!autoScroll)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono border transition-all ${
                 autoScroll
-                  ? 'bg-amber-500/15 text-amber-700 dark:text-amber-brand border-amber-500/35 font-semibold'
-                  : 'bg-neutral-100 text-neutral-600 border-neutral-300 dark:bg-[#161720] dark:text-charcoal-400 dark:border-[#242634]'
+                  ? 'bg-[#E64833] text-white border-[#E64833] font-semibold shadow-sm'
+                  : 'bg-[#FAF0E4] text-[#244855] border-[#e3d1ba] dark:bg-[#101b20] dark:text-[#90AEAD] dark:border-[#244855]'
               }`}
               title="Toggle automatic streaming when scrolling down"
             >
-              <Zap className={`w-3.5 h-3.5 ${autoScroll ? 'text-amber-600 dark:text-amber-brand' : ''}`} />
+              <Zap className={`w-3.5 h-3.5 ${autoScroll ? 'text-white' : 'text-[#874F41] dark:text-[#90AEAD]'}`} />
               <span>Auto-Stream: {autoScroll ? 'ON' : 'OFF'}</span>
             </button>
 
@@ -430,10 +430,10 @@ export const App: React.FC = () => {
             <button
               onClick={loadInitialData}
               disabled={isLoading}
-              className="flex items-center gap-1.5 text-xs font-mono text-neutral-600 hover:text-neutral-900 bg-neutral-100 hover:bg-neutral-200 dark:text-charcoal-300 dark:hover:text-white dark:bg-[#161720] dark:hover:bg-[#1d1f2b] px-3 py-1.5 rounded-xl border border-neutral-300 dark:border-[#242634] transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs font-mono text-[#244855] hover:text-[#E64833] bg-[#FAF0E4] hover:bg-[#F2DFCA] dark:text-[#90AEAD] dark:hover:text-[#FBE9D0] dark:bg-[#101b20] dark:hover:bg-[#132229] px-3 py-1.5 rounded-xl border border-[#e3d1ba] dark:border-[#244855] transition-colors disabled:opacity-50"
               title="Refresh stream"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-amber-600 dark:text-amber-brand' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#E64833]' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
@@ -442,8 +442,8 @@ export const App: React.FC = () => {
         {/* Initial Loading Spinner */}
         {isLoading && (
           <div className="py-24 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="w-8 h-8 text-amber-600 dark:text-amber-brand animate-spin" />
-            <p className="text-xs font-mono text-neutral-500 dark:text-charcoal-400">
+            <Loader2 className="w-8 h-8 text-[#E64833] animate-spin" />
+            <p className="text-xs font-mono text-[#874F41] dark:text-[#90AEAD]">
               Querying GitHub for live repositories...
             </p>
           </div>
@@ -472,15 +472,15 @@ export const App: React.FC = () => {
 
         {/* Empty State */}
         {!isLoading && displayedRepositories.length === 0 && (
-          <div className="py-20 text-center rounded-2xl border border-neutral-200 dark:border-[#20212b] bg-white dark:bg-[#111217] p-8">
-            <FolderSearch className="w-12 h-12 text-neutral-400 dark:text-charcoal-500 mx-auto mb-3" />
-            <h3 className="text-base font-display font-bold text-neutral-800 dark:text-charcoal-200">No repositories found</h3>
-            <p className="text-xs font-sans text-neutral-500 dark:text-charcoal-400 max-w-sm mx-auto mt-1 mb-4">
+          <div className="py-20 text-center rounded-2xl border border-[#e3d1ba] dark:border-[#244855] bg-[#FFF9F0] dark:bg-[#16272f] p-8">
+            <FolderSearch className="w-12 h-12 text-[#874F41]/50 dark:text-[#90AEAD]/50 mx-auto mb-3" />
+            <h3 className="text-base font-display font-bold text-[#244855] dark:text-[#FBE9D0]">No repositories found</h3>
+            <p className="text-xs font-sans text-[#874F41] dark:text-[#90AEAD] max-w-sm mx-auto mt-1 mb-4">
               We couldn't find any repositories matching your current query.
             </p>
             <button
               onClick={handleResetFilters}
-              className="px-4 py-2 text-xs font-mono font-bold text-white dark:text-[#0c0d10] bg-amber-600 dark:bg-amber-brand hover:bg-amber-700 dark:hover:bg-amber-glow rounded-xl shadow-md transition-all"
+              className="px-4 py-2 text-xs font-mono font-bold text-white bg-[#E64833] hover:bg-[#c73a27] rounded-xl shadow-md transition-all"
             >
               Reset Filters
             </button>
@@ -493,7 +493,7 @@ export const App: React.FC = () => {
             
             {/* Loading more spinner */}
             {isLoadingMore && (
-              <div className="flex items-center gap-2 text-xs font-mono text-amber-700 dark:text-amber-brand py-4 animate-fadeIn">
+              <div className="flex items-center gap-2 text-xs font-mono text-[#E64833] py-4 animate-fadeIn">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Streaming next batch of repositories from GitHub...</span>
               </div>
@@ -503,10 +503,10 @@ export const App: React.FC = () => {
             {!isLoadingMore && hasMore && (
               <button
                 onClick={loadNextPage}
-                className="group flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white hover:bg-neutral-50 text-neutral-800 border-neutral-300 dark:bg-[#161720] dark:hover:bg-[#1d1f2b] dark:text-charcoal-200 dark:hover:text-white border dark:border-[#262836] hover:border-amber-500/40 font-mono text-xs shadow-sm transition-all active:scale-95"
+                className="group flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#FFF9F0] hover:bg-white text-[#244855] border-[#e3d1ba] dark:bg-[#16272f] dark:hover:bg-[#1c323c] dark:text-[#FBE9D0] dark:hover:text-white border dark:border-[#244855] hover:border-[#E64833]/40 font-mono text-xs shadow-sm transition-all active:scale-95"
               >
                 <span>Load Next 40 Repositories</span>
-                <span className="text-[11px] text-amber-600 dark:text-amber-brand font-bold">
+                <span className="text-[11px] text-[#E64833] font-bold">
                   (Page {currentPage + 1})
                 </span>
               </button>
@@ -514,7 +514,7 @@ export const App: React.FC = () => {
 
             {/* End of list reached */}
             {!hasMore && (
-              <div className="text-center py-6 text-xs font-mono text-neutral-400 dark:text-charcoal-400">
+              <div className="text-center py-6 text-xs font-mono text-[#874F41] dark:text-[#90AEAD]">
                 <span>✦ End of available search stream for this query.</span>
               </div>
             )}
@@ -531,7 +531,7 @@ export const App: React.FC = () => {
       {showScrollTop && (
         <button
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 p-3 rounded-2xl bg-white hover:bg-neutral-50 text-amber-700 dark:bg-[#181922] dark:hover:bg-[#222432] dark:text-amber-brand shadow-xl border border-neutral-200 dark:border-[#2b2d3d] hover:border-amber-500/50 transition-all duration-200 hover:scale-105 z-40"
+          className="fixed bottom-6 right-6 p-3 rounded-2xl bg-[#FFF9F0] hover:bg-white text-[#E64833] dark:bg-[#16272f] dark:hover:bg-[#1c323c] dark:text-[#ff5c47] shadow-xl border border-[#e3d1ba] dark:border-[#244855] hover:border-[#E64833]/50 transition-all duration-200 hover:scale-105 z-40"
           title="Scroll to Top"
         >
           <ArrowUp className="w-5 h-5" />
@@ -539,18 +539,18 @@ export const App: React.FC = () => {
       )}
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-neutral-200 dark:border-[#1e2029] bg-neutral-50 dark:bg-[#090a0d] py-6 transition-colors duration-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-neutral-500 dark:text-charcoal-400">
+      <footer className="mt-auto border-t border-[#e3d1ba] dark:border-[#1e343e] bg-[#FAF0E4] dark:bg-[#0c1519] py-6 transition-colors duration-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-[#874F41] dark:text-[#90AEAD]">
           <div className="flex items-center gap-2">
             <OneGitVaultLogo className="w-5 h-5" />
-            <span className="font-display font-bold text-neutral-700 dark:text-charcoal-300">OneGitVault</span>
+            <span className="font-display font-bold text-[#244855] dark:text-[#FBE9D0]">OneGitVault</span>
             <span>• Standalone Open Source Observatory</span>
           </div>
 
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsTokenModalOpen(true)}
-              className="hover:text-amber-600 dark:hover:text-amber-brand transition-colors"
+              className="hover:text-[#E64833] transition-colors"
             >
               API Token Settings
             </button>
@@ -558,7 +558,7 @@ export const App: React.FC = () => {
               href="https://github.com/trending"
               target="_blank"
               rel="noreferrer"
-              className="hover:text-amber-600 dark:hover:text-amber-brand transition-colors flex items-center gap-1"
+              className="hover:text-[#E64833] transition-colors flex items-center gap-1"
             >
               <Globe className="w-3.5 h-3.5" />
               <span>GitHub Trending</span>

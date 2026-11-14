@@ -186,19 +186,19 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
       />
 
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-2xl flex flex-col bg-white dark:bg-[#0e0f13] border-l border-neutral-200 dark:border-[#20212b] shadow-2xl animate-slideInRight overflow-hidden">
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-2xl flex flex-col bg-[#FFF9F0] dark:bg-[#101b20] border-l border-[#e3d1ba] dark:border-[#244855] text-[#244855] dark:text-[#FBE9D0] shadow-2xl animate-slideInRight overflow-hidden">
 
         {/* ── HEADER ── */}
-        <div className="flex items-start justify-between gap-4 p-5 border-b border-neutral-200 dark:border-[#20212b] bg-white dark:bg-[#111217] flex-shrink-0">
+        <div className="flex items-start justify-between gap-4 p-5 border-b border-[#e3d1ba] dark:border-[#244855] bg-[#FAF0E4] dark:bg-[#16272f] flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <img
               src={repo.owner.avatar_url}
               alt={repo.owner.login}
-              className="w-10 h-10 rounded-xl ring-1 ring-neutral-200 dark:ring-[#262836] flex-shrink-0"
+              className="w-10 h-10 rounded-xl ring-1 ring-[#e3d1ba] dark:ring-[#244855] flex-shrink-0"
             />
             <div className="min-w-0">
-              <p className="text-[11px] font-mono text-neutral-500 dark:text-charcoal-400 truncate">{repo.owner.login}</p>
-              <h2 className="font-display font-bold text-lg text-neutral-900 dark:text-white truncate leading-tight">
+              <p className="text-[11px] font-mono text-[#874F41] dark:text-[#90AEAD] truncate">{repo.owner.login}</p>
+              <h2 className="font-display font-bold text-lg text-[#244855] dark:text-[#FBE9D0] truncate leading-tight">
                 {repo.name}
               </h2>
             </div>
@@ -209,16 +209,16 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
               onClick={() => onToggleBookmark(repo)}
               className={`p-2 rounded-xl transition-all ${
                 isBookmarked
-                  ? 'text-amber-600 dark:text-amber-brand bg-amber-500/10 border border-amber-500/20'
-                  : 'text-neutral-400 hover:text-amber-600 hover:bg-neutral-100 dark:text-charcoal-400 dark:hover:text-amber-brand dark:hover:bg-[#1a1c26] border border-transparent'
+                  ? 'text-[#E64833] bg-[#E64833]/10 border border-[#E64833]/25'
+                  : 'text-[#874F41] hover:text-[#E64833] hover:bg-[#F2DFCA] dark:text-[#90AEAD] dark:hover:text-[#ff5c47] dark:hover:bg-[#1c323c] border border-transparent'
               }`}
               title={isBookmarked ? 'Remove from Vault' : 'Save to Vault'}
             >
-              <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-amber-600 dark:fill-amber-brand' : ''}`} />
+              <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-[#E64833]' : ''}`} />
             </button>
             <button
               onClick={onClose}
-              className="p-2 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 dark:text-charcoal-400 dark:hover:text-white dark:hover:bg-[#1a1c26] rounded-xl border border-transparent transition-all"
+              className="p-2 text-[#874F41] hover:text-[#244855] hover:bg-[#F2DFCA] dark:text-[#90AEAD] dark:hover:text-white dark:hover:bg-[#1c323c] rounded-xl border border-transparent transition-all"
             >
               <X className="w-5 h-5" />
             </button>
@@ -226,37 +226,37 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
         </div>
 
         {/* ── REPO META ── */}
-        <div className="px-5 py-4 border-b border-neutral-200 dark:border-[#1e202a] bg-neutral-50 dark:bg-[#0c0d10] flex-shrink-0 space-y-3">
+        <div className="px-5 py-4 border-b border-[#e3d1ba] dark:border-[#203943] bg-[#FAF0E4]/60 dark:bg-[#132229] flex-shrink-0 space-y-3">
           {/* Description */}
           {repo.description && (
-            <p className="text-sm font-sans text-neutral-600 dark:text-charcoal-300 leading-relaxed">
+            <p className="text-sm font-sans text-[#244855]/90 dark:text-[#90AEAD] leading-relaxed">
               {repo.description}
             </p>
           )}
 
           {/* Stats row */}
           <div className="flex items-center gap-3 flex-wrap text-xs font-mono">
-            <span className="flex items-center gap-1 font-bold text-amber-700 dark:text-amber-brand bg-amber-500/10 border border-amber-500/25 px-2.5 py-1 rounded-lg">
-              <Star className="w-3.5 h-3.5 fill-amber-600 dark:fill-amber-brand" />
+            <span className="flex items-center gap-1 font-bold text-[#E64833] bg-[#E64833]/10 border border-[#E64833]/25 px-2.5 py-1 rounded-lg">
+              <Star className="w-3.5 h-3.5 fill-[#E64833]" />
               {formatNumber(repo.stargazers_count)}
             </span>
-            <span className="flex items-center gap-1 text-neutral-600 dark:text-charcoal-300 bg-neutral-100 dark:bg-[#161720] border border-neutral-200 dark:border-[#242634] px-2.5 py-1 rounded-lg">
+            <span className="flex items-center gap-1 text-[#874F41] dark:text-[#90AEAD] bg-[#FAF0E4] dark:bg-[#101b20] border border-[#e3d1ba] dark:border-[#244855] px-2.5 py-1 rounded-lg">
               <GitFork className="w-3.5 h-3.5" />
               {formatNumber(repo.forks_count)}
             </span>
             {repo.language && (
-              <span className="flex items-center gap-1.5 text-neutral-700 dark:text-charcoal-300">
+              <span className="flex items-center gap-1.5 text-[#244855] dark:text-[#FBE9D0]">
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: langColor }} />
                 {repo.language}
               </span>
             )}
             {repo.license && (
-              <span className="flex items-center gap-1 text-neutral-500 dark:text-charcoal-400">
+              <span className="flex items-center gap-1 text-[#874F41] dark:text-[#90AEAD]">
                 <Scale className="w-3 h-3" />
                 {repo.license.spdx_id || repo.license.name}
               </span>
             )}
-            <span className="flex items-center gap-1 text-neutral-500 dark:text-charcoal-400">
+            <span className="flex items-center gap-1 text-[#874F41] dark:text-[#90AEAD]">
               <Calendar className="w-3 h-3" />
               Updated {formatDate(repo.updated_at)}
             </span>
@@ -266,7 +266,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
           {repo.topics.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {repo.topics.map(t => (
-                <span key={t} className="text-[11px] font-mono text-neutral-600 dark:text-charcoal-300 bg-neutral-100 dark:bg-[#161720] border border-neutral-200 dark:border-[#242634] px-2 py-0.5 rounded-md">
+                <span key={t} className="text-[11px] font-mono text-[#874F41] dark:text-[#90AEAD] bg-[#FAF0E4] dark:bg-[#101b20] border border-[#e3d1ba] dark:border-[#244855] px-2 py-0.5 rounded-md">
                   #{t}
                 </span>
               ))}
@@ -277,32 +277,32 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
         {/* ── README ── */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <div className="flex items-center gap-2 mb-3">
-            <FileText className="w-4 h-4 text-neutral-400 dark:text-charcoal-400" />
-            <span className="text-xs font-mono font-semibold text-neutral-500 dark:text-charcoal-400 uppercase tracking-wide">README</span>
+            <FileText className="w-4 h-4 text-[#874F41] dark:text-[#90AEAD]" />
+            <span className="text-xs font-mono font-semibold text-[#874F41] dark:text-[#90AEAD] uppercase tracking-wide">README</span>
           </div>
 
           {readmeState === 'loading' && (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <Loader2 className="w-7 h-7 text-amber-600 dark:text-amber-brand animate-spin" />
-              <p className="text-xs font-mono text-neutral-500 dark:text-charcoal-400">Fetching README from GitHub…</p>
+              <Loader2 className="w-7 h-7 text-[#E64833] animate-spin" />
+              <p className="text-xs font-mono text-[#874F41] dark:text-[#90AEAD]">Fetching README from GitHub…</p>
             </div>
           )}
 
           {readmeState === 'not_found' && (
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-              <FileText className="w-10 h-10 text-neutral-300 dark:text-charcoal-500 opacity-50" />
-              <p className="text-sm font-display font-semibold text-neutral-500 dark:text-charcoal-400">No README found</p>
-              <p className="text-xs font-sans text-neutral-400 dark:text-charcoal-500">This repository doesn't have a README.md file.</p>
+              <FileText className="w-10 h-10 text-[#874F41]/30 dark:text-[#90AEAD]/30 opacity-50" />
+              <p className="text-sm font-display font-semibold text-[#874F41] dark:text-[#90AEAD]">No README found</p>
+              <p className="text-xs font-sans text-[#874F41]/70 dark:text-[#90AEAD]/70">This repository doesn't have a README.md file.</p>
             </div>
           )}
 
           {readmeState === 'error' && (
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
               <AlertCircle className="w-10 h-10 text-rose-400 opacity-60" />
-              <p className="text-sm font-display font-semibold text-neutral-500 dark:text-charcoal-300">Failed to load README</p>
+              <p className="text-sm font-display font-semibold text-[#874F41] dark:text-[#90AEAD]">Failed to load README</p>
               <button
                 onClick={() => fetchReadme(repo)}
-                className="text-xs font-mono text-amber-700 dark:text-amber-brand hover:underline"
+                className="text-xs font-mono text-[#E64833] hover:underline"
               >
                 Try again
               </button>
@@ -317,12 +317,12 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                 dangerouslySetInnerHTML={{ __html: renderedHtml }}
               />
               {!showFullReadme && readmeContent.length > 6000 && (
-                <div className="sticky bottom-0 pt-16 pb-2 bg-gradient-to-t from-white dark:from-[#0e0f13] via-white/80 dark:via-[#0e0f13]/80 to-transparent flex justify-center">
+                <div className="sticky bottom-0 pt-16 pb-2 bg-gradient-to-t from-[#FFF9F0] dark:from-[#101b20] via-[#FFF9F0]/80 dark:via-[#101b20]/80 to-transparent flex justify-center">
                   <button
                     onClick={() => setShowFullReadme(true)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-mono font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-800 dark:bg-[#161720] dark:hover:bg-[#1e202c] dark:text-charcoal-200 border border-neutral-300 dark:border-[#242634] shadow-lg transition-all"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-mono font-semibold bg-[#FAF0E4] hover:bg-[#F2DFCA] text-[#244855] dark:bg-[#16272f] dark:hover:bg-[#1c323c] dark:text-[#FBE9D0] border border-[#e3d1ba] dark:border-[#244855] shadow-lg transition-all"
                   >
-                    <ChevronDown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-brand" />
+                    <ChevronDown className="w-3.5 h-3.5 text-[#E64833]" />
                     <span>Expand full README</span>
                   </button>
                 </div>
@@ -332,12 +332,12 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
         </div>
 
         {/* ── FOOTER — Download / Clone / Open ── */}
-        <div className="flex-shrink-0 border-t border-neutral-200 dark:border-[#20212b] bg-white dark:bg-[#111217] p-4">
+        <div className="flex-shrink-0 border-t border-[#e3d1ba] dark:border-[#244855] bg-[#FAF0E4] dark:bg-[#16272f] p-4">
           <div className="flex items-center gap-2 flex-wrap">
 
             {/* Clone command pill */}
-            <div className="flex items-center flex-1 min-w-0 bg-neutral-100 dark:bg-[#0c0d10] border border-neutral-200 dark:border-[#242634] rounded-xl px-3 py-2 gap-2 text-xs font-mono text-neutral-600 dark:text-charcoal-400 overflow-hidden">
-              <Terminal className="w-3.5 h-3.5 flex-shrink-0 text-neutral-400 dark:text-charcoal-500" />
+            <div className="flex items-center flex-1 min-w-0 bg-[#FFF9F0] dark:bg-[#101b20] border border-[#e3d1ba] dark:border-[#203943] rounded-xl px-3 py-2 gap-2 text-xs font-mono text-[#244855] dark:text-[#90AEAD] overflow-hidden">
+              <Terminal className="w-3.5 h-3.5 flex-shrink-0 text-[#874F41] dark:text-[#90AEAD]" />
               <span className="truncate">git clone {repo.html_url}.git</span>
             </div>
 
@@ -347,7 +347,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold border transition-all flex-shrink-0 ${
                 cloneCopied
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-neutral-100 dark:bg-[#161720] border-neutral-200 dark:border-[#242634] text-neutral-700 dark:text-charcoal-200 hover:border-amber-500/40 hover:text-amber-700 dark:hover:text-amber-brand'
+                  : 'bg-[#FFF9F0] dark:bg-[#101b20] border-[#e3d1ba] dark:border-[#244855] text-[#244855] dark:text-[#FBE9D0] hover:border-[#E64833]/40 hover:text-[#E64833]'
               }`}
               title="Copy git clone command"
             >
@@ -360,7 +360,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
               href={zipUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold bg-neutral-100 dark:bg-[#161720] border border-neutral-200 dark:border-[#242634] text-neutral-700 dark:text-charcoal-200 hover:border-amber-500/40 hover:text-amber-700 dark:hover:text-amber-brand transition-all flex-shrink-0"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold bg-[#FFF9F0] dark:bg-[#101b20] border border-[#e3d1ba] dark:border-[#244855] text-[#244855] dark:text-[#FBE9D0] hover:border-[#E64833]/40 hover:text-[#E64833] transition-all flex-shrink-0"
               title="Download ZIP archive"
             >
               <Download className="w-3.5 h-3.5" />
@@ -373,7 +373,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                 href={repo.homepage}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold bg-neutral-100 dark:bg-[#161720] border border-neutral-200 dark:border-[#242634] text-neutral-700 dark:text-charcoal-200 hover:border-amber-500/40 hover:text-amber-700 dark:hover:text-amber-brand transition-all flex-shrink-0"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold bg-[#FFF9F0] dark:bg-[#101b20] border border-[#e3d1ba] dark:border-[#244855] text-[#244855] dark:text-[#FBE9D0] hover:border-[#E64833]/40 hover:text-[#E64833] transition-all flex-shrink-0"
                 title="Open project homepage"
               >
                 <Globe className="w-3.5 h-3.5" />
@@ -386,7 +386,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
               href={repo.html_url}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold bg-amber-500 hover:bg-amber-400 dark:bg-amber-brand dark:hover:bg-amber-glow text-white dark:text-[#0c0d10] border border-amber-600/50 dark:border-amber-500/50 transition-all flex-shrink-0"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold bg-[#E64833] hover:bg-[#c73a27] text-white border border-[#E64833] transition-all flex-shrink-0 shadow-md"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               <span>GitHub</span>

@@ -1,134 +1,158 @@
-# Engineering OneGitVault: From GitHub Search to a Windows Desktop App
+---
+title: "Building OneGitVault: A High-Performance Windows Observatory for Open-Source Exploration"
+published: true
+description: "Why open-source discovery in browser tabs is broken, and how I built a 4-column responsive desktop app with Electron 33, React 18, and TypeScript to fix it."
+tags: "opensource, electron, react, github"
+canonical_url: "https://github.com/VKaddala/OneGitVault"
+cover_image: "https://raw.githubusercontent.com/VKaddala/OneGitVault/main/assets/screenshots/01-dashboard-4col.png"
+---
 
-OneGitVault brings repository discovery into a focused desktop interface. It combines a React and TypeScript renderer, GitHub's repository Search API, browser storage for user preferences, and an Electron shell for Windows distribution. This article walks through how those pieces interact and which libraries support the build.
+# Building OneGitVault: A High-Performance Windows Observatory for Open-Source Exploration
 
-## What the application does
+As developers, discovering game-changing open-source software is part of our daily workflow. Whether it’s finding a new LLM agent framework, a blazingly fast Rust CLI tool, or an ultra-lean CSS micro-library, staying on top of open source is how we learn and build better software.
 
-The interface presents eight selection options: an all-projects view and seven curated categories covering AI and machine learning, web frameworks, cloud and DevOps, developer tools, databases, mobile and desktop, and security. Search terms are combined with optional language and minimum-star filters. Results can be sorted by stars, forks, or last update and displayed as cards or a list.
+Yet, our discovery workflow today is notoriously fragmented:
+- **Browser Tab Sprawl**: You read an article, see 5 interesting GitHub projects, open each in a new tab, open their READMEs, and suddenly have 45 tabs competing for your RAM and focus.
+- **GitHub's Web UI Isn't Built for Fast Triage**: GitHub is fundamentally built for *repository and code management*—pull requests, issues, commits, and tree navigation. It's not optimized for high-density skimming, live continuous streaming, or instant local bookmarking.
+- **Anonymous Rate Limits**: Browsing anonymously on GitHub hits the strict 60 requests/hour ceiling within 15 minutes of active exploration.
+- **Release Assets Are Buried**: Downloading a release `.exe` or `.zip` often takes 3 to 4 clicks navigating past source tags and assets foldouts.
+- **Star Clutter**: When you star everything you find interesting, your starred list balloons into thousands of unorganized repos with no offline access or private backup.
 
-Users can bookmark repositories in a local vault, open GitHub pages in the system browser, or copy a `git clone` command from a result card. The UI also includes theme selection and an optional GitHub token entry form.
+To solve this, I designed and built **OneGitVault**—a fast, standalone Windows desktop application and open-source observatory built with **Electron 33**, **React 18**, **TypeScript**, and **Tailwind CSS**.
 
-## Runtime architecture
+In this article, I want to break down the architectural design decisions, the problem domain it solves, its technical highlights, and how you can run or install it.
 
-The project is split between the web renderer and Electron's main process:
+---
 
-```text
-React UI (src/)
-  ├─ App.tsx: feature state and coordination
-  ├─ components/: controls, cards, and dialogs
-  ├─ services/githubApi.ts: search, cache, and fallback
-  └─ data/curatedProjects.ts: categories and local fallback data
-          │
-          ├── fetch() ──> api.github.com
-          │
-          └── Electron preload bridge
-                    │
-Electron main (electron/main.cjs): window lifecycle and OS integration
+## 🎯 The Core Problem & Use Cases
+
+### 1. High-Density Discovery vs. Dead Margin Waste
+Most web applications artificially limit screen usage to narrow containers (e.g. `max-w-4xl` or `max-w-6xl`), leaving hundreds of empty pixels on widescreen monitors. 
+
+In **OneGitVault v2.0.0**, the canvas expands dynamically to `max-w-[1720px]`, hosting an ergonomic **4-column responsive grid** (`xl:grid-cols-4 2xl:grid-cols-4`). Each repository card is compact, lightweight, and packs all essential telemetry:
+- Owner and repository identity
+- Visual clone copy button (`git clone <url>.git`) with animated feedback
+- Quick-toggle Vault bookmark button
+- Live star and fork metrics
+- Accurate language color indicator and license information
+- Clean two-line clamped descriptions and interactive topic chips
+
+![OneGitVault Prometheus Dark Grid](https://raw.githubusercontent.com/VKaddala/OneGitVault/main/assets/screenshots/01-dashboard-4col.png)
+
+---
+
+### 2. In-App GitHub Trending (Zero Redirection)
+Usually, checking GitHub Trending requires navigating out of your flow to `github.com/trending`, scrolling through a browser list, and opening separate tabs.
+
+OneGitVault introduces an **In-App GitHub Trending Explorer** accessible directly from the titlebar (`🔥` icon). It allows you to:
+- Switch seamlessly between **Today**, **This Week**, and **This Month**.
+- Filter trending repositories by language.
+- Inspect the complete README and releases directly in an overlay modal without losing your current search or scroll position.
+
+![In-App Trending in Sand Light Mode](https://raw.githubusercontent.com/VKaddala/OneGitVault/main/assets/screenshots/07-sand-light-trending.png)
+
+---
+
+### 3. Immediate README & Release Asset Inspection
+Clicking any repository tile opens a centered, distraction-free markdown documentation viewer:
+- **GitHub Flavored Markdown (GFM)**: Renders headers, code blocks, tables, callouts, and directory structures.
+- **Security Sanitization with DOMPurify**: Untrusted markdown from arbitrary repositories is cleansed of `<script>`, `onerror`, and XSS attack vectors.
+- **Releases Downloader**: A dedicated tab lists official GitHub release tags and changelogs, offering direct single-click binary downloads (`.exe`, `.zip`, `.tar.gz`) straight to your local drive.
+
+![README Inspector Modal](https://raw.githubusercontent.com/VKaddala/OneGitVault/main/assets/screenshots/09-readme-inspector.png)
+
+---
+
+### 4. Modular Plugin-Based Theme Engine
+Instead of just a simple dark/light boolean toggle, OneGitVault implements a type-safe `ThemePlugin` contract with a central `ThemeRegistry`. The app includes 5 high-contrast themes:
+
+1. **Prometheus Dark**: Deep cinematic petrol teal (`#0c1519` / `#16272f`) with vermilion flame accents (`#e64833`) and biscuit text.
+2. **Sand & Ivory Light**: Warm biscuit sand canvas (`#FBE9D0`) with crisp ivory cards (`#FFF9F0`) and terracotta highlights.
+3. **Ambient Twilight**: Cool midnight slate (`#0a0e14` / `#161e2b`) with serene sky-cyan accents (`#38bdf8`) for zero eye fatigue.
+4. **GitHub Simple Light**: Crisp white cards with classic GitHub blue highlights (`#0969da`).
+5. **GitHub Simple Dark**: Deep GitHub slate canvas (`#0d1117`) with elevated containers and gold star badges.
+
+A floating portal popover with live dual preview swatches allows instant theme switching.
+
+![Sand & Ivory Light 4-Column Grid](https://raw.githubusercontent.com/VKaddala/OneGitVault/main/assets/screenshots/06-sand-light-theme.png)
+
+---
+
+### 5. Private GitHub Gist Cloud Sync
+Bookmarks shouldn't be locked into a single machine. While OneGitVault functions completely locally via `localStorage`, users can connect a personal GitHub access token (with `gist` scope) to enable **Push (Backup)** and **Pull (Restore)**. Your vault is synchronized to your personal GitHub account as a private Gist (`onegitvault-bookmarks.json`).
+
+---
+
+## 🏛️ Runtime Architecture & Technical Decisions
+
+```
+OneGitVault/
+├── assets/                  # High-res application icons and screenshots
+├── electron/
+│   ├── main.cjs             # Electron main process (IPC, window lifecycle, shell integration)
+│   └── preload.js           # Secure context-isolated bridge (electronAPI)
+├── src/
+│   ├── components/          # TitleBar, CategoryNav, FilterBar, ProjectCard, TrendingModal, RepoDetailPanel
+│   ├── hooks/               # Domain hooks (useRepositories, useBookmarks)
+│   ├── services/            # Pure services (githubApi, rateLimit, storage, updateService)
+│   ├── themes/              # Modular ThemePlugin registry (5 themes)
+│   └── types/               # TypeScript domain contracts
 ```
 
-In development, `scripts/start-electron.cjs` starts Vite on port 5173, waits for the server to respond, and launches Electron with `VITE_DEV_SERVER_URL`. In production, the main process loads `dist/index.html` from the Vite build. The Vite `base: './'` setting allows packaged assets to resolve relative to the local HTML file.
+### Why React 18 + Vite + Electron?
+- **Vite 5**: Delivers sub-second Hot Module Replacement (HMR) in development and bundles lightweight chunks (under 390 kB gzip) for instant desktop startup.
+- **Context Isolation & Sandbox**: The Electron process is configured with `nodeIntegration: false`, `contextIsolation: true`, and `sandbox: true`. External links are intercepted and routed safely to the system browser using `shell.openExternal`.
+- **IntersectionObserver Auto-Streaming**: Repositories are fetched in 40-item pages. As the user scrolls down, an `IntersectionObserver` sentinel automatically triggers the next page query before reaching the end.
+- **Zero-Downtime Offline Fallback**: If network connectivity drops or the user hits GitHub's unauthenticated hourly rate limit, the application seamlessly falls back to a curated offline repository dataset.
 
-The `BrowserWindow` opens at 1340 × 890 pixels, with minimum dimensions of 980 × 680. External HTTP and HTTPS windows are denied inside the Electron renderer and opened with `shell.openExternal`, keeping repository navigation in the user's default browser.
+---
 
-## Building a GitHub search
+## ⌨️ Desktop Ergonomics & Shortcuts
 
-The API integration lives in `src/services/githubApi.ts`. `buildSearchQuery()` assembles the Search API `q` parameter from:
+| Shortcut | Function |
+|---|---|
+| `Ctrl + K` / `Cmd + K` | Open / Close Search Flyout with Quick Topic Tags |
+| `Escape` | Instantly Dismiss Modals, Popovers, or Search Flyout |
+| `Ctrl + R` | Refresh Current Repository Stream & Update Quota Badge |
+| `Double Click Header` | Maximize / Restore Window |
 
-1. The user's keyword or phrase.
-2. One topic qualifier for the selected category (for example, `topic:machine-learning`).
-3. An optional `language:` qualifier. C++ and C# are translated to GitHub's `cpp` and `csharp` language identifiers; multi-word language names are quoted.
-4. An optional `stars:>=N` minimum.
+---
 
-For an unfiltered All Projects search, the service uses `stars:>500` as a baseline query. The query string is URL-encoded and sent to `https://api.github.com/search/repositories` with descending order and the selected sort field.
+## 📦 Download & Getting Started
 
-The category labels and descriptive text are in `src/data/curatedProjects.ts`. The actual category-to-topic mapping is implemented in the service, so changing a category's search behavior should be done there as well as in the category data if those values are kept aligned.
+### 1. Windows Setup Installer (Recommended)
+You can download the single-file installer directly from the releases page:
+- 💾 **Download**: [**`OneGitVault-Setup-2.0.0.exe`**](https://github.com/VKaddala/OneGitVault/releases/tag/v2.0.0) (~84 MB)
 
-### Mapping API data into UI data
+The installer is powered by Inno Setup 6: it automatically detects, uninstalls, and cleanly replaces previous versions without creating orphan files or registry remnants.
 
-GitHub's response shape is mapped into the shared `Repository` interface in `src/types/index.ts`. The mapper takes the repository and owner fields used by the UI, including its URL, description, counts, language, topics, timestamps, and license details. The rest of the interface operates on this app-level type rather than repeatedly reading raw API response objects.
+### 2. Standalone Portable Binary
+If you prefer running without installation:
+```powershell
+release\OneGitVault-win32-x64\OneGitVault.exe
+```
 
-The API response's rate-limit headers update an in-memory status object. The header can display the remaining quota, and the token dialog uses that status when explaining API access.
+### 3. Run from Source
+If you want to contribute, inspect the code, or build it yourself:
 
-## Pagination and result rendering
+```powershell
+# 1. Clone the repository
+git clone https://github.com/VKaddala/OneGitVault.git
+cd OneGitVault
 
-The UI requests 40 repositories per page. In `src/App.tsx`, the initial query resets the page and replaces the current result set. Subsequent pages are requested by an `IntersectionObserver` watching a sentinel near the end of the list. Its `rootMargin` is 300 pixels so the next request can start before the user reaches the bottom. A manual load-more button provides an alternative, and an Auto-Stream control can disable observer-driven requests.
+# 2. Install dependencies
+npm.cmd install
 
-Loading guards prevent overlapping page requests. Repositories are appended only when their IDs are not already present, which avoids duplicate cards. Search input is debounced by 400 milliseconds before it triggers a new initial query.
+# 3. Start in Desktop Mode (Electron + Vite HMR)
+npm.cmd start
+```
 
-The service requests the API's page results, but GitHub Search pagination is limited to the first 1,000 matches. Therefore, the UI can stream pages progressively, but cannot provide unbounded results from a single search.
+---
 
-## Rate limits, cache, and offline behavior
+## 🌟 Links & Repository
 
-The GitHub API request includes an `Accept` header and, if configured, a bearer token. Requests are aborted after 7.5 seconds. The API's `x-ratelimit-limit`, `x-ratelimit-remaining`, and reset headers are parsed when present.
+- **GitHub Repository**: [https://github.com/VKaddala/OneGitVault](https://github.com/VKaddala/OneGitVault)
+- **v2.0.0 Release & Binaries**: [https://github.com/VKaddala/OneGitVault/releases/tag/v2.0.0](https://github.com/VKaddala/OneGitVault/releases/tag/v2.0.0)
+- **License**: MIT License
 
-Successful result pages are serialized in `sessionStorage`. The key includes the query, sort field, page, and page size; cached pages last for the current browser session. This avoids repeating identical page requests while the session is open.
-
-If a request fails because of a network error, timeout, or non-success HTTP response, the service filters the local `CURATED_PROJECTS` list by category, language, star count, and search text, then sorts and paginates that list. The response carries an offline-fallback flag so the UI can tell users that live GitHub results are not being shown.
-
-This fallback is a predefined dataset, not a local mirror of GitHub. It keeps discovery usable during API outages or rate limiting but cannot reflect current repository data.
-
-## Token handling and local data
-
-The token dialog is implemented in `src/components/TokenModal.tsx`. It links to GitHub's fine-grained token settings and allows a user to save or clear a token. The service reads and writes the token in browser `localStorage`, then attaches it to GitHub requests. The token must be treated as a credential: it is stored locally by the app and transmitted to GitHub as an authorization header for API calls.
-
-Other persisted values are also local to the app profile:
-
-| Value | Storage key | Mechanism |
-|---|---|---|
-| Repository bookmarks | `onegitvault_bookmarks_v1` | `localStorage` |
-| Theme preference | `onegitvault_theme_mode` | `localStorage` |
-| GitHub token | `gitpulse_github_pat` | `localStorage` |
-| Search result pages | Query-based key with `gitpulse_v3_` prefix | `sessionStorage` |
-
-No separate database, account system, synchronization service, or state-management library is used.
-
-## Frontend libraries
-
-The core UI dependencies are intentionally small. React hooks in `App.tsx` own the application state; individual components receive values and callbacks through props. The browser's `fetch`, `IntersectionObserver`, `localStorage`, `sessionStorage`, and Clipboard API provide the browser-side platform features.
-
-| Package | Declared range | Use |
-|---|---:|---|
-| `react` | `^18.3.1` | Component model and UI state |
-| `react-dom` | `^18.3.1` | Mounts React into the browser document |
-| `lucide-react` | `^1.16.0` | Interface icons |
-| `typescript` | `^5.6.3` | Type checking and JavaScript compilation |
-| `vite` | `^5.4.11` | Local development server and production bundler |
-| `@vitejs/plugin-react` | `^4.3.4` | React support for Vite |
-| `tailwindcss` | `^3.4.17` | Utility-based styling and dark-mode class strategy |
-| `postcss` | `^8.4.49` | CSS transformation pipeline |
-| `autoprefixer` | `^10.4.20` | CSS vendor-prefix generation |
-| `@types/react` | `^18.3.18` | React TypeScript declarations |
-| `@types/react-dom` | `^18.3.5` | React DOM TypeScript declarations |
-
-Tailwind's content paths and theme configuration are in `tailwind.config.js`; Vite uses the React plugin in `vite.config.ts`. The project does not declare a separate HTTP client, router, or global state library.
-
-## Electron and Windows packaging
-
-Electron is configured in `electron/main.cjs` with `nodeIntegration: false`, `contextIsolation: true`, and `sandbox: true`. `electron/preload.cjs` exposes only a small `electronAPI` object containing the platform and an Electron indicator. The renderer does not receive general Node.js access.
-
-Packaging options:
-
-| Command or file | Process | Output |
-|---|---|---|
-| `npm run build` | Runs `tsc` and then `vite build` | `dist/` |
-| `npm run package` | Builds the renderer, then invokes `@electron/packager` for Windows x64 | `release/OneGitVault-win32-x64/` |
-| `npm run installer` | Builds the renderer, then invokes electron-builder with its NSIS target | Under `release/installer/` |
-| `npm run installer:dir` | Builds the renderer and packages the app directory without creating an installer | `release/installer/win-unpacked/` |
-| `build-installer.bat` | Builds the renderer and unpacked app, then calls Inno Setup Compiler | `release/setup/OneGitVault-Setup-1.0.0.exe` |
-
-The electron-builder configuration in `package.json` sets the Windows x64 target to NSIS and enables directory selection, Start Menu and desktop shortcuts, and per-user installation. The separate Inno Setup definition (`OneGitVault.iss`) takes the `win-unpacked` directory, recursively includes its files, and creates a setup executable with LZMA2 compression. Its companion batch file currently uses a fixed `PROJECT_DIR`; adjust that value when building from another checkout location. Inno Setup must be installed to compile that installer.
-
-The installer is not code-signed by this build setup. Windows can therefore show a SmartScreen warning. Signing requires a valid code-signing certificate and a separately configured signing process.
-
-## Source map
-
-- `src/App.tsx`: coordinates UI state, debounced search, bookmarking, and pagination.
-- `src/services/githubApi.ts`: builds search queries, requests and maps GitHub data, updates quota state, caches pages, and supplies fallback results.
-- `src/data/curatedProjects.ts`: category metadata, curated fallback entries, and language colors.
-- `src/components/`: presentation components for search, filters, cards, navigation, and dialogs.
-- `src/types/index.ts`: repository, category, sort, and view-mode types.
-- `electron/main.cjs` and `electron/preload.cjs`: desktop window configuration and restricted bridge.
-- `scripts/start-electron.cjs`: development startup orchestration.
-- `package.json`, `vite.config.ts`, and `tailwind.config.js`: dependency scripts and build/tool configuration.
-
-For installation and everyday commands, see [README.md](README.md).
+If you find OneGitVault helpful for keeping track of open-source projects, feel free to drop a ⭐ on GitHub and share your thoughts in the comments below! What features would you like to see next?

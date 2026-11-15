@@ -57,7 +57,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         <div className="flex flex-wrap items-center gap-2.5">
           
           <div className="text-xs font-mono text-txt-muted mr-1">
-            Displaying <span className="text-action font-bold">{totalResults}</span> repos
+            <span className="text-action font-bold">{totalResults.toLocaleString()}</span> repositories
           </div>
 
           {/* Sort By Dropdown */}

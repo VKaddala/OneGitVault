@@ -26,7 +26,15 @@
   to   { opacity: 1; transform: translateY(0)   scale(1);    }
 }
 
-/* ── Frameless Titlebar Window Drag Regions ── */
+/* ── Frameless Titlebar Window Drag Regions & Root Window Constraints ── */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 .app-drag-region {
   -webkit-app-region: drag;
   user-select: none;

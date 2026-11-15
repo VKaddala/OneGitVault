@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Header } from './components/Header';
 import { TitleBar } from './components/TitleBar';
-import { Hero } from './components/Hero';
 import { CategoryNav } from './components/CategoryNav';
 import { FilterBar } from './components/FilterBar';
 import { ProjectCard } from './components/ProjectCard';
@@ -104,18 +103,17 @@ export const App: React.FC = () => {
   }, []);
 
   const observerTarget = useRef<HTMLDivElement | null>(null);
+  const mainScrollRef = useRef<HTMLDivElement | null>(null);
 
   // Scroll to Top trigger
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 600);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+  const handleScroll = useCallback(() => {
+    if (mainScrollRef.current) {
+      setShowScrollTop(mainScrollRef.current.scrollTop > 600);
+    }
   }, []);
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // IntersectionObserver for continuous auto-streaming
@@ -129,7 +127,7 @@ export const App: React.FC = () => {
           loadMore();
         }
       },
-      { root: null, rootMargin: '300px', threshold: 0.1 }
+      { root: mainScrollRef.current, rootMargin: '300px', threshold: 0.1 }
     );
 
     observer.observe(target);
@@ -173,9 +171,9 @@ export const App: React.FC = () => {
   }, [repositories]);
 
   return (
-    <div className="min-h-screen bg-canvas text-txt-primary flex flex-col font-sans transition-colors duration-200">
+    <div className="h-full w-full overflow-hidden bg-canvas text-txt-primary flex flex-col font-sans transition-colors duration-200">
 
-      {/* Themed Custom Frameless Titlebar */}
+      {/* Themed Custom Frameless Titlebar (No scrollbar at title level) */}
       <TitleBar
         updateInfo={updateInfo}
         onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
@@ -183,8 +181,14 @@ export const App: React.FC = () => {
         isCheckingUpdates={isCheckingUpdates}
       />
 
-      {/* Top Application Header */}
-      <Header
+      {/* Scrollable Content Container: Scrollbar only appears here below titlebar */}
+      <div
+        ref={mainScrollRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col"
+      >
+        {/* Top Application Header */}
+        <Header
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         bookmarksCount={bookmarksCount}
@@ -194,13 +198,6 @@ export const App: React.FC = () => {
         isOfflineFallback={isOfflineFallback}
         updateInfo={updateInfo}
         onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
-      />
-
-      {/* Hero Welcome Banner */}
-      <Hero
-        totalReposCount={totalCount}
-        activeCategoryName={activeCategoryObj.name}
-        onSelectTopic={(topic) => setSearchQuery(topic)}
       />
 
       {/* Technology Category Navigation Bar */}
@@ -247,7 +244,7 @@ export const App: React.FC = () => {
             </div>
             <p className="text-xs font-mono text-txt-muted mt-0.5">
               {totalCount > 0 
-                ? `Loaded ${displayedRepositories.length} of ${totalCount.toLocaleString()} repositories from GitHub`
+                ? `${displayedRepositories.length} of ${totalCount.toLocaleString()} loaded`
                 : activeCategoryObj.description}
             </p>
           </div>
@@ -420,6 +417,8 @@ export const App: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      </div>
 
       {/* Modals */}
       <UpdateModal

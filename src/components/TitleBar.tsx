@@ -1,5 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Minus, Square, Copy, X, Sparkles, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Minus, 
+  Square, 
+  Copy, 
+  X, 
+  Sparkles, 
+  RefreshCw, 
+  ChevronDown, 
+  ExternalLink,
+  Download
+} from 'lucide-react';
 import { OneGitVaultLogo } from './OneGitVaultLogo';
 import { CURRENT_APP_VERSION, UpdateInfo } from '../services/updateService';
 
@@ -17,6 +27,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   isCheckingUpdates,
 }) => {
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const isElectron = Boolean(window.electronAPI?.isElectron);
 
   useEffect(() => {
@@ -32,6 +44,21 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
     return cleanup;
   }, [isElectron]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsAboutOpen(false);
+      }
+    };
+    if (isAboutOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isAboutOpen]);
 
   const handleMinimize = () => {
     window.electronAPI?.minimizeWindow();
@@ -53,61 +80,144 @@ export const TitleBar: React.FC<TitleBarProps> = ({
     }
   };
 
+  const openExternal = (url: string) => {
+    if (window.electronAPI?.openExternal) {
+      window.electronAPI.openExternal(url);
+    } else {
+      window.open(url, '_blank');
+    }
+  };
+
   return (
     <div
       onDoubleClick={handleDoubleClickDrag}
-      className="w-full h-9 bg-header border-b border-themeline flex items-center justify-between select-none app-drag-region sticky top-0 z-50 transition-colors duration-200"
+      className="w-full h-9 bg-header border-b border-themeline flex items-center justify-between select-none app-drag-region relative z-50 flex-shrink-0 transition-colors duration-200"
     >
-      {/* ── Left: App Brand & Version Tag ── */}
-      <div className="flex items-center gap-2 pl-3">
+      {/* ── Left: App Brand & Expand About Button (No version or subtitle text on bar) ── */}
+      <div className="flex items-center gap-1.5 pl-3 app-no-drag relative" ref={dropdownRef}>
         <div className="w-4 h-4 flex-shrink-0">
           <OneGitVaultLogo className="w-4 h-4" />
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <span className="font-display font-bold text-xs tracking-tight text-txt-primary">
-            OneGit<span className="text-action">Vault</span>
-          </span>
-          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface border border-themeline text-txt-muted font-medium">
-            v{CURRENT_APP_VERSION}
-          </span>
-          <span className="text-txt-muted text-[10px] hidden sm:inline">·</span>
-          <span className="text-[11px] font-mono text-txt-muted hidden sm:inline truncate max-w-[200px]">
-            Open-Source Observatory
-          </span>
-        </div>
+        <span className="font-display font-bold text-xs tracking-tight text-txt-primary">
+          OneGit<span className="text-action">Vault</span>
+        </span>
+
+        {/* Expand button that shows the About & updates popover */}
+        <button
+          onClick={() => setIsAboutOpen((prev) => !prev)}
+          className={`flex items-center justify-center p-1 rounded-md text-txt-muted hover:text-txt-primary hover:bg-surface-hover transition-colors ${
+            isAboutOpen ? 'bg-surface-hover text-txt-primary' : ''
+          }`}
+          title="About OneGitVault & Options"
+          aria-label="Expand About and updates menu"
+        >
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+              isAboutOpen ? 'rotate-180 text-action' : ''
+            }`}
+          />
+        </button>
+
+        {/* If update is available: show update symbol */}
+        {updateInfo?.hasUpdate && (
+          <button
+            onClick={onOpenUpdateModal}
+            className="flex items-center gap-1 px-2 py-0.5 ml-1 rounded-full bg-action/20 border border-action text-action hover:bg-action hover:text-txt-inverse transition-all text-[10px] font-mono font-bold animate-pulse shadow-sm"
+            title={`New update v${updateInfo.latestVersion} available! Click to view and install`}
+          >
+            <Sparkles className="w-3 h-3 text-action fill-current" />
+            <span>Update available</span>
+          </button>
+        )}
+
+        {/* ── Expand Popover: About OneGitVault & Check Updates ── */}
+        {isAboutOpen && (
+          <div className="absolute top-8 left-0 w-80 bg-surface border border-themeline rounded-xl shadow-2xl p-4 z-50 animate-fadeIn text-left backdrop-blur-xl">
+            {/* About App Info */}
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-surface-active border border-themeline flex-shrink-0 shadow-sm">
+                <OneGitVaultLogo className="w-6 h-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display font-bold text-sm text-txt-primary tracking-tight">
+                    OneGit<span className="text-action">Vault</span>
+                  </h3>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-active border border-themeline text-txt-muted font-semibold">
+                    v{CURRENT_APP_VERSION}
+                  </span>
+                </div>
+                <p className="text-[11px] font-mono text-txt-secondary mt-0.5">
+                  Open-Source Repository Explorer
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-txt-muted mt-2.5 font-sans leading-relaxed">
+              Explore, stream, and bookmark popular GitHub open-source repositories.
+            </p>
+
+            <div className="flex items-center justify-between text-[11px] font-mono text-txt-muted mt-3 pt-2.5 border-t border-themeline/60">
+              <span>Author: <span className="text-txt-primary font-medium">VKaddala</span></span>
+              <button
+                onClick={() => openExternal('https://github.com/VKaddala/OneGitVault')}
+                className="flex items-center gap-1 text-action hover:underline"
+              >
+                <span>GitHub Repo</span>
+                <ExternalLink className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Check Updates Section (inside expand popup) */}
+            <div className="mt-3.5 pt-3 border-t border-themeline">
+              {updateInfo?.hasUpdate ? (
+                <div className="p-2.5 rounded-lg bg-action-soft border border-action-border">
+                  <div className="flex items-center gap-1.5 text-action text-xs font-bold font-display">
+                    <Sparkles className="w-3.5 h-3.5 fill-current" />
+                    <span>New Version v{updateInfo.latestVersion} Available!</span>
+                  </div>
+                  <p className="text-[10px] text-txt-muted mt-1 font-mono">
+                    Current: v{CURRENT_APP_VERSION} → Latest: v{updateInfo.latestVersion}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setIsAboutOpen(false);
+                      onOpenUpdateModal();
+                    }}
+                    className="w-full mt-2 py-1.5 px-3 rounded-lg bg-action hover:bg-action-hover text-txt-inverse text-xs font-mono font-bold transition-all shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>View Release & Install</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => {
+                      onCheckUpdates();
+                    }}
+                    disabled={isCheckingUpdates}
+                    className="w-full flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg bg-surface-active hover:bg-surface-hover border border-themeline text-xs font-mono text-txt-primary hover:text-action transition-all disabled:opacity-50 shadow-sm"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isCheckingUpdates ? 'animate-spin text-action' : 'text-action'}`} />
+                    <span>{isCheckingUpdates ? 'Checking GitHub...' : 'Check for updates'}</span>
+                  </button>
+                  <p className="text-[10px] font-mono text-txt-muted text-center">
+                    {updateInfo ? `Up to date · Running v${CURRENT_APP_VERSION}` : 'Queries GitHub for newer releases'}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Center: Draggable Spacer ── */}
       <div className="flex-1 h-full" />
 
-      {/* ── Right: Update Status Pill & Window Controls ── */}
+      {/* ── Right: Window Controls Only (NO scrollbar at title level) ── */}
       <div className="flex items-center h-full app-no-drag">
-        {/* Update Pill or Check Trigger */}
-        <div className="mr-2">
-          {updateInfo?.hasUpdate ? (
-            <button
-              onClick={onOpenUpdateModal}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-action text-txt-inverse text-[11px] font-mono font-semibold shadow-sm hover:opacity-90 transition-all animate-pulse"
-              title={`Update available: v${updateInfo.latestVersion}. Click to view details and install`}
-            >
-              <Sparkles className="w-3 h-3" />
-              <span>Update v{updateInfo.latestVersion}</span>
-            </button>
-          ) : (
-            <button
-              onClick={onCheckUpdates}
-              disabled={isCheckingUpdates}
-              className="flex items-center gap-1 text-[11px] font-mono text-txt-muted hover:text-txt-primary hover:bg-surface-hover px-2 py-1 rounded-lg border border-transparent hover:border-themeline transition-all disabled:opacity-50"
-              title="Check for updates on GitHub"
-            >
-              <RefreshCw className={`w-3 h-3 ${isCheckingUpdates ? 'animate-spin text-action' : ''}`} />
-              <span className="hidden md:inline">Check updates</span>
-            </button>
-          )}
-        </div>
-
-        {/* ── Window Control Buttons (Electron Only) ── */}
         {isElectron && (
           <div className="flex items-center h-full">
             {/* Minimize */}

@@ -91,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-9 z-40 w-full border-b backdrop-blur-xl bg-header border-themeline transition-colors duration-200">
+    <header className="sticky top-0 z-40 w-full border-b backdrop-blur-xl bg-header border-themeline transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
           
@@ -113,7 +113,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               </div>
               <p className="text-[11px] font-mono text-txt-muted hidden sm:block tracking-wide">
-                Unified Open-Source Observatory
+                Open-Source Repository Explorer
               </p>
             </div>
           </div>
@@ -126,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Search across open source repositories (e.g. pytorch, rust, llm, vite)..."
+                placeholder="Search repositories (e.g. rust, llm, vite)..."
                 className="w-full pl-10 pr-9 py-2 text-xs sm:text-sm bg-surface hover:bg-surface-hover focus:bg-surface-active text-txt-primary border-themeline placeholder-txt-muted rounded-xl border focus:border-action focus:outline-none focus:ring-2 focus:ring-action-soft transition-all shadow-inner font-sans"
               />
               {searchQuery && (

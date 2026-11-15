@@ -121,6 +121,105 @@ There is no middleman, no advertising, and no data harvesting. Your vault belong
 
 ---
 
+## 🛠️ Under the Hood: Key Engineering Challenges & How We Tackled Them
+
+Behind the clean surface, building a native desktop application that communicates directly with external APIs and renders arbitrary third-party documentation presented real engineering hurdles. Here are the most interesting challenges we solved:
+
+### 1. Frameless Window Drag vs. Interactive Titlebar Popovers
+* **The Challenge**: Custom frameless windows in Electron require CSS `-webkit-app-region: drag` so users can click and drag the titlebar to move the window. However, OS-level drag regions swallow click and pointer events. When dropdowns (Search Flyout, About popover, or Theme menu) opened from the titlebar, outside clicks to dismiss them were swallowed or accidentally triggered window drags.
+* **The Solution**: We implemented dynamic state-based drag regions in `src/components/TitleBar.tsx`. Whenever any dropdown or flyout opens, the titlebar dynamically toggles from `app-drag-region` to `app-no-drag`:
+  ```tsx
+  // src/components/TitleBar.tsx
+  const hasAnyPopoverOpen = isAboutOpen || isSearchFlyoutOpen || showThemeMenu;
+
+  return (
+    <div
+      onDoubleClick={handleDoubleClickDrag}
+      className={`w-full h-11 bg-header border-b flex items-center justify-between px-3 select-none ${
+        hasAnyPopoverOpen ? 'app-no-drag' : 'app-drag-region'
+      }`}
+    >
+  ```
+  Combined with full-screen transparent click-away backdrops, popovers now dismiss naturally without drag interference.
+
+---
+
+### 2. Eliminating Popover Clipping with Viewport Portals
+* **The Challenge**: In deep container hierarchies with scrollable lists (`overflow-y-auto`) and card grids, nested popovers like the **Custom Stars Filter** and **Theme Palette** were being clipped by container boundaries or falling behind cards with high `z-index`.
+* **The Solution**: We decoupled the overlays completely from parent DOM trees using React Portals (`ReactDOM.createPortal`). Using `getBoundingClientRect()`, we dynamically calculate the exact trigger button coordinates and mount the floating menu directly into `document.body` with `z-index: 99999`:
+  ```tsx
+  // src/components/FilterBar.tsx
+  {isCustomOpen && popoverPos && ReactDOM.createPortal(
+    <div
+      style={{
+        position: 'fixed',
+        top: popoverPos.top,
+        left: popoverPos.left,
+        zIndex: 99999,
+      }}
+      className="w-64 bg-surface border border-themeline rounded-xl shadow-2xl p-3"
+    >
+      {/* Min Stars Filter UI */}
+    </div>,
+    document.body
+  )}
+  ```
+  This guarantees that menus float above all cards and scrollbars without clipping or layout distortion.
+
+---
+
+### 3. Untrusted Markdown Security (Zero-Trust GFM with DOMPurify)
+* **The Challenge**: Rendering READMEs from arbitrary public GitHub repositories introduces severe Cross-Site Scripting (XSS) risks. A malicious repository could embed `<script>` tags, hidden `<img onerror="...">` execution, or `javascript:` URI schemes.
+* **The Solution**: We established a two-stage sanitization pipeline in `src/components/RepoDetailPanel.tsx`. Raw markdown is parsed into HTML using `marked`, then piped directly through `DOMPurify.sanitize()` before touching the DOM:
+  ```tsx
+  // src/components/RepoDetailPanel.tsx
+  const rawHtml = marked.parse(readmeContent);
+  const cleanHtml = DOMPurify.sanitize(rawHtml, {
+    USE_PROFILES: { html: true },
+    ADD_ATTR: ['target', 'rel'],
+  });
+  ```
+  Additionally, Electron's `setWindowOpenHandler` in `electron/main.cjs` intercepts all link clicks and forces external navigation strictly to the user's default system browser via `shell.openExternal`, preventing in-app webview hijacking.
+
+---
+
+### 4. Rate-Limit Immunity & Curated Offline Fallback
+* **The Challenge**: GitHub's REST API enforces a strict limit of 60 requests/hour for unauthenticated users. An eager user searching or filtering by tags can exhaust this quota within minutes.
+* **The Solution**: We built a reactive quota manager in `src/services/rateLimit.ts` that subscribes to GitHub's `x-ratelimit-remaining` and `x-ratelimit-reset` headers on every response, broadcasting live updates to the titlebar badge. If an API request encounters a 403 or network timeout, the application automatically activates the zero-downtime offline fallback:
+  ```ts
+  // src/services/githubApi.ts
+  if (response.status === 403 || !response.ok) {
+    console.warn('API rate limit hit or offline. Activating curated offline fallback...');
+    return getOfflineFallbackRepositories(category, language, minStars, query);
+  }
+  ```
+  Users never hit a dead white screen; discovery continues seamlessly from a curated dataset of top-tier repositories.
+
+---
+
+### 5. Modular Plugin-Based Theme Engine (Zero-Jargon Theming)
+* **The Challenge**: Supporting 5 completely different aesthetic palettes (cinematic dark, warm daylight biscuit, and minimalist light/dark) using standard boolean class flags (`dark:`) leads to messy, unmaintainable JSX.
+* **The Solution**: We created a type-safe `ThemePlugin` contract in `src/themes/types.ts`. Each theme defines its palette tokens:
+  ```ts
+  // src/themes/types.ts
+  export interface ThemePlugin {
+    id: string;
+    name: string;
+    isDark: boolean;
+    colors: {
+      bgCanvas: string;
+      bgSurface: string;
+      accent: string;
+      textPrimary: string;
+      textSecondary: string;
+      borderDefault: string;
+    };
+  }
+  ```
+  When a theme is selected, `themeRegistry.ts` injects these values as CSS root variables (`--bg-canvas`, `--accent`, etc.), allowing Tailwind CSS to style the entire application dynamically and consistently across all views.
+
+---
+
 ## 🚀 How to Try It on Your Windows PC
 
 OneGitVault is completely **free**, **open-source**, and packaged as a clean, single-click Windows app.

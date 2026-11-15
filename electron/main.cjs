@@ -1,11 +1,12 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+let mainWindow = null;
 
 function createWindow() {
   const iconPath = path.join(__dirname, '../assets/icons/onegitvault.ico');
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1340,
     height: 890,
     minWidth: 980,
@@ -13,11 +14,12 @@ function createWindow() {
     backgroundColor: '#0c0d10',
     title: 'OneGitVault - Open Source Observatory',
     icon: iconPath,
+    frame: false, // Frameless window for custom themed titlebar
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: true,
+      sandbox: false,
     },
     autoHideMenuBar: true,
     show: false,
@@ -25,6 +27,15 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+  });
+
+  // Track maximize state changes for UI restore/maximize button
+  mainWindow.on('maximize', () => {
+    mainWindow.webContents.send('window-maximized-change', true);
+  });
+
+  mainWindow.on('unmaximize', () => {
+    mainWindow.webContents.send('window-maximized-change', false);
   });
 
   // Open external window links in user's default system browser
@@ -52,6 +63,39 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 }
+
+// ── IPC Handlers for Custom Frameless Titlebar ──
+ipcMain.on('window-minimize', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.minimize();
+  }
+});
+
+ipcMain.on('window-maximize', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  }
+});
+
+ipcMain.on('window-close', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.close();
+  }
+});
+
+ipcMain.handle('window-is-maximized', () => {
+  return mainWindow && !mainWindow.isDestroyed() ? mainWindow.isMaximized() : false;
+});
+
+ipcMain.on('open-external', (_event, url) => {
+  if (url && (url.startsWith('http:') || url.startsWith('https:'))) {
+    shell.openExternal(url);
+  }
+});
 
 app.whenReady().then(() => {
   createWindow();

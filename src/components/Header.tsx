@@ -17,6 +17,7 @@ import { OneGitVaultLogo } from './OneGitVaultLogo';
 import { GithubIcon } from './GithubIcon';
 import { RateLimitInfo } from '../services/rateLimit';
 import { useTheme } from '../context/ThemeContext';
+import { UpdateInfo } from '../services/updateService';
 
 interface HeaderProps {
   searchQuery: string;
@@ -26,6 +27,8 @@ interface HeaderProps {
   onOpenTokenModal: () => void;
   rateLimit: RateLimitInfo;
   isOfflineFallback: boolean;
+  updateInfo?: UpdateInfo | null;
+  onOpenUpdateModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -36,6 +39,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenTokenModal,
   rateLimit,
   isOfflineFallback,
+  updateInfo,
+  onOpenUpdateModal,
 }) => {
   const { currentTheme, themeId, setTheme, cycleTheme, availableThemes } = useTheme();
   const [showThemeMenu, setShowThemeMenu] = useState(false);
@@ -86,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b backdrop-blur-xl bg-header border-themeline transition-colors duration-200">
+    <header className="sticky top-9 z-40 w-full border-b backdrop-blur-xl bg-header border-themeline transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
           
@@ -137,6 +142,18 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Actions & Utilities */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Optional Update Available Pill in Header */}
+            {updateInfo?.hasUpdate && (
+              <button
+                onClick={onOpenUpdateModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded-xl bg-action text-txt-inverse border border-action font-semibold shadow-sm hover:opacity-90 transition-all animate-pulse"
+                title={`New update v${updateInfo.latestVersion} available! Click to view and download`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Update v{updateInfo.latestVersion}</span>
+              </button>
+            )}
+
             {/* Rate limit status pill */}
             <button
               onClick={onOpenTokenModal}

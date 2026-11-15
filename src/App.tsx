@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Header } from './components/Header';
+import { TitleBar } from './components/TitleBar';
 import { Hero } from './components/Hero';
 import { CategoryNav } from './components/CategoryNav';
 import { FilterBar } from './components/FilterBar';
@@ -7,12 +8,14 @@ import { ProjectCard } from './components/ProjectCard';
 import { TokenModal } from './components/TokenModal';
 import { BookmarksModal } from './components/BookmarksModal';
 import { RepoDetailPanel } from './components/RepoDetailPanel';
+import { UpdateModal } from './components/UpdateModal';
 import { OneGitVaultLogo } from './components/OneGitVaultLogo';
 import { CATEGORIES } from './data/curatedProjects';
 import { Repository, ViewMode } from './types';
 import { rateLimitManager, RateLimitInfo } from './services/rateLimit';
 import { useRepositories } from './hooks/useRepositories';
 import { useBookmarks } from './hooks/useBookmarks';
+import { checkForAppUpdates, UpdateInfo } from './services/updateService';
 import { 
   Loader2, 
   RefreshCw, 
@@ -66,6 +69,33 @@ export const App: React.FC = () => {
   const [isTokenModalOpen, setIsTokenModalOpen] = useState<boolean>(false);
   const [isBookmarksOpen, setIsBookmarksOpen] = useState<boolean>(false);
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState<boolean>(false);
+
+  // Background check for GitHub release updates on startup
+  useEffect(() => {
+    let mounted = true;
+    checkForAppUpdates()
+      .then((info) => {
+        if (mounted) setUpdateInfo(info);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleManualCheckUpdates = useCallback(async () => {
+    setIsCheckingUpdates(true);
+    setIsUpdateModalOpen(true);
+    try {
+      const info = await checkForAppUpdates();
+      setUpdateInfo(info);
+    } finally {
+      setIsCheckingUpdates(false);
+    }
+  }, []);
 
   // Rate limit subscription
   const [rateLimit, setRateLimit] = useState<RateLimitInfo>(rateLimitManager.get());
@@ -145,6 +175,14 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-canvas text-txt-primary flex flex-col font-sans transition-colors duration-200">
 
+      {/* Themed Custom Frameless Titlebar */}
+      <TitleBar
+        updateInfo={updateInfo}
+        onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
+        onCheckUpdates={handleManualCheckUpdates}
+        isCheckingUpdates={isCheckingUpdates}
+      />
+
       {/* Top Application Header */}
       <Header
         searchQuery={searchQuery}
@@ -154,6 +192,8 @@ export const App: React.FC = () => {
         onOpenTokenModal={() => setIsTokenModalOpen(true)}
         rateLimit={rateLimit}
         isOfflineFallback={isOfflineFallback}
+        updateInfo={updateInfo}
+        onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
       />
 
       {/* Hero Welcome Banner */}
@@ -354,6 +394,15 @@ export const App: React.FC = () => {
 
           <div className="flex items-center gap-4">
             <button
+              onClick={handleManualCheckUpdates}
+              className="hover:text-action transition-colors flex items-center gap-1.5"
+            >
+              <span>Check for Updates</span>
+              {updateInfo?.hasUpdate && (
+                <span className="w-2 h-2 rounded-full bg-action animate-pulse" />
+              )}
+            </button>
+            <button
               onClick={() => setIsTokenModalOpen(true)}
               className="hover:text-action transition-colors"
             >
@@ -373,6 +422,14 @@ export const App: React.FC = () => {
       </footer>
 
       {/* Modals */}
+      <UpdateModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        updateInfo={updateInfo}
+        isChecking={isCheckingUpdates}
+        onCheckAgain={handleManualCheckUpdates}
+      />
+
       <TokenModal
         isOpen={isTokenModalOpen}
         onClose={() => setIsTokenModalOpen(false)}

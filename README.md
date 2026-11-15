@@ -273,4 +273,4 @@ OneGitVault functions out-of-the-box with unauthenticated public GitHub API acce
 
 ## 📜 License
 
-Distributed under the **MIT License**. Designed and developed by [VKaddala](https://github.com/VKaddala).
+Distributed under the **GPL-3.0 license**. Designed and developed by [VKaddala](https://github.com/VKaddala).

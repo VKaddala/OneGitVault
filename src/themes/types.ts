@@ -1,34 +1,34 @@
 export interface ThemeColors {
   // Canvas & Backgrounds
-  bgCanvas: string;         // Main application window background
-  bgHeader: string;         // Sticky navigation header background
-  bgSurface: string;        // Cards, panels, modal dialogs
-  bgSurfaceHover: string;   // Hover state for cards and interactive surfaces
-  bgSurfaceActive: string;  // Active / pressed state (dropdowns, inputs)
-  bgSubtle: string;         // Subtle background for containers
+  bgCanvas: string;
+  bgHeader: string;
+  bgSurface: string;
+  bgSurfaceHover: string;
+  bgSurfaceActive: string;
+  bgSubtle: string;
 
   // Hero Background Gradients
-  heroGradient: string;     // Text gradient for Hero title
+  heroGradient: string;
 
   // Borders
-  borderSubtle: string;     // Soft dividers
-  borderDefault: string;    // Card & container border
-  borderHover: string;      // Hover border highlight
-  borderFocus: string;      // Focused input outline
+  borderSubtle: string;
+  borderDefault: string;
+  borderHover: string;
+  borderFocus: string;
 
   // Typography
-  textPrimary: string;      // Main heading & high-contrast titles
-  textSecondary: string;    // Body copy and descriptions
-  textMuted: string;        // Captions, timestamps, meta information
-  textInverse: string;      // Text contrasting against accents/inverted surfaces
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  textInverse: string;
 
-  // Accent & Brand Colors (Primary Signature)
-  accent: string;           // Primary action color (Flame, Sky cyan, etc.)
-  accentHover: string;      // Hover state for buttons/links
-  accentSoft: string;       // Soft alpha tint for badge backgrounds
-  accentBorder: string;     // Translucent border matching accent
+  // Primary Accent (Buttons, Highlights)
+  accent: string;
+  accentHover: string;
+  accentSoft: string;
+  accentBorder: string;
 
-  // Secondary Accent (Petrol / Terracotta / Sage)
+  // Secondary Accent (Badges, Tag Accents)
   secondaryAccent: string;
   secondarySoft: string;
   secondaryBorder: string;
@@ -50,14 +50,14 @@ export interface ThemeColors {
   activePillBorder: string;
 
   // Modals & Overlays
-  overlayBackdrop: string;  // Modal backdrop blur background
+  overlayBackdrop: string;
 
   // Code & Markdown Inspection
-  codeBg: string;           // Code fence background
-  codeBorder: string;       // Code block border
-  codeText: string;         // Code syntax font color
-  codeInlineBg: string;     // Inline `code` snippet background
-  codeInlineText: string;   // Inline `code` font color
+  codeBg: string;
+  codeBorder: string;
+  codeText: string;
+  codeInlineBg: string;
+  codeInlineText: string;
 
   // Custom Scrollbars
   scrollbarTrack: string;
@@ -65,10 +65,18 @@ export interface ThemeColors {
   scrollbarThumbHover: string;
 }
 
+export type ThemeId = 
+  | 'prometheus-dark'
+  | 'sand-light'
+  | 'ambient'
+  | 'github-light'
+  | 'github-dark';
+
 export interface ThemePlugin {
-  readonly id: string;
+  readonly id: ThemeId;
   readonly name: string;
   readonly description: string;
   readonly isDark: boolean;
+  readonly iconName: 'Flame' | 'Sun' | 'Sparkles' | 'Github';
   readonly colors: ThemeColors;
 }

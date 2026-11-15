@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Repository, CategoryId, SortOption } from '../types';
 import { CURATED_PROJECTS } from '../data/curatedProjects';
-import { fetchRepositories } from '../services/githubApi';
+import { fetchRepositories, FetchResult } from '../services/githubApi';
 
 interface UseRepositoriesOptions {
   initialCategory?: CategoryId;
@@ -34,34 +34,34 @@ export function useRepositories({
   // Debounce search query changes
   useEffect(() => {
     const handler = setTimeout(() => {
-      setDebouncedQuery(searchQuery.trim());
-    }, 450);
+      setDebouncedQuery(searchQuery);
+    }, 350);
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Load initial page whenever filters change
+  // Initial fetch on category, debounced query, or filter change
   useEffect(() => {
     let isCancelled = false;
     setIsLoading(true);
     setCurrentPage(1);
 
     fetchRepositories(selectedCategory, debouncedQuery, sortBy, 1, selectedLanguage, minStars, perPage)
-      .then((res) => {
+      .then((data: FetchResult) => {
         if (isCancelled) return;
-        setRepositories(res.repositories);
-        setTotalCount(res.totalCount);
-        setHasMore(res.hasMore);
-        setIsOfflineFallback(res.isOfflineFallback);
+        setRepositories(data.repositories);
+        setTotalCount(data.totalCount);
+        setHasMore(data.hasMore);
+        setIsOfflineFallback(data.isOfflineFallback);
       })
       .catch((err) => {
+        console.error('Fetch error:', err);
         if (isCancelled) return;
-        console.error('Failed to load repositories', err);
+        setRepositories(CURATED_PROJECTS.slice(0, perPage));
+        setTotalCount(CURATED_PROJECTS.length);
         setIsOfflineFallback(true);
       })
       .finally(() => {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
+        if (!isCancelled) setIsLoading(false);
       });
 
     return () => {
@@ -69,15 +69,16 @@ export function useRepositories({
     };
   }, [selectedCategory, debouncedQuery, sortBy, selectedLanguage, minStars, perPage]);
 
-  // Load next page
+  // Infinite scroll load more
+  const isLoadingMoreRef = useRef(false);
   const loadMore = useCallback(async () => {
-    if (isLoadingMore || !hasMore || isLoading) return;
-
+    if (isLoadingMoreRef.current || !hasMore || isLoading) return;
+    isLoadingMoreRef.current = true;
     setIsLoadingMore(true);
-    const nextPage = currentPage + 1;
 
     try {
-      const res = await fetchRepositories(
+      const nextPage = currentPage + 1;
+      const data = await fetchRepositories(
         selectedCategory,
         debouncedQuery,
         sortBy,
@@ -86,50 +87,52 @@ export function useRepositories({
         minStars,
         perPage
       );
-
-      setRepositories((prev) => {
-        // Prevent duplicate repository entries
-        const existingIds = new Set(prev.map((r) => r.id));
-        const newOnes = res.repositories.filter((r) => !existingIds.has(r.id));
-        return [...prev, ...newOnes];
-      });
-
-      setCurrentPage(nextPage);
-      setHasMore(res.hasMore);
-      setIsOfflineFallback(res.isOfflineFallback);
-    } catch (err) {
-      console.error('Failed to load more repositories', err);
+      if (data.repositories.length === 0) {
+        setHasMore(false);
+      } else {
+        setRepositories((prev) => {
+          const existingIds = new Set(prev.map((r) => r.id));
+          const newItems = data.repositories.filter((r: Repository) => !existingIds.has(r.id));
+          return [...prev, ...newItems];
+        });
+        setCurrentPage(nextPage);
+        setHasMore(data.hasMore);
+      }
+    } catch (e) {
+      console.warn('Failed to load more repositories', e);
+      setHasMore(false);
     } finally {
+      isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [
-    isLoadingMore,
-    hasMore,
-    isLoading,
-    currentPage,
-    selectedCategory,
-    debouncedQuery,
-    sortBy,
-    selectedLanguage,
-    minStars,
-    perPage,
-  ]);
+  }, [hasMore, isLoading, currentPage, selectedCategory, debouncedQuery, sortBy, selectedLanguage, minStars, perPage]);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     setIsLoading(true);
-    fetchRepositories(selectedCategory, debouncedQuery, sortBy, 1, selectedLanguage, minStars, perPage)
-      .then((res) => {
-        setRepositories(res.repositories);
-        setTotalCount(res.totalCount);
-        setHasMore(res.hasMore);
-        setIsOfflineFallback(res.isOfflineFallback);
-        setCurrentPage(1);
-      })
-      .finally(() => setIsLoading(false));
+    setCurrentPage(1);
+    try {
+      const data = await fetchRepositories(
+        selectedCategory,
+        debouncedQuery,
+        sortBy,
+        1,
+        selectedLanguage,
+        minStars,
+        perPage
+      );
+      setRepositories(data.repositories);
+      setTotalCount(data.totalCount);
+      setHasMore(data.hasMore);
+      setIsOfflineFallback(data.isOfflineFallback);
+    } catch {
+      setRepositories(CURATED_PROJECTS.slice(0, perPage));
+      setIsOfflineFallback(true);
+    } finally {
+      setIsLoading(false);
+    }
   }, [selectedCategory, debouncedQuery, sortBy, selectedLanguage, minStars, perPage]);
 
   return {
-    // Filter properties
     selectedCategory,
     setSelectedCategory,
     searchQuery,
@@ -140,8 +143,6 @@ export function useRepositories({
     setMinStars,
     sortBy,
     setSortBy,
-
-    // Data properties
     repositories,
     currentPage,
     totalCount,
@@ -149,8 +150,6 @@ export function useRepositories({
     isLoading,
     isLoadingMore,
     isOfflineFallback,
-
-    // Actions
     loadMore,
     refresh,
   };

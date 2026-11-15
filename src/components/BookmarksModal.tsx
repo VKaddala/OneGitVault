@@ -1,22 +1,29 @@
 import React, { useState } from 'react';
-import {
-  Bookmark, X, ExternalLink, Trash2, Star,
-  CloudUpload, CloudDownload, Cloud, Loader2, Check, AlertCircle
+import { 
+  X, 
+  Trash2, 
+  ExternalLink, 
+  Star, 
+  Bookmark, 
+  Cloud, 
+  CloudUpload, 
+  CloudDownload, 
+  Check, 
+  AlertCircle, 
+  Loader2 
 } from 'lucide-react';
 import { Repository } from '../types';
-import { getStoredToken } from '../services/githubApi';
 import { pushBookmarksToGist, pullBookmarksFromGist } from '../services/gistSync';
+import { storageService } from '../services/storage';
 
 interface BookmarksModalProps {
   isOpen: boolean;
   onClose: () => void;
   bookmarks: Repository[];
-  onRemoveBookmark: (id: number | string) => void;
+  onRemoveBookmark: (repoId: number | string) => void;
   onClearAll: () => void;
-  onImportBookmarks: (repos: Repository[]) => void;
+  onImportBookmarks: (bookmarks: Repository[]) => void;
 }
-
-type SyncStatus = 'idle' | 'pushing' | 'pulling' | 'success' | 'error';
 
 export const BookmarksModal: React.FC<BookmarksModalProps> = ({
   isOpen,
@@ -26,57 +33,61 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
   onClearAll,
   onImportBookmarks,
 }) => {
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
-  const [syncMessage, setSyncMessage] = useState('');
-  const [gistUrl, setGistUrl] = useState('');
-
-  const hasToken = Boolean(getStoredToken());
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'pushing' | 'pulling' | 'success' | 'error'>('idle');
+  const [syncMessage, setSyncMessage] = useState<string>('');
+  const [gistUrl, setGistUrl] = useState<string>('');
 
   if (!isOpen) return null;
 
+  const hasToken = Boolean(storageService.getGithubToken());
+
   const handlePush = async () => {
-    const token = getStoredToken();
-    if (!token) return;
+    const token = storageService.getGithubToken();
+    if (!token) {
+      setSyncStatus('error');
+      setSyncMessage('No GitHub token configured');
+      return;
+    }
     setSyncStatus('pushing');
     setSyncMessage('');
-    setGistUrl('');
     try {
       const url = await pushBookmarksToGist(token, bookmarks);
       if (url) {
         setSyncStatus('success');
-        setSyncMessage(`Synced ${bookmarks.length} bookmarks to GitHub Gist`);
+        setSyncMessage(`Successfully backed up ${bookmarks.length} repos to Gist!`);
         setGistUrl(url);
       } else {
         setSyncStatus('error');
-        setSyncMessage('Failed to push to Gist. Check your token permissions (gist scope required).');
+        setSyncMessage('Failed to sync to Gist');
       }
     } catch {
       setSyncStatus('error');
-      setSyncMessage('Unexpected error during sync.');
+      setSyncMessage('Network error occurred during backup');
     }
   };
 
   const handlePull = async () => {
-    const token = getStoredToken();
-    if (!token) return;
+    const token = storageService.getGithubToken();
+    if (!token) {
+      setSyncStatus('error');
+      setSyncMessage('No GitHub token configured');
+      return;
+    }
     setSyncStatus('pulling');
     setSyncMessage('');
     try {
-      const remote = await pullBookmarksFromGist(token);
-      if (remote && remote.length > 0) {
-        onImportBookmarks(remote);
+      const pulled = await pullBookmarksFromGist(token);
+      if (pulled) {
+        onImportBookmarks(pulled);
         setSyncStatus('success');
-        setSyncMessage(`Imported ${remote.length} bookmarks from GitHub Gist`);
-      } else if (remote && remote.length === 0) {
-        setSyncStatus('success');
-        setSyncMessage('Your Gist bookmark vault is empty.');
+        setSyncMessage(`Restored ${pulled.length} repos from Gist!`);
       } else {
         setSyncStatus('error');
-        setSyncMessage('No OneGitVault Gist found. Push first to create one.');
+        setSyncMessage('No backup found or pull failed');
       }
     } catch {
       setSyncStatus('error');
-      setSyncMessage('Failed to pull from Gist.');
+      setSyncMessage('Network error occurred during restore');
     }
   };
 
@@ -108,7 +119,7 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
             {bookmarks.length > 0 && (
               <button
                 onClick={onClearAll}
-                className="text-xs font-mono text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 px-2.5 py-1.5 rounded-lg transition-colors"
+                className="text-xs font-mono text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 px-2.5 py-1.5 rounded-lg transition-colors"
               >
                 Clear Vault
               </button>
@@ -123,7 +134,7 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
         </div>
 
         {/* ── GitHub Gist Sync Banner ── */}
-        <div className="px-5 py-3 border-b border-themeline bg-surface/70">
+        <div className={`px-5 py-3 border-b border-themeline ${hasToken ? 'bg-surface-active' : 'bg-surface-active opacity-85'}`}>
           {hasToken ? (
             <div className="space-y-2.5">
               <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -158,9 +169,9 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
               {syncStatus !== 'idle' && (
                 <div className={`flex items-center gap-2 text-xs font-mono px-3 py-2 rounded-lg border ${
                   syncStatus === 'success'
-                    ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
+                    ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-500'
                     : syncStatus === 'error'
-                    ? 'bg-rose-500/10 border-rose-500/25 text-rose-400'
+                    ? 'bg-rose-500/10 border-rose-500/25 text-rose-500'
                     : 'bg-action-soft border-action-border text-action'
                 }`}>
                   {syncIcon()}
@@ -220,14 +231,14 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
                 </div>
 
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <div className="flex items-center gap-1 text-xs font-mono font-bold text-action bg-action-soft border border-action-border px-2 py-0.5 rounded-md">
-                    <Star className="w-3 h-3 fill-current" />
+                  <div className="flex items-center gap-1 text-xs font-mono font-bold text-star bg-star-bg border border-star-border px-2 py-0.5 rounded-md">
+                    <Star className="w-3 h-3 fill-current text-star" />
                     <span>{repo.stargazers_count.toLocaleString()}</span>
                   </div>
 
                   <button
                     onClick={() => onRemoveBookmark(repo.id)}
-                    className="p-1.5 text-txt-muted hover:text-rose-500 rounded-lg transition-colors"
+                    className="p-1.5 text-txt-muted hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
                     title="Remove from vault"
                   >
                     <Trash2 className="w-4 h-4" />

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 export const App: React.FC = () => {
-  // Domain Hooks (Single Responsibility & Dependency Inversion)
+  // Domain Hooks (Single Responsibility & Modular State)
   const {
     selectedCategory,
     setSelectedCategory,
@@ -67,13 +67,13 @@ export const App: React.FC = () => {
   const [isBookmarksOpen, setIsBookmarksOpen] = useState<boolean>(false);
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
 
-  // Rate Limit State (Reactive Subscription)
+  // Rate limit subscription
   const [rateLimit, setRateLimit] = useState<RateLimitInfo>(rateLimitManager.get());
-
   useEffect(() => {
-    const unsubscribe = rateLimitManager.subscribe((info) => setRateLimit(info));
-    return unsubscribe;
+    return rateLimitManager.subscribe(setRateLimit);
   }, []);
+
+  const observerTarget = useRef<HTMLDivElement | null>(null);
 
   // Scroll to Top trigger
   useEffect(() => {
@@ -84,39 +84,29 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Infinite Scroll Intersection Observer
-  const observerTarget = useRef<HTMLDivElement | null>(null);
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
+  // IntersectionObserver for continuous auto-streaming
   useEffect(() => {
-    if (!autoScroll || isLoading || isLoadingMore || !hasMore || onlyBookmarked) return;
+    const target = observerTarget.current;
+    if (!target) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
+        if (entries[0].isIntersecting && autoScroll && !isLoading && !isLoadingMore && hasMore && !onlyBookmarked) {
           loadMore();
         }
       },
-      { threshold: 0.1 }
+      { root: null, rootMargin: '300px', threshold: 0.1 }
     );
 
-    const el = observerTarget.current;
-    if (el) observer.observe(el);
-
-    return () => {
-      if (el) observer.unobserve(el);
-    };
+    observer.observe(target);
+    return () => observer.disconnect();
   }, [autoScroll, isLoading, isLoadingMore, hasMore, onlyBookmarked, loadMore]);
 
-  // Available Languages dynamically gathered from loaded repositories
-  const availableLanguages = useMemo(() => {
-    const set = new Set<string>();
-    repositories.forEach((r) => {
-      if (r.language) set.add(r.language);
-    });
-    return Array.from(set).sort();
-  }, [repositories]);
-
-  // Displayed repositories (supports 'Vault Only' filter)
+  // Filtered repositories (vault only toggle)
   const displayedRepositories = useMemo(() => {
     if (onlyBookmarked) {
       return repositories.filter((r) => isBookmarked(r.id));
@@ -144,14 +134,18 @@ export const App: React.FC = () => {
     setOnlyBookmarked(false);
   }, [setSearchQuery, setSelectedLanguage, setMinStars, setSortBy]);
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  const availableLanguages = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of repositories) {
+      if (r.language) set.add(r.language);
+    }
+    return Array.from(set).sort();
+  }, [repositories]);
 
   return (
     <div className="min-h-screen bg-canvas text-txt-primary flex flex-col font-sans transition-colors duration-200">
-      
-      {/* Sticky Navigation Header */}
+
+      {/* Top Application Header */}
       <Header
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -178,10 +172,10 @@ export const App: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        
-        {/* Multi-Filter Bar */}
+
+        {/* Global Filter & Sorting Control Toolbar */}
         <FilterBar
-          totalResults={displayedRepositories.length}
+          totalResults={totalCount}
           sortBy={sortBy}
           onSortChange={setSortBy}
           selectedLanguage={selectedLanguage}
@@ -192,7 +186,7 @@ export const App: React.FC = () => {
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           onlyBookmarked={onlyBookmarked}
-          onToggleBookmarked={() => setOnlyBookmarked(!onlyBookmarked)}
+          onToggleBookmarked={() => setOnlyBookmarked((prev) => !prev)}
           onResetFilters={handleResetFilters}
           isFiltered={isFiltered}
         />
@@ -246,22 +240,22 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Initial Loading Spinner */}
+        {/* Loading Spinner */}
         {isLoading && (
           <div className="py-24 flex flex-col items-center justify-center gap-3">
             <Loader2 className="w-8 h-8 text-action animate-spin" />
             <p className="text-xs font-mono text-txt-muted">
-              Querying GitHub for live repositories...
+              Discovering repositories across GitHub...
             </p>
           </div>
         )}
 
-        {/* Repository Grid / List */}
-        {!isLoading && displayedRepositories.length > 0 && (
+        {/* Repositories Grid / List */}
+        {!isLoading && (
           <div className={
-            viewMode === 'grid' 
-              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" 
-              : "flex flex-col gap-2.5"
+            viewMode === 'grid'
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+              : 'flex flex-col gap-3'
           }>
             {displayedRepositories.map((repo) => (
               <ProjectCard
@@ -277,26 +271,30 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Empty State */}
+        {/* Empty state */}
         {!isLoading && displayedRepositories.length === 0 && (
-          <div className="py-20 text-center rounded-2xl border border-themeline bg-surface p-8">
+          <div className="py-20 text-center bg-surface border border-themeline rounded-2xl p-8 my-6 shadow-sm">
             <FolderSearch className="w-12 h-12 text-txt-muted/50 mx-auto mb-3" />
             <h3 className="text-base font-display font-bold text-txt-primary">No repositories found</h3>
             <p className="text-xs font-sans text-txt-muted max-w-sm mx-auto mt-1 mb-4">
-              We couldn't find any repositories matching your current query.
+              {onlyBookmarked 
+                ? 'You have not saved any repositories matching this category to your vault yet.' 
+                : 'No repositories matched your current search filters or keywords.'}
             </p>
-            <button
-              onClick={handleResetFilters}
-              className="px-4 py-2 text-xs font-mono font-bold text-txt-inverse bg-action hover:opacity-90 rounded-xl shadow-md transition-all"
-            >
-              Reset Filters
-            </button>
+            {isFiltered && (
+              <button
+                onClick={handleResetFilters}
+                className="px-4 py-2 text-xs font-mono font-semibold bg-action text-txt-inverse rounded-xl shadow-sm hover:opacity-90 transition-all"
+              >
+                Reset Filters
+              </button>
+            )}
           </div>
         )}
 
-        {/* Sentinel for Infinite Scroll & Load More Controls */}
+        {/* Continuous Streaming Sentinel & Load More */}
         {!isLoading && displayedRepositories.length > 0 && !onlyBookmarked && (
-          <div className="mt-8 py-4 flex flex-col items-center justify-center">
+          <div className="py-12 flex flex-col items-center justify-center gap-4">
             
             {/* Loading more spinner */}
             {isLoadingMore && (

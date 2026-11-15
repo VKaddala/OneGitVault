@@ -1,28 +1,31 @@
-import { ThemePlugin, ThemeColors } from './types';
-import { darkTheme } from './plugins/dark';
-import { lightTheme } from './plugins/light';
-import { ambientTheme } from './plugins/ambient';
+import { ThemePlugin, ThemeColors, ThemeId } from './types';
+import { prometheusDarkTheme } from './plugins/prometheusDark';
+import { sandLightTheme } from './plugins/sandLight';
+import { ambientTwilightTheme } from './plugins/ambientTwilight';
+import { githubLightTheme } from './plugins/githubLight';
+import { githubDarkTheme } from './plugins/githubDark';
 
 class ThemeRegistry {
   private themes: Map<string, ThemePlugin> = new Map();
-  private defaultThemeId = 'dark';
+  private defaultThemeId: ThemeId = 'prometheus-dark';
 
   constructor() {
-    // Register core theme plugins
-    this.register(darkTheme);
-    this.register(lightTheme);
-    this.register(ambientTheme);
+    this.register(prometheusDarkTheme);
+    this.register(sandLightTheme);
+    this.register(ambientTwilightTheme);
+    this.register(githubLightTheme);
+    this.register(githubDarkTheme);
   }
 
-  /**
-   * Register a new theme plugin (Open-Closed Principle: extend without modifying existing code)
-   */
   public register(plugin: ThemePlugin): void {
     this.themes.set(plugin.id, plugin);
   }
 
   public get(id: string): ThemePlugin {
-    return this.themes.get(id) || this.themes.get(this.defaultThemeId) || darkTheme;
+    // Also handle legacy aliases: 'dark' -> 'prometheus-dark', 'light' -> 'sand-light'
+    if (id === 'dark') return prometheusDarkTheme;
+    if (id === 'light') return sandLightTheme;
+    return this.themes.get(id) || this.themes.get(this.defaultThemeId) || prometheusDarkTheme;
   }
 
   public getAll(): ThemePlugin[] {
@@ -30,19 +33,16 @@ class ThemeRegistry {
   }
 
   public has(id: string): boolean {
+    if (id === 'dark' || id === 'light') return true;
     return this.themes.has(id);
   }
 
-  /**
-   * Injects the active theme's tokens as CSS custom properties on :root
-   * and toggles the standard .dark class for compatibility.
-   */
   public applyToDom(theme: ThemePlugin): void {
     if (typeof document === 'undefined') return;
 
     const root = document.documentElement;
 
-    // Toggle dark class based on theme metadata
+    // Set standard class for dark / light
     if (theme.isDark) {
       root.classList.add('dark');
       root.classList.remove('light');
@@ -51,14 +51,13 @@ class ThemeRegistry {
       root.classList.remove('dark');
     }
 
-    // Set data-theme attribute
+    // Set data-theme attribute for scoped styling
     root.setAttribute('data-theme', theme.id);
 
-    // Map theme colors to CSS variables
+    // Inject CSS variables
     const colorEntries = Object.entries(theme.colors) as [keyof ThemeColors, string][];
     for (const [key, value] of colorEntries) {
-      // kebab-case the property name: e.g. bgCanvas -> --bg-canvas
-      const cssVarName = '--' + key.replace(/([A-Z])/g, '-$1').toLowerCase();
+      const cssVarName = '--' + key.replace(/([A-Z])/g, (m) => '-' + m.toLowerCase());
       root.style.setProperty(cssVarName, value);
     }
   }

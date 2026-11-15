@@ -133,7 +133,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           </div>
 
           {/* Forks */}
-          <div className="flex items-center gap-1 text-xs font-mono text-txt-muted bg-surface-active border border-themeline px-2 py-1 rounded-lg">
+          <div className="flex items-center gap-1 text-xs font-mono font-medium text-txt-muted bg-surface-active border border-themeline px-2 py-1 rounded-lg">
             <GitFork className="w-3.5 h-3.5" />
             <span>{formatNumber(repo.forks_count)}</span>
           </div>

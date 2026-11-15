@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Key, ShieldCheck, ExternalLink, X, Info, Check } from 'lucide-react';
-import { getStoredToken, setStoredToken } from '../services/githubApi';
-import { RateLimitInfo } from '../services/rateLimit';
+import { getStoredToken, setStoredToken, RateLimitInfo } from '../services/githubApi';
 
 interface TokenModalProps {
   isOpen: boolean;
@@ -79,7 +78,7 @@ export const TokenModal: React.FC<TokenModalProps> = ({
           <div className="flex items-start gap-2 text-xs text-txt-secondary font-sans">
             <ShieldCheck className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
             <p>
-              Your token is stored <strong>locally only</strong> on your machine. It is never transmitted anywhere other than direct queries to <code className="text-action font-mono text-[11px]">api.github.com</code>.
+              Your token is stored <strong>locally only</strong> in your computer's browser storage. It is never transmitted anywhere other than direct queries to <code className="text-action font-mono text-[11px]">api.github.com</code>.
             </p>
           </div>
 

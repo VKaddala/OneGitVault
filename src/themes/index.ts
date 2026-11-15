@@ -1,5 +1,7 @@
 export * from './types';
 export * from './themeRegistry';
-export { darkTheme } from './plugins/dark';
-export { lightTheme } from './plugins/light';
-export { ambientTheme } from './plugins/ambient';
+export * from './plugins/prometheusDark';
+export * from './plugins/sandLight';
+export * from './plugins/ambientTwilight';
+export * from './plugins/githubLight';
+export * from './plugins/githubDark';

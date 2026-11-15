@@ -51,17 +51,17 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
                 onClick={() => onSelectCategory(cat.id)}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-[13px] font-sans font-medium whitespace-nowrap transition-all duration-150 ${
                   isActive
-                    ? 'bg-pill-activeBg text-pill-activeTxt border border-pill-activeBorder shadow-md font-bold'
-                    : 'bg-surface hover:bg-surface-hover text-txt-secondary hover:text-txt-primary border border-themeline shadow-sm'
+                    ? 'bg-action text-txt-inverse border border-action shadow-md font-bold'
+                    : 'bg-surface hover:bg-surface-hover text-txt-primary hover:text-action border border-themeline shadow-sm'
                 }`}
               >
-                <span className={isActive ? 'text-pill-activeTxt' : 'text-action'}>
+                <span className={isActive ? 'text-txt-inverse' : 'text-action'}>
                   {getIcon(cat.icon)}
                 </span>
                 <span>{cat.name}</span>
                 {counts && counts[cat.id] !== undefined && (
                   <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
-                    isActive ? 'bg-black/20 text-pill-activeTxt font-bold' : 'bg-surface-active text-txt-muted'
+                    isActive ? 'bg-black/20 text-txt-inverse font-bold' : 'bg-surface-active text-txt-muted'
                   }`}>
                     {counts[cat.id]}
                   </span>

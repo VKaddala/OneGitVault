@@ -17,18 +17,13 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themeId, setThemeId] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+      const saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem('onegitvault_theme_mode');
       if (saved && themeRegistry.has(saved)) {
-        return saved;
+        return themeRegistry.get(saved).id;
       }
-      // Migrate legacy 'dark' | 'light' | 'ambient' if present
-      const legacy = localStorage.getItem('onegitvault_theme_mode');
-      if (legacy && themeRegistry.has(legacy)) {
-        return legacy;
-      }
-      return 'dark';
+      return 'prometheus-dark';
     } catch {
-      return 'dark';
+      return 'prometheus-dark';
     }
   });
 
@@ -47,25 +42,29 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setTheme = useCallback((id: string) => {
     if (themeRegistry.has(id)) {
-      setThemeId(id);
+      const nextTheme = themeRegistry.get(id);
+      themeRegistry.applyToDom(nextTheme);
+      setThemeId(nextTheme.id);
     }
   }, []);
 
   const cycleTheme = useCallback(() => {
     const all = themeRegistry.getAll();
-    const currentIndex = all.findIndex((t) => t.id === themeId);
+    const currentIndex = all.findIndex((t) => t.id === currentTheme.id);
     const nextIndex = (currentIndex + 1) % all.length;
-    setThemeId(all[nextIndex].id);
-  }, [themeId]);
+    const nextTheme = all[nextIndex];
+    themeRegistry.applyToDom(nextTheme);
+    setThemeId(nextTheme.id);
+  }, [currentTheme.id]);
 
   const value = useMemo<ThemeContextType>(() => ({
     currentTheme,
-    themeId,
+    themeId: currentTheme.id,
     setTheme,
     cycleTheme,
     availableThemes,
     isDark: currentTheme.isDark,
-  }), [currentTheme, themeId, setTheme, cycleTheme, availableThemes]);
+  }), [currentTheme, setTheme, cycleTheme, availableThemes]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };

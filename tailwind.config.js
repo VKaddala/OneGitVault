@@ -111,6 +111,11 @@ export default {
           soft: 'var(--accent-soft)',
           border: 'var(--accent-border)',
         },
+        secondary: {
+          DEFAULT: 'var(--secondary-accent)',
+          soft: 'var(--secondary-soft)',
+          border: 'var(--secondary-border)',
+        },
         star: {
           DEFAULT: 'var(--star-color)',
           bg: 'var(--star-bg)',

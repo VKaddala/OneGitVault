@@ -51,7 +51,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
   return (
     <div className="py-4">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface border border-themeline rounded-2xl p-3.5 backdrop-blur-sm transition-colors duration-200">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface border border-themeline rounded-2xl p-3.5 backdrop-blur-sm transition-colors duration-200 shadow-sm">
         
         {/* Left Side: Summary & Filters */}
         <div className="flex flex-wrap items-center gap-2.5">

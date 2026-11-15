@@ -106,15 +106,10 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
         return;
       }
 
-      // 2. Fallback to standard v3 JSON API with base64 content
+      // 2. Fallback to standard JSON endpoint and decode UTF-8 base64
       const resJson = await fetch(
         `https://api.github.com/repos/${r.full_name}/readme`,
-        {
-          headers: {
-            Accept: 'application/vnd.github.v3+json',
-            ...authHeader,
-          },
-        }
+        { headers: authHeader }
       );
 
       if (resJson.status === 404) {
@@ -128,22 +123,26 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
       }
 
       const data = await resJson.json();
-      const decoded = decodeBase64Utf8(data.content || '');
-      setReadmeContent(decoded);
-      setReadmeState('success');
+      if (data.content && data.encoding === 'base64') {
+        const decoded = decodeBase64Utf8(data.content);
+        setReadmeContent(decoded);
+        setReadmeState('success');
+      } else {
+        setReadmeState('error');
+      }
     } catch {
       setReadmeState('error');
     }
   }, []);
 
-  const loadReleases = useCallback(async (r: Repository) => {
+  const fetchReleases = useCallback(async (r: Repository) => {
     setReleasesLoading(true);
     try {
       const data = await fetchRepositoryReleases(r.full_name);
       setReleases(data);
       setSelectedReleaseIndex(0);
     } catch (e) {
-      console.warn('Failed to load releases', e);
+      console.warn('Failed to fetch releases', e);
       setReleases([]);
     } finally {
       setReleasesLoading(false);
@@ -153,16 +152,12 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
   useEffect(() => {
     if (repo) {
       fetchReadme(repo);
-      loadReleases(repo);
+      fetchReleases(repo);
       setActiveTab('readme');
-    } else {
-      setReadmeContent('');
-      setReadmeState('idle');
-      setReleases([]);
     }
-  }, [repo, fetchReadme, loadReleases]);
+  }, [repo, fetchReadme, fetchReleases]);
 
-  // Handle escape key to close modal
+  // Handle ESC key to close modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -171,38 +166,48 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  // Intercept anchor clicks in rendered markdown so external links open in system default browser
-  const handleReadmeLinkClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  // Intercept anchor link clicks inside rendered markdown so app navigation is protected
+  const handleReadmeLinkClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     const anchor = target.closest('a');
-    if (anchor && anchor.href) {
-      const href = anchor.href;
-      // Only intercept external web protocols (http, https)
-      if (href.startsWith('http://') || href.startsWith('https://')) {
-        e.preventDefault();
-        e.stopPropagation();
-        window.open(href, '_blank', 'noopener,noreferrer');
-      }
-    }
-  }, []);
+    if (!anchor) return;
 
-  // Parse markdown into HTML string
+    const href = anchor.getAttribute('href');
+    if (!href) return;
+
+    // Anchor hash links within page
+    if (href.startsWith('#')) {
+      e.preventDefault();
+      const el = document.getElementById(href.slice(1));
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+
+    // Relative links pointing to files in repo -> redirect to github.com
+    if (repo && !href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('mailto:')) {
+      e.preventDefault();
+      const fullUrl = `https://github.com/${repo.full_name}/blob/main/${href.replace(/^\.?\//, '')}`;
+      window.open(fullUrl, '_blank', 'noreferrer,noopener');
+      return;
+    }
+
+    // Absolute URLs -> open in user's external default browser
+    if (href.startsWith('http://') || href.startsWith('https://')) {
+      e.preventDefault();
+      window.open(href, '_blank', 'noreferrer,noopener');
+    }
+  };
+
   const renderedHtml = useMemo(() => {
     if (!readmeContent) return '';
     try {
       return marked.parse(readmeContent) as string;
     } catch {
-      return '<p>Failed to parse markdown.</p>';
+      return '<p>Error rendering markdown.</p>';
     }
   }, [readmeContent]);
 
   if (!repo) return null;
-
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
-    return num.toString();
-  };
 
   const formatDate = (d: string) => {
     try { return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); }
@@ -282,7 +287,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
         </div>
 
         {/* ── REPO META & TAB SWITCHER ── */}
-        <div className="px-5 py-3.5 border-b border-themeline bg-surface/70 flex-shrink-0 space-y-3">
+        <div className="px-5 py-3.5 border-b border-themeline bg-surface-active/70 flex-shrink-0 space-y-3">
           {/* Description */}
           {repo.description && (
             <p className="text-xs sm:text-sm font-sans text-txt-secondary leading-relaxed">
@@ -290,20 +295,20 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
             </p>
           )}
 
-          {/* Stats row & Navigation Tabs */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-            <div className="flex items-center gap-2.5 flex-wrap text-xs font-mono">
-              <span className="flex items-center gap-1 font-bold text-action bg-action-soft border border-action-border px-2.5 py-1 rounded-lg">
-                <Star className="w-3.5 h-3.5 fill-current" />
-                {formatNumber(repo.stargazers_count)}
+          {/* Quick Meta Row */}
+          <div className="flex items-center justify-between gap-4 flex-wrap text-xs font-mono">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="flex items-center gap-1 font-bold text-star bg-star-bg border border-star-border px-2.5 py-1 rounded-lg">
+                <Star className="w-3.5 h-3.5 fill-current text-star" />
+                {repo.stargazers_count.toLocaleString()} stars
               </span>
-              <span className="flex items-center gap-1 text-txt-muted bg-surface-active border border-themeline px-2.5 py-1 rounded-lg">
+              <span className="flex items-center gap-1 text-txt-muted bg-surface px-2.5 py-1 rounded-lg border border-themeline">
                 <GitFork className="w-3.5 h-3.5" />
-                {formatNumber(repo.forks_count)}
+                {repo.forks_count.toLocaleString()} forks
               </span>
               {repo.language && (
                 <span className="flex items-center gap-1.5 text-txt-primary">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: langColor }} />
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: langColor }} />
                   {repo.language}
                 </span>
               )}
@@ -314,7 +319,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
             </div>
 
             {/* Content Tabs: README vs Releases */}
-            <div className="flex items-center gap-1 bg-surface-active p-1 rounded-xl border border-themeline self-start sm:self-auto shadow-sm">
+            <div className="flex items-center gap-1 bg-surface p-1 rounded-xl border border-themeline self-start sm:self-auto shadow-sm">
               <button
                 onClick={() => setActiveTab('readme')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
@@ -340,7 +345,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                 {releases.length > 0 && (
                   <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                     activeTab === 'releases'
-                      ? 'bg-black/20 text-txt-inverse'
+                      ? 'bg-white/20 text-txt-inverse'
                       : 'bg-action-soft text-action'
                   }`}>
                     {releases.length}
@@ -377,7 +382,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
 
             {readmeState === 'error' && (
               <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-                <AlertCircle className="w-12 h-12 text-rose-400 opacity-60" />
+                <AlertCircle className="w-12 h-12 text-rose-500 opacity-60" />
                 <p className="text-base font-display font-semibold text-txt-muted">
                   Failed to load README
                 </p>
@@ -398,7 +403,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                   dangerouslySetInnerHTML={{ __html: renderedHtml }}
                 />
                 {!showFullReadme && readmeContent.length > 7000 && (
-                  <div className="sticky bottom-0 pt-20 pb-2 bg-gradient-to-t from-surface via-surface/90 to-transparent flex justify-center">
+                  <div className="sticky bottom-0 pt-20 pb-2 bg-gradient-to-t from-surface via-surface to-transparent flex justify-center">
                     <button
                       onClick={() => setShowFullReadme(true)}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-mono font-semibold bg-surface-active hover:bg-surface text-txt-primary border border-themeline shadow-lg transition-all"
@@ -457,7 +462,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                         className={`px-3 py-1 rounded-lg text-xs font-mono whitespace-nowrap transition-all ${
                           selectedReleaseIndex === idx
                             ? 'bg-action text-txt-inverse font-bold shadow-sm'
-                            : 'bg-surface-active hover:bg-surface text-txt-secondary border border-themeline'
+                            : 'bg-surface-active hover:bg-surface text-txt-primary border border-themeline'
                         }`}
                       >
                         {rel.tag_name} {idx === 0 ? '(Latest)' : ''}
@@ -477,12 +482,12 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                             {currentRelease.tag_name}
                           </span>
                           {selectedReleaseIndex === 0 && (
-                            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/30">
+                            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-500 font-bold border border-emerald-500/30">
                               Latest Release
                             </span>
                           )}
                           {currentRelease.prerelease && (
-                            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-brand font-bold border border-amber-500/30">
+                            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/15 text-amber-500 font-bold border border-amber-500/30">
                               Pre-release
                             </span>
                           )}
@@ -596,7 +601,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
 
             {/* Clone command pill */}
-            <div className="flex items-center flex-1 min-w-0 bg-surface border border-themeline rounded-xl px-3 py-2 gap-2 text-xs font-mono text-txt-muted overflow-hidden">
+            <div className="flex items-center flex-1 min-w-0 bg-surface border border-themeline rounded-xl px-3 py-2 gap-2 text-xs font-mono text-txt-primary overflow-hidden">
               <Terminal className="w-3.5 h-3.5 flex-shrink-0 text-txt-muted" />
               <span className="truncate">git clone {repo.html_url}.git</span>
             </div>
@@ -606,7 +611,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
               onClick={handleCopyClone}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold border transition-all flex-shrink-0 ${
                 cloneCopied
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
                   : 'bg-surface border-themeline text-txt-primary hover:border-action-border hover:text-action'
               }`}
               title="Copy git clone command"

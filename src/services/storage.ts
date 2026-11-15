@@ -1,58 +1,44 @@
-/**
- * Type-safe Storage Service (Single Responsibility Principle)
- * Handles persistence to localStorage with error boundaries, fallback defaults,
- * and JSON serialization/deserialization.
- */
+import { Repository } from '../types';
+
+const BOOKMARKS_STORAGE_KEY = 'onegitvault_bookmarks_v1';
+const GITHUB_TOKEN_KEY = 'onegitvault_github_token';
 
 class StorageService {
-  public getItem<T>(key: string, defaultValue: T): T {
+  public getBookmarks(): Repository[] {
     try {
-      const item = localStorage.getItem(key);
-      if (item === null || item === undefined) {
-        return defaultValue;
-      }
-      return JSON.parse(item) as T;
+      const data = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
     } catch (e) {
-      console.warn(`[StorageService] Failed to read key: ${key}`, e);
-      return defaultValue;
+      console.warn('Failed to read bookmarks from storage', e);
+      return [];
     }
   }
 
-  public setItem<T>(key: string, value: T): boolean {
+  public saveBookmarks(bookmarks: Repository[]): void {
     try {
-      localStorage.setItem(key, JSON.stringify(value));
-      return true;
+      localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarks));
     } catch (e) {
-      console.error(`[StorageService] Failed to write key: ${key}`, e);
-      return false;
+      console.warn('Failed to save bookmarks to storage', e);
     }
   }
 
-  public removeItem(key: string): void {
+  public getGithubToken(): string {
     try {
-      localStorage.removeItem(key);
-    } catch (e) {
-      console.warn(`[StorageService] Failed to remove key: ${key}`, e);
-    }
-  }
-
-  public getString(key: string, defaultValue = ''): string {
-    try {
-      return localStorage.getItem(key) ?? defaultValue;
+      return localStorage.getItem(GITHUB_TOKEN_KEY) || '';
     } catch {
-      return defaultValue;
+      return '';
     }
   }
 
-  public setString(key: string, value: string): void {
+  public saveGithubToken(token: string): void {
     try {
-      if (value) {
-        localStorage.setItem(key, value.trim());
+      if (token) {
+        localStorage.setItem(GITHUB_TOKEN_KEY, token);
       } else {
-        localStorage.removeItem(key);
+        localStorage.removeItem(GITHUB_TOKEN_KEY);
       }
     } catch (e) {
-      console.warn(`[StorageService] Failed to set string key: ${key}`, e);
+      console.warn('Failed to save token to storage', e);
     }
   }
 }

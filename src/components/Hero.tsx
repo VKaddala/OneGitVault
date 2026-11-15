@@ -19,9 +19,9 @@ export const Hero: React.FC<HeroProps> = ({
 
   return (
     <div className="relative overflow-hidden pt-8 pb-7 border-b border-themeline bg-canvas transition-colors duration-200">
-      {/* Subtle cinematic ambient glows driven by active theme accent */}
+      {/* Subtle cinematic ambient glows driven by active theme accent & secondary */}
       <div className="absolute top-0 right-1/4 w-[450px] h-[300px] bg-action-soft rounded-full blur-[100px] pointer-events-none -z-10" />
-      <div className="absolute -top-10 left-10 w-[300px] h-[250px] bg-action-soft rounded-full blur-[80px] pointer-events-none -z-10" />
+      <div className="absolute -top-10 left-10 w-[300px] h-[250px] bg-secondary-soft rounded-full blur-[80px] pointer-events-none -z-10" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -69,14 +69,14 @@ export const Hero: React.FC<HeroProps> = ({
           {/* Precision Stat Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 self-stretch md:self-auto">
             <div className="p-3.5 rounded-xl bg-surface border border-themeline backdrop-blur-sm hover:border-action-border transition-colors shadow-sm">
-              <div className="flex items-center gap-1.5 text-action mb-1">
+              <div className="flex items-center gap-1.5 text-star mb-1">
                 <Star className="w-3.5 h-3.5 fill-current" />
                 <span className="text-[11px] font-mono text-txt-muted">Indexed Repos</span>
               </div>
               <div className="text-xl font-mono font-bold text-txt-primary tracking-tight">
                 {totalReposCount > 0 ? totalReposCount.toLocaleString() : '50,000+'}
               </div>
-              <div className="text-[10px] font-mono text-txt-muted/70">Live Global Sync</div>
+              <div className="text-[10px] font-mono text-txt-muted opacity-75">Live Global Sync</div>
             </div>
 
             <div className="p-3.5 rounded-xl bg-surface border border-themeline backdrop-blur-sm hover:border-action-border transition-colors shadow-sm">
@@ -87,7 +87,7 @@ export const Hero: React.FC<HeroProps> = ({
               <div className="text-sm font-display font-bold text-action truncate max-w-[130px]">
                 {activeCategoryName}
               </div>
-              <div className="text-[10px] font-mono text-txt-muted/70">Ranked by Stars</div>
+              <div className="text-[10px] font-mono text-txt-muted opacity-75">Ranked by Stars</div>
             </div>
 
             <div className="p-3.5 rounded-xl bg-surface border border-themeline backdrop-blur-sm hover:border-action-border transition-colors col-span-2 sm:col-span-1 shadow-sm">
@@ -99,7 +99,7 @@ export const Hero: React.FC<HeroProps> = ({
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 Online
               </div>
-              <div className="text-[10px] font-mono text-txt-muted/70">GitHub REST v3</div>
+              <div className="text-[10px] font-mono text-txt-muted opacity-75">GitHub REST v3</div>
             </div>
           </div>
 

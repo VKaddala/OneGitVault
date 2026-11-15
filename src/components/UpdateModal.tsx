@@ -11,6 +11,7 @@ import {
   RefreshCw 
 } from 'lucide-react';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { UpdateInfo } from '../services/updateService';
 
 interface UpdateModalProps {
@@ -54,7 +55,10 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
   const renderedNotes = useMemo(() => {
     if (!updateInfo?.releaseBody) return '';
     try {
-      return marked.parse(updateInfo.releaseBody) as string;
+      const parsed = marked.parse(updateInfo.releaseBody) as string;
+      return DOMPurify.sanitize(parsed, {
+        ADD_ATTR: ['target', 'rel'],
+      });
     } catch {
       return updateInfo.releaseBody;
     }

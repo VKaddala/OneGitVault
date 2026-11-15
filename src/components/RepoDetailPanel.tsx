@@ -6,6 +6,7 @@ import {
   Package, Tag, ArrowDownToLine, Clock, FolderArchive
 } from 'lucide-react';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { Repository, Release } from '../types';
 import { getStoredToken, fetchRepositoryReleases } from '../services/githubApi';
 import { LANGUAGE_COLORS } from '../data/curatedProjects';
@@ -201,7 +202,10 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
   const renderedHtml = useMemo(() => {
     if (!readmeContent) return '';
     try {
-      return marked.parse(readmeContent) as string;
+      const parsed = marked.parse(readmeContent) as string;
+      return DOMPurify.sanitize(parsed, {
+        ADD_ATTR: ['target', 'rel'],
+      });
     } catch {
       return '<p>Error rendering markdown.</p>';
     }
@@ -584,7 +588,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                           </summary>
                           <div
                             className="readme-body max-h-60 overflow-y-auto p-3 rounded-xl bg-surface border border-themeline"
-                            dangerouslySetInnerHTML={{ __html: marked.parse(currentRelease.body) as string }}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(currentRelease.body) as string) }}
                           />
                         </details>
                       </div>

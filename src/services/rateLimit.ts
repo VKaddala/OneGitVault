@@ -1,10 +1,21 @@
-import { getCurrentRateLimit, RateLimitInfo } from './githubApi';
+import { getCurrentRateLimit, setRateLimitListener, checkLiveRateLimit, RateLimitInfo } from './githubApi';
 
 type RateLimitSubscriber = (info: RateLimitInfo) => void;
 
 class RateLimitManager {
   private current: RateLimitInfo = getCurrentRateLimit();
   private subscribers: Set<RateLimitSubscriber> = new Set();
+
+  constructor() {
+    // Automatically register listener for GitHub API updates
+    setRateLimitListener((info) => {
+      this.current = info;
+      this.notify();
+    });
+
+    // Check live rate limit immediately on initialization
+    checkLiveRateLimit().catch(() => {});
+  }
 
   public get(): RateLimitInfo {
     return this.current;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Repository, CategoryId, SortOption } from '../types';
 import { CURATED_PROJECTS } from '../data/curatedProjects';
-import { fetchRepositories, FetchResult } from '../services/githubApi';
+import { fetchRepositories, FetchResult, checkLiveRateLimit } from '../services/githubApi';
 
 interface UseRepositoriesOptions {
   initialCategory?: CategoryId;
@@ -29,6 +29,7 @@ export function useRepositories({
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isOfflineFallback, setIsOfflineFallback] = useState<boolean>(false);
 
   // Debounce search query changes
@@ -108,18 +109,22 @@ export function useRepositories({
   }, [hasMore, isLoading, currentPage, selectedCategory, debouncedQuery, sortBy, selectedLanguage, minStars, perPage]);
 
   const refresh = useCallback(async () => {
-    setIsLoading(true);
+    setIsRefreshing(true);
     setCurrentPage(1);
     try {
-      const data = await fetchRepositories(
-        selectedCategory,
-        debouncedQuery,
-        sortBy,
-        1,
-        selectedLanguage,
-        minStars,
-        perPage
-      );
+      const [data] = await Promise.all([
+        fetchRepositories(
+          selectedCategory,
+          debouncedQuery,
+          sortBy,
+          1,
+          selectedLanguage,
+          minStars,
+          perPage,
+          true // forceRefresh: bypass cache and perform live GitHub search
+        ),
+        checkLiveRateLimit(), // live rate limit query
+      ]);
       setRepositories(data.repositories);
       setTotalCount(data.totalCount);
       setHasMore(data.hasMore);
@@ -128,7 +133,7 @@ export function useRepositories({
       setRepositories(CURATED_PROJECTS.slice(0, perPage));
       setIsOfflineFallback(true);
     } finally {
-      setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, [selectedCategory, debouncedQuery, sortBy, selectedLanguage, minStars, perPage]);
 
@@ -149,6 +154,7 @@ export function useRepositories({
     hasMore,
     isLoading,
     isLoadingMore,
+    isRefreshing,
     isOfflineFallback,
     loadMore,
     refresh,

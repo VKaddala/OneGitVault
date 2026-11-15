@@ -43,6 +43,7 @@ export const App: React.FC = () => {
     hasMore,
     isLoading,
     isLoadingMore,
+    isRefreshing,
     isOfflineFallback,
     loadMore,
     refresh,
@@ -249,8 +250,16 @@ export const App: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            {/* Auto-scroll toggle */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Visual representation when user clicks on refresh: loading pill beside it */}
+            {isRefreshing && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-action-soft border border-action-border text-action text-xs font-mono animate-fadeIn shadow-sm">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-action" />
+                <span>Fetching live repos...</span>
+              </div>
+            )}
+
+            {/* Auto-stream toggle */}
             <button
               onClick={() => setAutoScroll(!autoScroll)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono border transition-all ${
@@ -267,12 +276,12 @@ export const App: React.FC = () => {
             {/* Refresh */}
             <button
               onClick={refresh}
-              disabled={isLoading}
-              className="flex items-center gap-1.5 text-xs font-mono text-txt-secondary hover:text-action bg-surface-active hover:bg-surface px-3 py-1.5 rounded-xl border border-themeline transition-colors disabled:opacity-50"
-              title="Refresh stream"
+              disabled={isLoading || isRefreshing}
+              className="flex items-center gap-1.5 text-xs font-mono text-txt-secondary hover:text-action bg-surface-active hover:bg-surface px-3 py-1.5 rounded-xl border border-themeline transition-colors disabled:opacity-50 shadow-sm"
+              title="Fetch fresh repositories and update rate limit"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-action' : ''}`} />
-              <span className="hidden sm:inline">Refresh</span>
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-action' : ''}`} />
+              <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
             </button>
           </div>
         </div>

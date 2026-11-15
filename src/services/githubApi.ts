@@ -32,6 +32,8 @@ export function setStoredToken(token: string): void {
     } else {
       localStorage.removeItem(TOKEN_KEY);
     }
+    // Update live rate limit quota with new token
+    checkLiveRateLimit().catch(() => {});
   } catch (e) {
     console.error('Failed to store GitHub token', e);
   }
@@ -39,6 +41,13 @@ export function setStoredToken(token: string): void {
 
 export function getCurrentRateLimit(): RateLimitInfo {
   return currentRateLimit;
+}
+
+type RateLimitListener = (info: RateLimitInfo) => void;
+let onRateLimitChange: RateLimitListener | null = null;
+
+export function setRateLimitListener(listener: RateLimitListener): void {
+  onRateLimitChange = listener;
 }
 
 function updateRateLimitFromHeaders(headers: Headers): void {
@@ -52,7 +61,45 @@ function updateRateLimitFromHeaders(headers: Headers): void {
       remaining: parseInt(remaining, 10),
       resetTime: reset ? new Date(parseInt(reset, 10) * 1000) : null,
     };
+    if (onRateLimitChange) {
+      onRateLimitChange(currentRateLimit);
+    }
   }
+}
+
+/**
+ * Queries GitHub's /rate_limit endpoint.
+ * Note: Accessing this endpoint does NOT count against your rate limit.
+ */
+export async function checkLiveRateLimit(): Promise<RateLimitInfo> {
+  const token = getStoredToken();
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github.v3+json',
+  };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  try {
+    const res = await fetch('https://api.github.com/rate_limit', { headers });
+    if (res.ok) {
+      const data = await res.json();
+      const core = data?.resources?.core || data?.rate;
+      if (core) {
+        currentRateLimit = {
+          limit: core.limit ?? (token ? 5000 : 60),
+          remaining: core.remaining ?? 60,
+          resetTime: core.reset ? new Date(core.reset * 1000) : null,
+        };
+        if (onRateLimitChange) {
+          onRateLimitChange(currentRateLimit);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to query live GitHub rate limit', e);
+  }
+  return currentRateLimit;
 }
 
 export interface FetchResult {
@@ -143,7 +190,8 @@ export async function fetchRepositories(
   page: number = 1,
   language: string = '',
   minStars: number = 0,
-  perPage: number = 40
+  perPage: number = 40,
+  forceRefresh: boolean = false
 ): Promise<FetchResult> {
   const token = getStoredToken();
   const headers: HeadersInit = {
@@ -159,23 +207,25 @@ export async function fetchRepositories(
 
   const cacheKey = `${CACHE_PREFIX}${query}_${sortParam}_${page}_${perPage}`;
 
-  // Try reading from persistent localStorage (instant 0ms response on launch)
-  try {
-    const cachedStr = localStorage.getItem(cacheKey);
-    if (cachedStr) {
-      const cached = JSON.parse(cachedStr);
-      if (Date.now() - (cached.timestamp || 0) < CACHE_TTL_MS && Array.isArray(cached.repositories) && cached.repositories.length > 0) {
-        return {
-          repositories: cached.repositories,
-          isOfflineFallback: false,
-          totalCount: cached.totalCount || cached.repositories.length,
-          hasMore: cached.hasMore ?? (page * perPage < (cached.totalCount || 0)),
-          page,
-        };
+  // Try reading from persistent localStorage (instant 0ms response on launch) unless forceRefresh is true
+  if (!forceRefresh) {
+    try {
+      const cachedStr = localStorage.getItem(cacheKey);
+      if (cachedStr) {
+        const cached = JSON.parse(cachedStr);
+        if (Date.now() - (cached.timestamp || 0) < CACHE_TTL_MS && Array.isArray(cached.repositories) && cached.repositories.length > 0) {
+          return {
+            repositories: cached.repositories,
+            isOfflineFallback: false,
+            totalCount: cached.totalCount || cached.repositories.length,
+            hasMore: cached.hasMore ?? (page * perPage < (cached.totalCount || 0)),
+            page,
+          };
+        }
       }
+    } catch (e) {
+      // ignore storage errors
     }
-  } catch (e) {
-    // ignore storage errors
   }
 
   try {

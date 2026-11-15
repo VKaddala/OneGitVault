@@ -38,13 +38,12 @@ function createWindow() {
     mainWindow.webContents.send('window-maximized-change', false);
   });
 
-  // Open external window links in user's default system browser
+  // Open external window links in user's default system browser safely
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http:') || url.startsWith('https:')) {
       shell.openExternal(url);
-      return { action: 'deny' };
     }
-    return { action: 'allow' };
+    return { action: 'deny' };
   });
 
   // Intercept in-page anchor navigations (e.g. clicking links inside README markdown)

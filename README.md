@@ -241,11 +241,33 @@ OneGitVault functions out-of-the-box with unauthenticated public GitHub API acce
 
 ---
 
-## 🖼️ Application Gallery
+## 🖼️ Application Gallery & Interactive Screenshots
 
-| 4-Column Responsive Grid | In-App GitHub Trending Explorer |
+### 🌓 1. Dual-Theme Parity (Prometheus Dark & Sand Light)
+
+| Prometheus Dark (4-Column Responsive Grid) | Sand & Ivory Light (4-Column Responsive Grid) |
 |:---:|:---:|
-| <img src="https://raw.githubusercontent.com/VKaddala/OneGitVault/main/assets/icons/onegitvault.png" width="200" alt="Grid" /> | <img src="https://raw.githubusercontent.com/VKaddala/OneGitVault/main/assets/icons/onegitvault.png" width="200" alt="Trending" /> |
+| ![Prometheus Dark](assets/screenshots/01-dashboard-4col.png) | ![Sand & Ivory Light](assets/screenshots/06-sand-light-theme.png) |
+
+---
+
+### 🔥 2. In-App GitHub Trending Explorer & Markdown README Inspector
+
+| In-App GitHub Trending Repositories (Sand Light) | Centered Markdown README Inspector & Actions |
+|:---:|:---:|
+| ![In-App Trending](assets/screenshots/07-sand-light-trending.png) | ![README Inspector](assets/screenshots/09-readme-inspector.png) |
+
+---
+
+### 🔍 3. Search Flyout, Star Filters & Theme Palette
+
+| Full-Width Search Flyout (`Ctrl+K`) | Custom Min-Stars Popover (`0+` to Custom) |
+|:---:|:---:|
+| ![Search Flyout](assets/screenshots/02-search-flyout.png) | ![Custom Stars Filter](assets/screenshots/03-custom-stars-filter.png) |
+
+| Floating Theme Palette Selector | Vault Bookmarks & Cloud Gist Sync |
+|:---:|:---:|
+| ![Theme Palette](assets/screenshots/05-theme-palette.png) | ![Vault Bookmarks](assets/screenshots/08-vault-bookmarks.png) |
 
 ---
 

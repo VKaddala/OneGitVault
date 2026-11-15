@@ -14,6 +14,7 @@
     "installer": "npm run build && electron-builder --win --x64",
     "installer:dir": "npm run build && electron-builder --win --dir --x64",
     "bump": "node scripts/bump-version.cjs",
+    "publish-release": "node scripts/publish-release.cjs",
     "package": "npm run build && electron-packager . OneGitVault --platform=win32 --arch=x64 --icon=assets/icons/onegitvault.ico --out=release --overwrite --prune=true",
     "release": "cmd /c build-installer.bat"
   },

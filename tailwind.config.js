@@ -83,6 +83,49 @@ export default {
           accentHover: '#7dd3fc',
           accentSoft: 'rgba(56, 189, 248, 0.12)',
           accentBorder: 'rgba(56, 189, 248, 0.35)',
+        },
+        // ── Semantic Theme Plugin Tokens (Dynamic CSS Variables) ──
+        canvas: 'var(--bg-canvas)',
+        header: 'var(--bg-header)',
+        surface: {
+          DEFAULT: 'var(--bg-surface)',
+          hover: 'var(--bg-surface-hover)',
+          active: 'var(--bg-surface-active)',
+          subtle: 'var(--bg-subtle)',
+        },
+        themeline: {
+          subtle: 'var(--border-subtle)',
+          DEFAULT: 'var(--border-default)',
+          hover: 'var(--border-hover)',
+          focus: 'var(--border-focus)',
+        },
+        txt: {
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted: 'var(--text-muted)',
+          inverse: 'var(--text-inverse)',
+        },
+        action: {
+          DEFAULT: 'var(--accent)',
+          hover: 'var(--accent-hover)',
+          soft: 'var(--accent-soft)',
+          border: 'var(--accent-border)',
+        },
+        star: {
+          DEFAULT: 'var(--star-color)',
+          bg: 'var(--star-bg)',
+          border: 'var(--star-border)',
+        },
+        tag: {
+          bg: 'var(--tag-bg)',
+          border: 'var(--tag-border)',
+          txt: 'var(--tag-text)',
+          hoverTxt: 'var(--tag-hover-text)',
+        },
+        pill: {
+          activeBg: 'var(--active-pill-bg)',
+          activeTxt: 'var(--active-pill-text)',
+          activeBorder: 'var(--active-pill-border)',
         }
       }
     },

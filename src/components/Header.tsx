@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Bookmark, 
   Key, 
@@ -6,12 +6,15 @@ import {
   ShieldAlert,
   Sun,
   Moon,
-  Sparkles
+  Sparkles,
+  Palette,
+  Check,
+  ChevronDown
 } from 'lucide-react';
 import { OneGitVaultLogo } from './OneGitVaultLogo';
 import { GithubIcon } from './GithubIcon';
-import { RateLimitInfo } from '../services/githubApi';
-import { ThemeMode } from '../types';
+import { RateLimitInfo } from '../services/rateLimit';
+import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
   searchQuery: string;
@@ -19,8 +22,6 @@ interface HeaderProps {
   bookmarksCount: number;
   onOpenBookmarks: () => void;
   onOpenTokenModal: () => void;
-  themeMode: ThemeMode;
-  onCycleTheme: () => void;
   rateLimit: RateLimitInfo;
   isOfflineFallback: boolean;
 }
@@ -31,13 +32,32 @@ export const Header: React.FC<HeaderProps> = ({
   bookmarksCount,
   onOpenBookmarks,
   onOpenTokenModal,
-  themeMode,
-  onCycleTheme,
   rateLimit,
   isOfflineFallback,
 }) => {
+  const { currentTheme, themeId, setTheme, cycleTheme, availableThemes } = useTheme();
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const themeMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close theme menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (themeMenuRef.current && !themeMenuRef.current.contains(event.target as Node)) {
+        setShowThemeMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getThemeIcon = (id: string, isDark: boolean) => {
+    if (id === 'ambient') return <Sparkles className="w-3.5 h-3.5 text-action" />;
+    if (!isDark) return <Sun className="w-3.5 h-3.5 text-action" />;
+    return <Moon className="w-3.5 h-3.5 text-action" />;
+  };
+
   return (
-    <header className="sticky top-0 z-40 w-full border-b backdrop-blur-xl bg-[#FBE9D0]/95 dark:bg-[#101b20]/95 ambient:bg-[#0f141c]/95 border-[#e3d1ba] dark:border-[#1e343e] ambient:border-[#21262d] transition-colors duration-200">
+    <header className="sticky top-0 z-40 w-full border-b backdrop-blur-xl bg-header border-themeline transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
           
@@ -51,14 +71,14 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-display font-bold text-lg sm:text-xl tracking-tight text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] group-hover:text-[#E64833] dark:group-hover:text-[#ff5c47] ambient:group-hover:text-[#38bdf8] transition-colors">
-                  OneGit<span className="text-[#E64833] ambient:text-[#38bdf8]">Vault</span>
+                <span className="font-display font-bold text-lg sm:text-xl tracking-tight text-txt-primary group-hover:text-action transition-colors">
+                  OneGit<span className="text-action">Vault</span>
                 </span>
-                <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded bg-[#E64833]/10 ambient:bg-[#38bdf8]/15 text-[#E64833] ambient:text-[#38bdf8] border border-[#E64833]/30 ambient:border-[#38bdf8]/30 font-semibold">
+                <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded bg-action-soft text-action border border-action-border font-semibold">
                   Desktop
                 </span>
               </div>
-              <p className="text-[11px] font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] hidden sm:block tracking-wide">
+              <p className="text-[11px] font-mono text-txt-muted hidden sm:block tracking-wide">
                 Unified Open-Source Observatory
               </p>
             </div>
@@ -67,18 +87,18 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Search Bar */}
           <div className="flex-1 max-w-xl mx-2">
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#874F41]/60 dark:text-[#90AEAD]/70 ambient:text-[#94a3b8]" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-txt-muted" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Search across open source repositories (e.g. pytorch, rust, llm, vite)..."
-                className="w-full pl-10 pr-9 py-2 text-xs sm:text-sm bg-[#FFF9F0] hover:bg-white focus:bg-white text-[#244855] border-[#e3d1ba] dark:bg-[#16272f] dark:hover:bg-[#1a2e37] dark:focus:bg-[#1c323c] dark:text-[#FBE9D0] dark:border-[#244855] ambient:bg-[#17202c] ambient:hover:bg-[#1e2938] ambient:focus:bg-[#1e2938] ambient:text-[#f0f6fc] ambient:border-[#273548] placeholder-[#874F41]/50 dark:placeholder-[#90AEAD]/50 ambient:placeholder-[#94a3b8]/50 rounded-xl border focus:border-[#E64833] dark:focus:border-[#E64833] ambient:focus:border-[#38bdf8] focus:outline-none focus:ring-2 focus:ring-[#E64833]/15 ambient:focus:ring-[#38bdf8]/15 transition-all shadow-inner font-sans"
+                placeholder="Search open source repositories (e.g. pytorch, rust, llm, vite)..."
+                className="w-full pl-10 pr-9 py-2 text-xs sm:text-sm bg-surface hover:bg-surface-hover focus:bg-surface-active text-txt-primary border-themeline placeholder-txt-muted/60 rounded-xl border focus:border-action focus:outline-none focus:ring-2 focus:ring-action-soft transition-all shadow-inner font-sans"
               />
               {searchQuery && (
                 <button
                   onClick={() => onSearchChange('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#874F41] hover:text-[#244855] dark:text-[#90AEAD] dark:hover:text-white ambient:text-[#94a3b8] ambient:hover:text-white px-1.5 py-0.5 rounded-md hover:bg-[#F2DFCA] dark:hover:bg-[#244855] ambient:hover:bg-[#273548] transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-txt-muted hover:text-txt-primary px-1.5 py-0.5 rounded-md hover:bg-surface-hover transition-colors"
                 >
                   ✕
                 </button>
@@ -94,57 +114,101 @@ export const Header: React.FC<HeaderProps> = ({
               title={`API Quota: ${rateLimit.remaining} / ${rateLimit.limit} req/hr. Click to configure GitHub Token`}
               className={`hidden md:flex items-center gap-2 px-3 py-1.5 text-xs font-mono rounded-xl border transition-all ${
                 isOfflineFallback 
-                  ? 'bg-[#E64833]/10 text-[#E64833] border-[#E64833]/30 hover:bg-[#E64833]/20 ambient:bg-[#38bdf8]/15 ambient:text-[#38bdf8] ambient:border-[#38bdf8]/30' 
-                  : 'bg-[#FFF9F0] dark:bg-[#16272f] ambient:bg-[#17202c] text-[#244855] dark:text-[#90AEAD] ambient:text-[#94a3b8] border-[#e3d1ba] dark:border-[#244855] ambient:border-[#273548] hover:border-[#E64833]/40 ambient:hover:border-[#38bdf8]/40 hover:text-[#E64833] dark:hover:text-[#FBE9D0] ambient:hover:text-[#38bdf8]'
+                  ? 'bg-action-soft text-action border-action-border' 
+                  : 'bg-surface text-txt-secondary border-themeline hover:border-action-border hover:text-action'
               }`}
             >
               {isOfflineFallback ? (
                 <>
-                  <ShieldAlert className="w-3.5 h-3.5 text-[#E64833] ambient:text-[#38bdf8]" />
+                  <ShieldAlert className="w-3.5 h-3.5 text-action" />
                   <span>Curated Mode</span>
                 </>
               ) : (
                 <>
-                  <span className="w-2 h-2 rounded-full bg-[#E64833] ambient:bg-[#38bdf8] animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-action animate-pulse" />
                   <span>{rateLimit.remaining} calls</span>
                 </>
               )}
-              <Key className="w-3 h-3 ml-0.5 text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]" />
+              <Key className="w-3 h-3 ml-0.5 text-txt-muted" />
             </button>
 
-            {/* 3-Way Theme Switcher (Dark -> Light -> Ambient) */}
-            <button
-              onClick={onCycleTheme}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#FFF9F0] hover:bg-[#F2DFCA] dark:bg-[#16272f] dark:hover:bg-[#1c323c] ambient:bg-[#17202c] ambient:hover:bg-[#1e2938] text-[#244855] dark:text-[#90AEAD] ambient:text-[#94a3b8] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#273548] transition-all"
-              title={`Current Theme: ${themeMode.toUpperCase()} (Click to switch)`}
-            >
-              {themeMode === 'ambient' ? (
-                <>
-                  <Sparkles className="w-4 h-4 text-[#38bdf8]" />
-                  <span className="hidden sm:inline text-[11px] font-mono font-semibold text-[#38bdf8]">Ambient</span>
-                </>
-              ) : themeMode === 'light' ? (
-                <>
-                  <Sun className="w-4 h-4 text-[#E64833]" />
-                  <span className="hidden sm:inline text-[11px] font-mono font-semibold text-[#874F41]">Light</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-4 h-4 text-[#ff5c47]" />
-                  <span className="hidden sm:inline text-[11px] font-mono font-semibold text-[#FBE9D0]">Dark</span>
-                </>
+            {/* Theme Plugin Switcher with Dropdown Menu */}
+            <div className="relative" ref={themeMenuRef}>
+              <div className="flex items-center rounded-xl bg-surface border border-themeline overflow-hidden shadow-sm">
+                <button
+                  onClick={cycleTheme}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-txt-secondary hover:text-txt-primary hover:bg-surface-hover transition-colors"
+                  title={`Active Theme Plugin: ${currentTheme.name} (Click to cycle)`}
+                >
+                  {getThemeIcon(currentTheme.id, currentTheme.isDark)}
+                  <span className="hidden sm:inline text-[11px] font-mono font-semibold text-txt-primary">
+                    {currentTheme.name.split(' ')[0]}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setShowThemeMenu((prev) => !prev)}
+                  className="px-1.5 py-1.5 text-txt-muted hover:text-txt-primary hover:bg-surface-hover border-l border-themeline transition-colors"
+                  title="Theme Plugins Catalog"
+                >
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+              </div>
+
+              {/* Plugin Dropdown List */}
+              {showThemeMenu && (
+                <div className="absolute right-0 mt-2 w-56 rounded-xl bg-surface border border-themeline shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-3 py-1 text-[10px] font-mono uppercase tracking-wider text-txt-muted border-b border-themeline flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Palette className="w-3 h-3 text-action" /> Theme Plugins
+                    </span>
+                    <span className="text-[9px] bg-action-soft text-action px-1 rounded">
+                      {availableThemes.length} Plugins
+                    </span>
+                  </div>
+                  <div className="py-1">
+                    {availableThemes.map((plugin) => (
+                      <button
+                        key={plugin.id}
+                        onClick={() => {
+                          setTheme(plugin.id);
+                          setShowThemeMenu(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 flex items-center justify-between text-xs transition-colors ${
+                          plugin.id === themeId
+                            ? 'bg-action-soft text-action font-semibold'
+                            : 'text-txt-secondary hover:bg-surface-hover hover:text-txt-primary'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span 
+                            className="w-3 h-3 rounded-full border border-themeline flex-shrink-0" 
+                            style={{ backgroundColor: plugin.colors.bgCanvas }}
+                          />
+                          <div>
+                            <div className="font-sans leading-tight">{plugin.name}</div>
+                            <div className="text-[10px] font-mono text-txt-muted line-clamp-1">
+                              {plugin.isDark ? 'Dark Mode' : 'Light Mode'}
+                            </div>
+                          </div>
+                        </div>
+                        {plugin.id === themeId && <Check className="w-3.5 h-3.5 text-action flex-shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
 
             {/* Bookmarks Vault Button */}
             <button
               onClick={onOpenBookmarks}
-              className="relative p-2 rounded-xl bg-[#FFF9F0] hover:bg-[#F2DFCA] dark:bg-[#16272f] dark:hover:bg-[#1c323c] ambient:bg-[#17202c] ambient:hover:bg-[#1e2938] text-[#244855] hover:text-[#E64833] dark:text-[#90AEAD] dark:hover:text-[#ff5c47] ambient:text-[#94a3b8] ambient:hover:text-[#38bdf8] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#273548] hover:border-[#E64833]/40 ambient:hover:border-[#38bdf8]/40 transition-all"
+              className="relative p-2 rounded-xl bg-surface hover:bg-surface-hover text-txt-secondary hover:text-action border border-themeline hover:border-action-border transition-all"
               title="Saved Repositories"
             >
               <Bookmark className="w-4 h-4" />
               {bookmarksCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-4 h-4 px-1 text-[10px] font-mono font-bold text-white bg-[#E64833] ambient:bg-[#38bdf8] ambient:text-[#0f141c] rounded-full border border-[#FFF9F0] dark:border-[#101b20] ambient:border-[#0f141c]">
+                <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-4 h-4 px-1 text-[10px] font-mono font-bold text-white bg-action rounded-full border border-surface">
                   {bookmarksCount}
                 </span>
               )}
@@ -155,7 +219,7 @@ export const Header: React.FC<HeaderProps> = ({
               href="https://github.com/trending"
               target="_blank"
               rel="noreferrer"
-              className="p-2 rounded-xl bg-[#FFF9F0] hover:bg-[#F2DFCA] dark:bg-[#16272f] dark:hover:bg-[#1c323c] ambient:bg-[#17202c] ambient:hover:bg-[#1e2938] text-[#244855] hover:text-[#E64833] dark:text-[#90AEAD] dark:hover:text-white ambient:text-[#94a3b8] ambient:hover:text-white border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#273548] hover:border-[#E64833]/40 ambient:hover:border-[#38bdf8]/40 transition-all"
+              className="p-2 rounded-xl bg-surface hover:bg-surface-hover text-txt-secondary hover:text-txt-primary border border-themeline hover:border-action-border transition-all"
               title="GitHub Trending"
             >
               <GithubIcon className="w-4 h-4" />

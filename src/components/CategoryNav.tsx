@@ -40,7 +40,7 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
   };
 
   return (
-    <div className="w-full bg-[#FBE9D0]/95 dark:bg-[#101b20]/95 ambient:bg-[#0f141c]/95 border-b border-[#e3d1ba] dark:border-[#1e343e] ambient:border-[#21262d] sticky top-16 z-30 backdrop-blur-xl transition-colors duration-200">
+    <div className="w-full bg-header border-b border-themeline sticky top-16 z-30 backdrop-blur-xl transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2 overflow-x-auto py-3 no-scrollbar scroll-smooth">
           {categories.map((cat) => {
@@ -51,17 +51,17 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
                 onClick={() => onSelectCategory(cat.id)}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-[13px] font-sans font-medium whitespace-nowrap transition-all duration-150 ${
                   isActive
-                    ? 'bg-[#E64833] text-white dark:bg-[#16272f] dark:text-[#ff5c47] ambient:bg-[#38bdf8] ambient:text-[#0f141c] border border-[#E64833] ambient:border-[#38bdf8] shadow-sm font-semibold'
-                    : 'bg-[#FFF9F0] hover:bg-[#F2DFCA] text-[#244855] border-[#e3d1ba] dark:bg-[#132229] dark:hover:bg-[#16272f] dark:text-[#90AEAD] dark:hover:text-[#FBE9D0] dark:border-[#203943] ambient:bg-[#17202c] ambient:hover:bg-[#1e2938] ambient:text-[#94a3b8] ambient:hover:text-[#f0f6fc] ambient:border-[#273548]'
+                    ? 'bg-pill-activeBg text-pill-activeTxt border border-pill-activeBorder shadow-md font-bold'
+                    : 'bg-surface hover:bg-surface-hover text-txt-secondary hover:text-txt-primary border border-themeline shadow-sm'
                 }`}
               >
-                <span className={isActive ? 'text-white dark:text-[#ff5c47] ambient:text-[#0f141c]' : 'text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]'}>
+                <span className={isActive ? 'text-pill-activeTxt' : 'text-action'}>
                   {getIcon(cat.icon)}
                 </span>
                 <span>{cat.name}</span>
                 {counts && counts[cat.id] !== undefined && (
                   <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
-                    isActive ? 'bg-white/20 text-white dark:bg-[#E64833]/20 dark:text-[#ff5c47] ambient:bg-black/20 ambient:text-[#0f141c] font-bold' : 'bg-[#e8d5be] text-[#874F41] dark:bg-[#203943] dark:text-[#90AEAD] ambient:bg-[#273548] ambient:text-[#94a3b8]'
+                    isActive ? 'bg-black/20 text-pill-activeTxt font-bold' : 'bg-surface-active text-txt-muted'
                   }`}>
                     {counts[cat.id]}
                   </span>

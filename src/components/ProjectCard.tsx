@@ -62,14 +62,16 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
 
   if (viewMode === 'list') {
     return (
-      <div className="group relative flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl bg-[#FFF9F0] hover:bg-white dark:bg-[#16272f] dark:hover:bg-[#1c323c] ambient:bg-[#161b22] ambient:hover:bg-[#1f2937] border border-[#e3d1ba] hover:border-[#874F41]/40 dark:border-[#244855] dark:hover:border-[#356374] ambient:border-[#273548] ambient:hover:border-[#38bdf8]/40 shadow-sm transition-all duration-150 gap-4 cursor-pointer" onClick={() => onOpenDetail(repo)}>
-        
+      <div 
+        className="group relative flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl bg-surface hover:bg-surface-hover border border-themeline hover:border-action-border shadow-sm transition-all duration-150 gap-4 cursor-pointer" 
+        onClick={() => onOpenDetail(repo)}
+      >
         {/* Main Info */}
         <div className="flex items-start gap-3.5 flex-1 min-w-0 cursor-pointer" onClick={() => onOpenDetail(repo)}>
           <img
             src={repo.owner.avatar_url}
             alt={repo.owner.login}
-            className="w-10 h-10 rounded-xl ring-1 ring-[#e3d1ba] dark:ring-[#244855] ambient:ring-[#273548] bg-[#FAF0E4] dark:bg-[#101b20] ambient:bg-[#0f141c] flex-shrink-0"
+            className="w-10 h-10 rounded-xl ring-1 ring-themeline bg-surface-active flex-shrink-0 shadow-sm"
             loading="lazy"
           />
           <div className="min-w-0 flex-1">
@@ -78,22 +80,22 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                 href={repo.html_url}
                 target="_blank"
                 rel="noreferrer"
-                className="font-display font-bold text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] hover:text-[#E64833] dark:hover:text-[#ff5c47] ambient:hover:text-[#38bdf8] text-base tracking-tight truncate transition-colors flex items-center gap-1.5"
+                className="font-display font-bold text-txt-primary hover:text-action text-base tracking-tight truncate transition-colors flex items-center gap-1.5"
               >
                 <span>{repo.name}</span>
-                <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]" />
+                <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-txt-muted" />
               </a>
-              <span className="text-xs font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]">/{repo.owner.login}</span>
+              <span className="text-xs font-mono text-txt-muted">/{repo.owner.login}</span>
 
               {repo.license && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] bg-[#FAF0E4] dark:bg-[#101b20] ambient:bg-[#1e293b] px-2 py-0.5 rounded-md border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#334155]">
-                  <Scale className="w-3 h-3 text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]" />
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-txt-muted bg-surface-active px-2 py-0.5 rounded-md border border-themeline">
+                  <Scale className="w-3 h-3 text-txt-muted" />
                   {repo.license.spdx_id || repo.license.name}
                 </span>
               )}
             </div>
 
-            <p className="text-xs sm:text-sm text-[#244855]/80 dark:text-[#90AEAD] ambient:text-[#94a3b8] line-clamp-1 mt-1 font-sans">
+            <p className="text-xs sm:text-sm text-txt-secondary line-clamp-1 mt-1 font-sans">
               {repo.description || 'No description provided.'}
             </p>
 
@@ -101,8 +103,11 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               {repo.topics.slice(0, 4).map((topic) => (
                 <button
                   key={topic}
-                  onClick={() => onSelectTopic(topic)}
-                  className="text-[11px] font-mono text-[#244855] hover:text-[#E64833] bg-[#FAF0E4] hover:bg-[#F2DFCA] border-[#e3d1ba] dark:text-[#90AEAD] dark:hover:text-[#ff5c47] dark:bg-[#101b20] dark:hover:bg-[#16272f] dark:border-[#244855] ambient:text-[#94a3b8] ambient:hover:text-[#38bdf8] ambient:bg-[#0f141c] ambient:hover:bg-[#1e293b] ambient:border-[#273548] border px-2 py-0.5 rounded-md transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectTopic(topic);
+                  }}
+                  className="text-[11px] font-mono bg-tag-bg text-tag-txt hover:text-tag-hoverTxt border border-tag-border hover:border-action px-2 py-0.5 rounded-md transition-colors"
                 >
                   #{topic}
                 </button>
@@ -112,23 +117,23 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         </div>
 
         {/* Stats & Actions */}
-        <div className="flex items-center gap-3.5 flex-shrink-0 self-end md:self-center border-t md:border-t-0 pt-3 md:pt-0 border-[#e3d1ba] dark:border-[#244855] ambient:border-[#273548]">
+        <div className="flex items-center gap-3.5 flex-shrink-0 self-end md:self-center border-t md:border-t-0 pt-3 md:pt-0 border-themeline">
           {/* Language */}
           {repo.language && (
-            <div className="flex items-center gap-1.5 text-xs text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] font-mono">
+            <div className="flex items-center gap-1.5 text-xs text-txt-primary font-mono">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: langColor }} />
               <span>{repo.language}</span>
             </div>
           )}
 
           {/* Stars */}
-          <div className="flex items-center gap-1 text-xs font-mono font-bold text-[#E64833] ambient:text-[#38bdf8] bg-[#E64833]/10 ambient:bg-[#38bdf8]/15 border border-[#E64833]/25 ambient:border-[#38bdf8]/30 px-2.5 py-1 rounded-lg">
-            <Star className="w-3.5 h-3.5 fill-current" />
+          <div className="flex items-center gap-1 text-xs font-mono font-bold text-star bg-star-bg border border-star-border px-2.5 py-1 rounded-lg shadow-sm">
+            <Star className="w-3.5 h-3.5 fill-current text-star" />
             <span>{formatNumber(repo.stargazers_count)}</span>
           </div>
 
           {/* Forks */}
-          <div className="flex items-center gap-1 text-xs font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] bg-[#FAF0E4] dark:bg-[#101b20] ambient:bg-[#0f141c] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#273548] px-2 py-1 rounded-lg">
+          <div className="flex items-center gap-1 text-xs font-mono text-txt-muted bg-surface-active border border-themeline px-2 py-1 rounded-lg">
             <GitFork className="w-3.5 h-3.5" />
             <span>{formatNumber(repo.forks_count)}</span>
           </div>
@@ -137,17 +142,20 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           <div className="flex items-center gap-1">
             <button
               onClick={copyCloneCommand}
-              className="p-1.5 text-[#874F41] hover:text-[#244855] hover:bg-[#F2DFCA] dark:text-[#90AEAD] dark:hover:text-white dark:hover:bg-[#1c323c] ambient:text-[#94a3b8] ambient:hover:text-white ambient:hover:bg-[#1e2938] rounded-lg transition-colors"
+              className="p-1.5 text-txt-muted hover:text-txt-primary hover:bg-surface-active rounded-lg transition-colors"
               title={copied ? 'Copied clone command!' : 'Copy git clone command'}
             >
               {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
             </button>
             <button
-              onClick={() => onToggleBookmark(repo)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleBookmark(repo);
+              }}
               className={`p-1.5 rounded-lg transition-colors ${
                 isBookmarked 
-                  ? 'text-[#E64833] ambient:text-[#38bdf8] bg-[#E64833]/10 ambient:bg-[#38bdf8]/15 border border-[#E64833]/25 ambient:border-[#38bdf8]/30' 
-                  : 'text-[#874F41] hover:text-[#E64833] hover:bg-[#F2DFCA] dark:text-[#90AEAD] dark:hover:text-[#ff5c47] dark:hover:bg-[#1c323c] ambient:text-[#94a3b8] ambient:hover:text-[#38bdf8] ambient:hover:bg-[#1e2938]'
+                  ? 'text-action bg-action-soft border border-action-border' 
+                  : 'text-txt-muted hover:text-action hover:bg-surface-active'
               }`}
               title={isBookmarked ? 'Remove from Vault' : 'Save in Vault'}
             >
@@ -162,8 +170,10 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
 
   // Grid View
   return (
-    <div className="group relative flex flex-col justify-between p-5 rounded-2xl bg-[#FFF9F0] hover:bg-white dark:bg-[#16272f] dark:hover:bg-[#1c323c] ambient:bg-[#161b22] ambient:hover:bg-[#1f2937] border border-[#e3d1ba] hover:border-[#874F41]/40 dark:border-[#244855] dark:hover:border-[#356374] ambient:border-[#273548] ambient:hover:border-[#38bdf8]/40 shadow-sm transition-all duration-150 cursor-pointer" onClick={() => onOpenDetail(repo)}>
-      
+    <div 
+      className="group relative flex flex-col justify-between p-5 rounded-2xl bg-surface hover:bg-surface-hover border border-themeline hover:border-action-border shadow-sm transition-all duration-150 cursor-pointer" 
+      onClick={() => onOpenDetail(repo)}
+    >
       {/* Top Bar: Owner & Actions */}
       <div>
         <div className="flex items-start justify-between gap-3 mb-3">
@@ -171,18 +181,18 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             <img
               src={repo.owner.avatar_url}
               alt={repo.owner.login}
-              className="w-9 h-9 rounded-xl ring-1 ring-[#e3d1ba] dark:ring-[#244855] ambient:ring-[#273548] bg-[#FAF0E4] dark:bg-[#101b20] ambient:bg-[#0f141c] flex-shrink-0"
+              className="w-9 h-9 rounded-xl ring-1 ring-themeline bg-surface-active flex-shrink-0 shadow-sm"
               loading="lazy"
             />
             <div className="min-w-0">
-              <span className="text-[11px] font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] truncate block">
+              <span className="text-[11px] font-mono text-txt-muted truncate block">
                 {repo.owner.login}
               </span>
               <a
                 href={repo.html_url}
                 target="_blank"
                 rel="noreferrer"
-                className="font-display font-bold text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] hover:text-[#E64833] dark:hover:text-[#ff5c47] ambient:hover:text-[#38bdf8] text-lg tracking-tight block truncate transition-colors"
+                className="font-display font-bold text-txt-primary hover:text-action text-lg tracking-tight block truncate transition-colors"
               >
                 {repo.name}
               </a>
@@ -193,17 +203,20 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           <div className="flex items-center gap-1 flex-shrink-0">
             <button
               onClick={copyCloneCommand}
-              className="p-1.5 text-[#874F41] hover:text-[#244855] hover:bg-[#F2DFCA] dark:text-[#90AEAD] dark:hover:text-white dark:hover:bg-[#1c323c] ambient:text-[#94a3b8] ambient:hover:text-white ambient:hover:bg-[#1e2938] rounded-lg transition-all"
+              className="p-1.5 text-txt-muted hover:text-txt-primary hover:bg-surface-active rounded-lg transition-all"
               title={copied ? 'Copied git clone command!' : 'Copy clone command'}
             >
               {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
             </button>
             <button
-              onClick={() => onToggleBookmark(repo)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleBookmark(repo);
+              }}
               className={`p-1.5 rounded-lg transition-all ${
                 isBookmarked 
-                  ? 'text-[#E64833] ambient:text-[#38bdf8] bg-[#E64833]/10 ambient:bg-[#38bdf8]/15 border border-[#E64833]/25 ambient:border-[#38bdf8]/30' 
-                  : 'text-[#874F41] hover:text-[#E64833] hover:bg-[#F2DFCA] dark:text-[#90AEAD] dark:hover:text-[#ff5c47] dark:hover:bg-[#1c323c] ambient:text-[#94a3b8] ambient:hover:text-[#38bdf8] ambient:hover:bg-[#1e2938]'
+                  ? 'text-action bg-action-soft border border-action-border' 
+                  : 'text-txt-muted hover:text-action hover:bg-surface-active'
               }`}
               title={isBookmarked ? 'Remove from Vault' : 'Save in Vault'}
             >
@@ -213,7 +226,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         </div>
 
         {/* Description */}
-        <p className="text-xs sm:text-[13px] text-[#244855]/85 dark:text-[#90AEAD] ambient:text-[#94a3b8] line-clamp-3 mb-4 leading-relaxed min-h-[3.6rem] font-sans">
+        <p className="text-xs sm:text-[13px] text-txt-secondary line-clamp-3 mb-4 leading-relaxed min-h-[3.6rem] font-sans">
           {repo.description || 'No description provided for this repository.'}
         </p>
 
@@ -222,14 +235,17 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           {repo.topics.slice(0, 3).map((topic) => (
             <button
               key={topic}
-              onClick={() => onSelectTopic(topic)}
-              className="text-[11px] font-mono text-[#244855] hover:text-[#E64833] bg-[#FAF0E4] hover:bg-[#F2DFCA] border-[#e3d1ba] dark:text-[#90AEAD] dark:hover:text-[#ff5c47] dark:bg-[#101b20] dark:hover:bg-[#1c323c] dark:border-[#244855] ambient:text-[#94a3b8] ambient:hover:text-[#38bdf8] ambient:bg-[#0f141c] ambient:hover:bg-[#1e293b] ambient:border-[#273548] border px-2 py-0.5 rounded-md transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectTopic(topic);
+              }}
+              className="text-[11px] font-mono bg-tag-bg text-tag-txt hover:text-tag-hoverTxt border border-tag-border hover:border-action px-2 py-0.5 rounded-md transition-colors"
             >
               #{topic}
             </button>
           ))}
           {repo.topics.length > 3 && (
-            <span className="text-[10px] font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] px-1 py-0.5">
+            <span className="text-[10px] font-mono text-txt-muted px-1 py-0.5">
               +{repo.topics.length - 3}
             </span>
           )}
@@ -237,21 +253,21 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
       </div>
 
       {/* Footer Info: Popularity, Language, Date */}
-      <div className="pt-3 border-t border-[#e3d1ba] dark:border-[#244855] ambient:border-[#273548]">
-        <div className="flex items-center justify-between text-xs text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] mb-2.5 font-mono">
+      <div className="pt-3 border-t border-themeline">
+        <div className="flex items-center justify-between text-xs text-txt-muted mb-2.5 font-mono">
           {/* Language Dot */}
           {repo.language ? (
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: langColor }} />
-              <span className="font-medium text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] text-[11px]">{repo.language}</span>
+              <span className="font-medium text-txt-primary text-[11px]">{repo.language}</span>
             </div>
           ) : (
-            <span className="text-[#874F41]/70 dark:text-[#90AEAD]/70 ambient:text-[#94a3b8]/70 text-[11px]">Software</span>
+            <span className="text-txt-muted/70 text-[11px]">Software</span>
           )}
 
           {/* Last Updated */}
-          <div className="flex items-center gap-1 text-[11px] text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]" title={`Updated ${repo.updated_at}`}>
-            <Calendar className="w-3 h-3 text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]" />
+          <div className="flex items-center gap-1 text-[11px] text-txt-muted" title={`Updated ${repo.updated_at}`}>
+            <Calendar className="w-3 h-3 text-txt-muted" />
             <span>{formatDate(repo.updated_at)}</span>
           </div>
         </div>
@@ -260,13 +276,13 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {/* Stars */}
-            <div className="flex items-center gap-1 text-xs font-mono font-bold text-[#E64833] ambient:text-[#38bdf8] bg-[#E64833]/10 ambient:bg-[#38bdf8]/15 border border-[#E64833]/25 ambient:border-[#38bdf8]/30 px-2.5 py-1 rounded-lg">
-              <Star className="w-3.5 h-3.5 fill-current" />
+            <div className="flex items-center gap-1 text-xs font-mono font-bold text-star bg-star-bg border border-star-border px-2.5 py-1 rounded-lg shadow-sm">
+              <Star className="w-3.5 h-3.5 fill-current text-star" />
               <span>{formatNumber(repo.stargazers_count)}</span>
             </div>
 
             {/* Forks */}
-            <div className="flex items-center gap-1 text-xs font-mono font-medium text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] bg-[#FAF0E4] dark:bg-[#101b20] ambient:bg-[#0f141c] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#273548] px-2 py-1 rounded-lg">
+            <div className="flex items-center gap-1 text-xs font-mono font-medium text-txt-muted bg-surface-active border border-themeline px-2 py-1 rounded-lg">
               <GitFork className="w-3.5 h-3.5" />
               <span>{formatNumber(repo.forks_count)}</span>
             </div>
@@ -279,7 +295,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                 href={repo.homepage}
                 target="_blank"
                 rel="noreferrer"
-                className="p-1 text-[#874F41] hover:text-[#E64833] dark:text-[#90AEAD] dark:hover:text-[#ff5c47] ambient:text-[#94a3b8] ambient:hover:text-[#38bdf8] transition-colors"
+                className="p-1 text-txt-muted hover:text-action transition-colors"
                 title="Project Homepage"
               >
                 <Globe className="w-3.5 h-3.5" />
@@ -289,7 +305,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               href={repo.html_url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-mono font-semibold text-[#874F41] hover:text-[#E64833] dark:text-[#90AEAD] dark:hover:text-[#ff5c47] ambient:text-[#94a3b8] ambient:hover:text-[#38bdf8] transition-colors"
+              className="inline-flex items-center gap-1 text-xs font-mono font-semibold text-txt-muted hover:text-action transition-colors"
             >
               <span>GitHub</span>
               <ExternalLink className="w-3 h-3" />

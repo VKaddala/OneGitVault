@@ -6,7 +6,7 @@ import {
   Package, Tag, ArrowDownToLine, Clock, FolderArchive
 } from 'lucide-react';
 import { marked } from 'marked';
-import { Repository, Release, ReleaseAsset } from '../types';
+import { Repository, Release } from '../types';
 import { getStoredToken, fetchRepositoryReleases } from '../services/githubApi';
 import { LANGUAGE_COLORS } from '../data/curatedProjects';
 
@@ -143,7 +143,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
       setReleases(data);
       setSelectedReleaseIndex(0);
     } catch (e) {
-      console.error('Failed to load releases', e);
+      console.warn('Failed to load releases', e);
       setReleases([]);
     } finally {
       setReleasesLoading(false);
@@ -152,48 +152,56 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
 
   useEffect(() => {
     if (repo) {
-      setActiveTab('readme');
       fetchReadme(repo);
       loadReleases(repo);
+      setActiveTab('readme');
     } else {
-      setReadmeState('idle');
       setReadmeContent('');
+      setReadmeState('idle');
       setReleases([]);
     }
   }, [repo, fetchReadme, loadReleases]);
 
-  // Close on Escape
+  // Handle escape key to close modal
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  const handleReadmeLinkClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const anchor = (e.target as HTMLElement).closest('a');
+  // Intercept anchor clicks in rendered markdown so external links open in system default browser
+  const handleReadmeLinkClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const anchor = target.closest('a');
     if (anchor && anchor.href) {
-      e.preventDefault();
-      e.stopPropagation();
-      window.open(anchor.href, '_blank', 'noopener,noreferrer');
+      const href = anchor.href;
+      // Only intercept external web protocols (http, https)
+      if (href.startsWith('http://') || href.startsWith('https://')) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.open(href, '_blank', 'noopener,noreferrer');
+      }
     }
-  };
+  }, []);
 
+  // Parse markdown into HTML string
   const renderedHtml = useMemo(() => {
     if (!readmeContent) return '';
     try {
       return marked.parse(readmeContent) as string;
-    } catch (e) {
-      console.error('Markdown parse error', e);
-      return `<pre><code>${readmeContent}</code></pre>`;
+    } catch {
+      return '<p>Failed to parse markdown.</p>';
     }
   }, [readmeContent]);
 
   if (!repo) return null;
 
-  const formatNumber = (n: number) => {
-    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-    if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k';
-    return n.toString();
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+    return num.toString();
   };
 
   const formatDate = (d: string) => {
@@ -215,36 +223,36 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-8 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-8 bg-black/60 backdrop-blur-md animate-fadeIn"
       onClick={onClose}
     >
       {/* ── Centered Modal Container with Padding from Edges ── */}
       <div
-        className="relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-[#FFF9F0] dark:bg-[#101b20] ambient:bg-[#161b22] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#30363d] text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] rounded-2xl shadow-2xl overflow-hidden transition-all duration-200"
+        className="relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-surface border border-themeline text-txt-primary rounded-2xl shadow-2xl overflow-hidden transition-all duration-200"
         onClick={(e) => e.stopPropagation()}
       >
 
-        {/* ── HEADER (like BookmarksModal) ── */}
-        <div className="flex items-start justify-between gap-4 p-5 border-b border-[#e3d1ba] dark:border-[#244855] ambient:border-[#30363d] bg-[#FAF0E4] dark:bg-[#16272f] ambient:bg-[#0f141c] flex-shrink-0">
+        {/* ── HEADER ── */}
+        <div className="flex items-start justify-between gap-4 p-5 border-b border-themeline bg-surface-active flex-shrink-0">
           <div className="flex items-center gap-3.5 min-w-0">
             <img
               src={repo.owner.avatar_url}
               alt={repo.owner.login}
-              className="w-11 h-11 rounded-xl ring-1 ring-[#e3d1ba] dark:ring-[#244855] ambient:ring-[#30363d] flex-shrink-0 shadow-sm"
+              className="w-11 h-11 rounded-xl ring-1 ring-themeline flex-shrink-0 shadow-sm"
             />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] truncate">
+                <span className="text-xs font-mono text-txt-muted truncate">
                   {repo.owner.login}
                 </span>
                 {repo.license && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] bg-[#FAF0E4] dark:bg-[#101b20] ambient:bg-[#1f2937] px-2 py-0.5 rounded-md border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#374151]">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-txt-muted bg-surface px-2 py-0.5 rounded-md border border-themeline">
                     <Scale className="w-3 h-3" />
                     {repo.license.spdx_id || repo.license.name}
                   </span>
                 )}
               </div>
-              <h2 className="font-display font-bold text-lg sm:text-xl text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] truncate leading-tight mt-0.5">
+              <h2 className="font-display font-bold text-lg sm:text-xl text-txt-primary truncate leading-tight mt-0.5">
                 {repo.name}
               </h2>
             </div>
@@ -256,8 +264,8 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
               onClick={() => onToggleBookmark(repo)}
               className={`p-2 rounded-xl transition-all ${
                 isBookmarked
-                  ? 'text-[#E64833] ambient:text-[#38bdf8] bg-[#E64833]/10 ambient:bg-[#38bdf8]/15 border border-[#E64833]/25 ambient:border-[#38bdf8]/35'
-                  : 'text-[#874F41] hover:text-[#E64833] hover:bg-[#F2DFCA] dark:text-[#90AEAD] dark:hover:text-[#ff5c47] dark:hover:bg-[#1c323c] ambient:text-[#94a3b8] ambient:hover:text-[#38bdf8] ambient:hover:bg-[#1f2937] border border-transparent'
+                  ? 'text-action bg-action-soft border border-action-border'
+                  : 'text-txt-muted hover:text-action hover:bg-surface border border-transparent'
               }`}
               title={isBookmarked ? 'Remove from Vault' : 'Save to Vault'}
             >
@@ -265,7 +273,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
             </button>
             <button
               onClick={onClose}
-              className="p-2 text-[#874F41] hover:text-[#244855] hover:bg-[#F2DFCA] dark:text-[#90AEAD] dark:hover:text-white dark:hover:bg-[#1c323c] ambient:text-[#94a3b8] ambient:hover:text-white ambient:hover:bg-[#1f2937] rounded-xl border border-transparent transition-all"
+              className="p-2 text-txt-muted hover:text-txt-primary hover:bg-surface rounded-xl border border-transparent transition-all"
               title="Close (Esc)"
             >
               <X className="w-5 h-5" />
@@ -274,10 +282,10 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
         </div>
 
         {/* ── REPO META & TAB SWITCHER ── */}
-        <div className="px-5 py-3.5 border-b border-[#e3d1ba] dark:border-[#203943] ambient:border-[#21262d] bg-[#FAF0E4]/70 dark:bg-[#132229] ambient:bg-[#131b26] flex-shrink-0 space-y-3">
+        <div className="px-5 py-3.5 border-b border-themeline bg-surface/70 flex-shrink-0 space-y-3">
           {/* Description */}
           {repo.description && (
-            <p className="text-xs sm:text-sm font-sans text-[#244855]/90 dark:text-[#90AEAD] ambient:text-[#cbd5e1] leading-relaxed">
+            <p className="text-xs sm:text-sm font-sans text-txt-secondary leading-relaxed">
               {repo.description}
             </p>
           )}
@@ -285,34 +293,34 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
           {/* Stats row & Navigation Tabs */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
             <div className="flex items-center gap-2.5 flex-wrap text-xs font-mono">
-              <span className="flex items-center gap-1 font-bold text-[#E64833] ambient:text-[#38bdf8] bg-[#E64833]/10 ambient:bg-[#38bdf8]/15 border border-[#E64833]/25 ambient:border-[#38bdf8]/30 px-2.5 py-1 rounded-lg">
+              <span className="flex items-center gap-1 font-bold text-action bg-action-soft border border-action-border px-2.5 py-1 rounded-lg">
                 <Star className="w-3.5 h-3.5 fill-current" />
                 {formatNumber(repo.stargazers_count)}
               </span>
-              <span className="flex items-center gap-1 text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] bg-[#FAF0E4] dark:bg-[#101b20] ambient:bg-[#17202c] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#30363d] px-2.5 py-1 rounded-lg">
+              <span className="flex items-center gap-1 text-txt-muted bg-surface-active border border-themeline px-2.5 py-1 rounded-lg">
                 <GitFork className="w-3.5 h-3.5" />
                 {formatNumber(repo.forks_count)}
               </span>
               {repo.language && (
-                <span className="flex items-center gap-1.5 text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc]">
+                <span className="flex items-center gap-1.5 text-txt-primary">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: langColor }} />
                   {repo.language}
                 </span>
               )}
-              <span className="flex items-center gap-1 text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]">
+              <span className="flex items-center gap-1 text-txt-muted">
                 <Calendar className="w-3 h-3" />
                 Updated {formatDate(repo.updated_at)}
               </span>
             </div>
 
             {/* Content Tabs: README vs Releases */}
-            <div className="flex items-center gap-1 bg-[#FFF9F0] dark:bg-[#101b20] ambient:bg-[#0f141c] p-1 rounded-xl border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#30363d] self-start sm:self-auto shadow-sm">
+            <div className="flex items-center gap-1 bg-surface-active p-1 rounded-xl border border-themeline self-start sm:self-auto shadow-sm">
               <button
                 onClick={() => setActiveTab('readme')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
                   activeTab === 'readme'
-                    ? 'bg-[#E64833] ambient:bg-[#38bdf8] text-white ambient:text-[#0f141c] font-bold shadow-sm'
-                    : 'text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] hover:text-[#244855] dark:hover:text-white'
+                    ? 'bg-action text-txt-inverse font-bold shadow-sm'
+                    : 'text-txt-muted hover:text-txt-primary'
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" />
@@ -323,8 +331,8 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                 onClick={() => setActiveTab('releases')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
                   activeTab === 'releases'
-                    ? 'bg-[#E64833] ambient:bg-[#38bdf8] text-white ambient:text-[#0f141c] font-bold shadow-sm'
-                    : 'text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] hover:text-[#244855] dark:hover:text-white'
+                    ? 'bg-action text-txt-inverse font-bold shadow-sm'
+                    : 'text-txt-muted hover:text-txt-primary'
                 }`}
               >
                 <Package className="w-3.5 h-3.5" />
@@ -332,8 +340,8 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                 {releases.length > 0 && (
                   <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                     activeTab === 'releases'
-                      ? 'bg-black/20 text-white ambient:text-[#0f141c]'
-                      : 'bg-[#E64833]/15 ambient:bg-[#38bdf8]/20 text-[#E64833] ambient:text-[#38bdf8]'
+                      ? 'bg-black/20 text-txt-inverse'
+                      : 'bg-action-soft text-action'
                   }`}>
                     {releases.length}
                   </span>
@@ -348,8 +356,8 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
           <div className="flex-1 overflow-y-auto px-6 py-5">
             {readmeState === 'loading' && (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
-                <Loader2 className="w-8 h-8 text-[#E64833] ambient:text-[#38bdf8] animate-spin" />
-                <p className="text-xs font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]">
+                <Loader2 className="w-8 h-8 text-action animate-spin" />
+                <p className="text-xs font-mono text-txt-muted">
                   Fetching README from GitHub…
                 </p>
               </div>
@@ -357,11 +365,11 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
 
             {readmeState === 'not_found' && (
               <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-                <FileText className="w-12 h-12 text-[#874F41]/30 dark:text-[#90AEAD]/30 ambient:text-[#94a3b8]/30 opacity-60" />
-                <p className="text-base font-display font-semibold text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]">
+                <FileText className="w-12 h-12 text-txt-muted/30 opacity-60" />
+                <p className="text-base font-display font-semibold text-txt-muted">
                   No README found
                 </p>
-                <p className="text-xs font-sans text-[#874F41]/70 dark:text-[#90AEAD]/70 ambient:text-[#94a3b8]/70">
+                <p className="text-xs font-sans text-txt-muted/70">
                   This repository does not have a README.md file in its primary branch.
                 </p>
               </div>
@@ -370,12 +378,12 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
             {readmeState === 'error' && (
               <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
                 <AlertCircle className="w-12 h-12 text-rose-400 opacity-60" />
-                <p className="text-base font-display font-semibold text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]">
+                <p className="text-base font-display font-semibold text-txt-muted">
                   Failed to load README
                 </p>
                 <button
                   onClick={() => fetchReadme(repo)}
-                  className="text-xs font-mono text-[#E64833] ambient:text-[#38bdf8] hover:underline"
+                  className="text-xs font-mono text-action hover:underline"
                 >
                   Try again
                 </button>
@@ -390,12 +398,12 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                   dangerouslySetInnerHTML={{ __html: renderedHtml }}
                 />
                 {!showFullReadme && readmeContent.length > 7000 && (
-                  <div className="sticky bottom-0 pt-20 pb-2 bg-gradient-to-t from-[#FFF9F0] dark:from-[#101b20] ambient:from-[#161b22] via-[#FFF9F0]/90 dark:via-[#101b20]/90 ambient:via-[#161b22]/90 to-transparent flex justify-center">
+                  <div className="sticky bottom-0 pt-20 pb-2 bg-gradient-to-t from-surface via-surface/90 to-transparent flex justify-center">
                     <button
                       onClick={() => setShowFullReadme(true)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-mono font-semibold bg-[#FAF0E4] hover:bg-[#F2DFCA] text-[#244855] dark:bg-[#16272f] dark:hover:bg-[#1c323c] dark:text-[#FBE9D0] ambient:bg-[#1f2937] ambient:hover:bg-[#374151] ambient:text-[#f0f6fc] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#374151] shadow-lg transition-all"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-mono font-semibold bg-surface-active hover:bg-surface text-txt-primary border border-themeline shadow-lg transition-all"
                     >
-                      <ChevronDown className="w-3.5 h-3.5 text-[#E64833] ambient:text-[#38bdf8]" />
+                      <ChevronDown className="w-3.5 h-3.5 text-action" />
                       <span>Expand full README</span>
                     </button>
                   </div>
@@ -410,25 +418,25 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
           <div className="flex-1 overflow-y-auto px-6 py-5">
             {releasesLoading ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
-                <Loader2 className="w-8 h-8 text-[#E64833] ambient:text-[#38bdf8] animate-spin" />
-                <p className="text-xs font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]">
+                <Loader2 className="w-8 h-8 text-action animate-spin" />
+                <p className="text-xs font-mono text-txt-muted">
                   Querying GitHub for official releases & binary assets…
                 </p>
               </div>
             ) : releases.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-                <Package className="w-12 h-12 text-[#874F41]/30 dark:text-[#90AEAD]/30 ambient:text-[#94a3b8]/30" />
-                <h4 className="text-base font-display font-bold text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc]">
+                <Package className="w-12 h-12 text-txt-muted/30" />
+                <h4 className="text-base font-display font-bold text-txt-primary">
                   No Releases Published
                 </h4>
-                <p className="text-xs font-sans text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] max-w-md">
+                <p className="text-xs font-sans text-txt-muted max-w-md">
                   This repository has not published formal GitHub Releases yet. You can still download the complete source code archive directly.
                 </p>
                 <a
                   href={zipUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold bg-[#E64833] ambient:bg-[#38bdf8] text-white ambient:text-[#0f141c] hover:opacity-90 shadow-sm transition-all"
+                  className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold bg-action text-txt-inverse hover:opacity-90 shadow-sm transition-all"
                 >
                   <Download className="w-4 h-4" />
                   <span>Download Source Code (main.zip)</span>
@@ -439,7 +447,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                 {/* Release Selector Tabs (if multiple releases) */}
                 {releases.length > 1 && (
                   <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                    <span className="text-xs font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] flex-shrink-0">
+                    <span className="text-xs font-mono text-txt-muted flex-shrink-0">
                       Version:
                     </span>
                     {releases.map((rel, idx) => (
@@ -448,8 +456,8 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                         onClick={() => setSelectedReleaseIndex(idx)}
                         className={`px-3 py-1 rounded-lg text-xs font-mono whitespace-nowrap transition-all ${
                           selectedReleaseIndex === idx
-                            ? 'bg-[#E64833] ambient:bg-[#38bdf8] text-white ambient:text-[#0f141c] font-bold shadow-sm'
-                            : 'bg-[#FAF0E4] hover:bg-[#F2DFCA] dark:bg-[#16272f] dark:hover:bg-[#1c323c] ambient:bg-[#1f2937] ambient:hover:bg-[#374151] text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#374151]'
+                            ? 'bg-action text-txt-inverse font-bold shadow-sm'
+                            : 'bg-surface-active hover:bg-surface text-txt-secondary border border-themeline'
                         }`}
                       >
                         {rel.tag_name} {idx === 0 ? '(Latest)' : ''}
@@ -460,11 +468,11 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
 
                 {/* Selected Release Card Banner */}
                 {currentRelease && (
-                  <div className="p-4 rounded-2xl bg-[#FAF0E4] dark:bg-[#132229] ambient:bg-[#0f141c] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#30363d] space-y-3">
+                  <div className="p-4 rounded-2xl bg-surface-active border border-themeline space-y-3">
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="inline-flex items-center gap-1 text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-[#E64833]/15 ambient:bg-[#38bdf8]/20 text-[#E64833] ambient:text-[#38bdf8] border border-[#E64833]/30 ambient:border-[#38bdf8]/40">
+                          <span className="inline-flex items-center gap-1 text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-action-soft text-action border border-action-border">
                             <Tag className="w-3.5 h-3.5" />
                             {currentRelease.tag_name}
                           </span>
@@ -479,12 +487,12 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                             </span>
                           )}
                         </div>
-                        <h3 className="font-display font-bold text-base sm:text-lg text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] mt-1.5">
+                        <h3 className="font-display font-bold text-base sm:text-lg text-txt-primary mt-1.5">
                           {currentRelease.name || currentRelease.tag_name}
                         </h3>
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]">
+                      <div className="flex items-center gap-2 text-xs font-mono text-txt-muted">
                         <Clock className="w-3.5 h-3.5" />
                         <span>Published {formatDate(currentRelease.published_at)}</span>
                       </div>
@@ -492,8 +500,8 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
 
                     {/* Direct Downloadable Assets Header */}
                     <div className="pt-2">
-                      <div className="flex items-center gap-1.5 text-xs font-mono font-semibold text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] mb-2 uppercase tracking-wide">
-                        <ArrowDownToLine className="w-4 h-4 text-[#E64833] ambient:text-[#38bdf8]" />
+                      <div className="flex items-center gap-1.5 text-xs font-mono font-semibold text-txt-muted mb-2 uppercase tracking-wide">
+                        <ArrowDownToLine className="w-4 h-4 text-action" />
                         <span>Available Downloads & Executables ({currentRelease.assets.length})</span>
                       </div>
 
@@ -503,15 +511,15 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                           {currentRelease.assets.map((asset) => (
                             <div
                               key={asset.id}
-                              className="flex items-center justify-between p-3 rounded-xl bg-[#FFF9F0] hover:bg-white dark:bg-[#16272f] dark:hover:bg-[#1a2f3a] ambient:bg-[#161b22] ambient:hover:bg-[#1f2937] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#30363d] transition-all gap-3"
+                              className="flex items-center justify-between p-3 rounded-xl bg-surface hover:bg-surface-hover border border-themeline transition-all gap-3"
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
-                                <Package className="w-4 h-4 text-[#E64833] ambient:text-[#38bdf8] flex-shrink-0" />
+                                <Package className="w-4 h-4 text-action flex-shrink-0" />
                                 <div className="min-w-0">
-                                  <span className="font-mono text-xs sm:text-[13px] font-bold text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] block truncate">
+                                  <span className="font-mono text-xs sm:text-[13px] font-bold text-txt-primary block truncate">
                                     {asset.name}
                                   </span>
-                                  <div className="flex items-center gap-2 text-[11px] font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]">
+                                  <div className="flex items-center gap-2 text-[11px] font-mono text-txt-muted">
                                     <span>{formatBytes(asset.size)}</span>
                                     {asset.download_count > 0 && (
                                       <span>• {asset.download_count.toLocaleString()} downloads</span>
@@ -524,7 +532,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                                 href={asset.browser_download_url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-[#E64833] ambient:bg-[#38bdf8] text-white ambient:text-[#0f141c] hover:opacity-90 transition-all flex-shrink-0 shadow-sm"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-action text-txt-inverse hover:opacity-90 transition-all flex-shrink-0 shadow-sm"
                               >
                                 <Download className="w-3.5 h-3.5" />
                                 <span>Download</span>
@@ -533,21 +541,21 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                           ))}
                         </div>
                       ) : (
-                        <p className="text-xs font-sans text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]">
+                        <p className="text-xs font-sans text-txt-muted">
                           No binary artifacts attached to this tag. You can download the source archives below.
                         </p>
                       )}
 
                       {/* Source Code Downloads */}
-                      <div className="mt-3 pt-3 border-t border-[#e3d1ba] dark:border-[#244855] ambient:border-[#30363d] flex items-center gap-2 flex-wrap text-xs font-mono">
-                        <span className="text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] flex items-center gap-1">
+                      <div className="mt-3 pt-3 border-t border-themeline flex items-center gap-2 flex-wrap text-xs font-mono">
+                        <span className="text-txt-muted flex items-center gap-1">
                           <FolderArchive className="w-3.5 h-3.5" /> Source Code:
                         </span>
                         <a
                           href={`${repo.html_url}/archive/refs/tags/${currentRelease.tag_name}.zip`}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-2.5 py-1 rounded-md bg-[#FFF9F0] dark:bg-[#16272f] ambient:bg-[#161b22] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#30363d] text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] hover:text-[#E64833] ambient:hover:text-[#38bdf8] transition-colors"
+                          className="px-2.5 py-1 rounded-md bg-surface border border-themeline text-txt-primary hover:text-action transition-colors"
                         >
                           zip
                         </a>
@@ -555,7 +563,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                           href={`${repo.html_url}/archive/refs/tags/${currentRelease.tag_name}.tar.gz`}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-2.5 py-1 rounded-md bg-[#FFF9F0] dark:bg-[#16272f] ambient:bg-[#161b22] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#30363d] text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] hover:text-[#E64833] ambient:hover:text-[#38bdf8] transition-colors"
+                          className="px-2.5 py-1 rounded-md bg-surface border border-themeline text-txt-primary hover:text-action transition-colors"
                         >
                           tar.gz
                         </a>
@@ -565,12 +573,12 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                     {/* Release Notes / Description */}
                     {currentRelease.body && (
                       <div className="pt-2">
-                        <details className="text-xs font-sans text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] cursor-pointer">
-                          <summary className="font-mono font-semibold text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] hover:underline mb-2">
+                        <details className="text-xs font-sans text-txt-muted cursor-pointer">
+                          <summary className="font-mono font-semibold text-txt-primary hover:underline mb-2">
                             View Release Notes / Changelog
                           </summary>
                           <div
-                            className="readme-body max-h-60 overflow-y-auto p-3 rounded-xl bg-[#FFF9F0] dark:bg-[#101b20] ambient:bg-[#161b22] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#30363d]"
+                            className="readme-body max-h-60 overflow-y-auto p-3 rounded-xl bg-surface border border-themeline"
                             dangerouslySetInnerHTML={{ __html: marked.parse(currentRelease.body) as string }}
                           />
                         </details>
@@ -584,12 +592,12 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
         )}
 
         {/* ── FOOTER — Download / Clone / Open ── */}
-        <div className="flex-shrink-0 border-t border-[#e3d1ba] dark:border-[#244855] ambient:border-[#30363d] bg-[#FAF0E4] dark:bg-[#16272f] ambient:bg-[#0f141c] p-4">
+        <div className="flex-shrink-0 border-t border-themeline bg-surface-active p-4">
           <div className="flex items-center gap-2 flex-wrap">
 
             {/* Clone command pill */}
-            <div className="flex items-center flex-1 min-w-0 bg-[#FFF9F0] dark:bg-[#101b20] ambient:bg-[#161b22] border border-[#e3d1ba] dark:border-[#203943] ambient:border-[#30363d] rounded-xl px-3 py-2 gap-2 text-xs font-mono text-[#244855] dark:text-[#90AEAD] ambient:text-[#94a3b8] overflow-hidden">
-              <Terminal className="w-3.5 h-3.5 flex-shrink-0 text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]" />
+            <div className="flex items-center flex-1 min-w-0 bg-surface border border-themeline rounded-xl px-3 py-2 gap-2 text-xs font-mono text-txt-muted overflow-hidden">
+              <Terminal className="w-3.5 h-3.5 flex-shrink-0 text-txt-muted" />
               <span className="truncate">git clone {repo.html_url}.git</span>
             </div>
 
@@ -599,7 +607,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold border transition-all flex-shrink-0 ${
                 cloneCopied
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-[#FFF9F0] dark:bg-[#101b20] ambient:bg-[#161b22] border-[#e3d1ba] dark:border-[#244855] ambient:border-[#30363d] text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] hover:border-[#E64833]/40 ambient:hover:border-[#38bdf8]/40 hover:text-[#E64833] ambient:hover:text-[#38bdf8]'
+                  : 'bg-surface border-themeline text-txt-primary hover:border-action-border hover:text-action'
               }`}
               title="Copy git clone command"
             >
@@ -612,7 +620,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
               href={zipUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold bg-[#FFF9F0] dark:bg-[#101b20] ambient:bg-[#161b22] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#30363d] text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] hover:border-[#E64833]/40 ambient:hover:border-[#38bdf8]/40 hover:text-[#E64833] ambient:hover:text-[#38bdf8] transition-all flex-shrink-0"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold bg-surface border border-themeline text-txt-primary hover:border-action-border hover:text-action transition-all flex-shrink-0"
               title="Download main branch ZIP archive"
             >
               <Download className="w-3.5 h-3.5" />
@@ -625,7 +633,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                 href={repo.homepage}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold bg-[#FFF9F0] dark:bg-[#101b20] ambient:bg-[#161b22] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#30363d] text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] hover:border-[#E64833]/40 ambient:hover:border-[#38bdf8]/40 hover:text-[#E64833] ambient:hover:text-[#38bdf8] transition-all flex-shrink-0"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold bg-surface border border-themeline text-txt-primary hover:border-action-border hover:text-action transition-all flex-shrink-0"
                 title="Open project homepage"
               >
                 <Globe className="w-3.5 h-3.5" />
@@ -638,7 +646,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
               href={repo.html_url}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold bg-[#E64833] ambient:bg-[#38bdf8] hover:opacity-90 text-white ambient:text-[#0f141c] border border-[#E64833] ambient:border-[#38bdf8] transition-all flex-shrink-0 shadow-md font-bold"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold bg-action hover:opacity-90 text-txt-inverse border border-action transition-all flex-shrink-0 shadow-md font-bold"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               <span>GitHub</span>

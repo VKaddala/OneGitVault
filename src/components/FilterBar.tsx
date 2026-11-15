@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { 
   ArrowUpDown, 
   Code2, 
@@ -54,21 +55,60 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const [customInput, setCustomInput] = useState(minStars > 0 && isCustom ? minStars.toString() : '');
-  const customRef = useRef<HTMLDivElement | null>(null);
+  const customTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
+
+  const updatePopoverPos = useCallback(() => {
+    if (customTriggerRef.current) {
+      const rect = customTriggerRef.current.getBoundingClientRect();
+      const popoverWidth = 240;
+      let left = rect.left;
+      if (left + popoverWidth > window.innerWidth - 12) {
+        left = window.innerWidth - popoverWidth - 12;
+      }
+      setPopoverPos({
+        top: rect.bottom + 6,
+        left: Math.max(12, left),
+      });
+    }
+  }, []);
+
+  const handleToggleCustom = () => {
+    if (!isCustomOpen) {
+      updatePopoverPos();
+      setCustomInput(minStars > 0 ? minStars.toString() : '');
+      setIsCustomOpen(true);
+    } else {
+      setIsCustomOpen(false);
+    }
+  };
 
   useEffect(() => {
+    if (!isCustomOpen) return;
+
     const handleClickOutside = (e: MouseEvent) => {
-      if (customRef.current && !customRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const insideTrigger = customTriggerRef.current?.contains(target);
+      const insidePopover = document.getElementById('custom-stars-portal')?.contains(target);
+      if (!insideTrigger && !insidePopover) {
         setIsCustomOpen(false);
       }
     };
-    if (isCustomOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
+
+    const handleWindowResize = () => {
+      updatePopoverPos();
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('resize', handleWindowResize);
+    window.addEventListener('scroll', updatePopoverPos, true);
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', handleWindowResize);
+      window.removeEventListener('scroll', updatePopoverPos, true);
     };
-  }, [isCustomOpen]);
+  }, [isCustomOpen, updatePopoverPos]);
 
   const formatStarsLabel = (stars: number) => {
     if (stars >= 1000000) return `${(stars / 1000000).toFixed(stars % 1000000 === 0 ? 0 : 1)}M+ ★`;
@@ -128,7 +168,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </div>
 
           {/* Star Threshold Filter with Presets & Custom Star Count */}
-          <div className="flex items-center gap-0.5 bg-surface-active p-0.5 rounded-lg border border-themeline shadow-sm relative" ref={customRef}>
+          <div className="flex items-center gap-0.5 bg-surface-active p-0.5 rounded-lg border border-themeline shadow-sm relative">
             {presetTiers.map((tier) => (
               <button
                 key={tier.value}
@@ -149,10 +189,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
             {/* Custom Star Trigger Button */}
             <button
-              onClick={() => {
-                setCustomInput(minStars > 0 ? minStars.toString() : '');
-                setIsCustomOpen((prev) => !prev);
-              }}
+              ref={customTriggerRef}
+              onClick={handleToggleCustom}
               className={`flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-md transition-all ${
                 isCustom
                   ? 'bg-action text-txt-inverse font-bold shadow-sm'
@@ -164,9 +202,19 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <span>{isCustom ? formatStarsLabel(minStars) : 'Custom...'}</span>
             </button>
 
-            {/* Custom Star Count Popover */}
-            {isCustomOpen && (
-              <div className="absolute top-8 left-0 sm:left-auto sm:right-0 w-60 bg-surface border border-themeline rounded-xl shadow-2xl p-2.5 z-50 animate-fadeIn backdrop-blur-xl">
+            {/* Custom Star Count Popover Rendered Via Portal to Never Go Behind Anything */}
+            {isCustomOpen && popoverPos && ReactDOM.createPortal(
+              <div 
+                id="custom-stars-portal"
+                style={{
+                  position: 'fixed',
+                  top: popoverPos.top,
+                  left: popoverPos.left,
+                  width: '240px',
+                  zIndex: 99999,
+                }}
+                className="bg-surface border border-themeline rounded-xl shadow-2xl p-2.5 animate-fadeIn backdrop-blur-xl"
+              >
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[11px] font-mono font-semibold text-txt-primary flex items-center gap-1">
                     <Star className="w-3 h-3 text-action fill-current" />
@@ -227,7 +275,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                     Reset (0)
                   </button>
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
 

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Header } from './components/Header';
 import { TitleBar } from './components/TitleBar';
 import { CategoryNav } from './components/CategoryNav';
 import { FilterBar } from './components/FilterBar';
@@ -174,16 +173,8 @@ export const App: React.FC = () => {
   return (
     <div className="h-full w-full overflow-hidden bg-canvas text-txt-primary flex flex-col font-sans transition-colors duration-200">
 
-      {/* Themed Custom Frameless Titlebar (No scrollbar at title level) */}
+      {/* Themed Unified TitleBar (Window Controls, Search Flyout, and Header Utilities) */}
       <TitleBar
-        updateInfo={updateInfo}
-        onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
-        onCheckUpdates={handleManualCheckUpdates}
-        isCheckingUpdates={isCheckingUpdates}
-      />
-
-      {/* Section 1: Top Application Header (Fixed, no scrollbar) */}
-      <Header
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         bookmarksCount={bookmarksCount}
@@ -193,9 +184,11 @@ export const App: React.FC = () => {
         isOfflineFallback={isOfflineFallback}
         updateInfo={updateInfo}
         onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
+        onCheckUpdates={handleManualCheckUpdates}
+        isCheckingUpdates={isCheckingUpdates}
       />
 
-      {/* Section 2: Technology Category Navigation Bar (Fixed, no scrollbar) */}
+      {/* Technology Category Navigation Bar (Fixed below titlebar) */}
       <CategoryNav
         categories={CATEGORIES}
         selectedCategory={selectedCategory}

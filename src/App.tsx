@@ -182,14 +182,8 @@ export const App: React.FC = () => {
         isCheckingUpdates={isCheckingUpdates}
       />
 
-      {/* Scrollable Content Container: Scrollbar only appears here below titlebar */}
-      <div
-        ref={mainScrollRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col"
-      >
-        {/* Top Application Header */}
-        <Header
+      {/* Section 1: Top Application Header (Fixed, no scrollbar) */}
+      <Header
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         bookmarksCount={bookmarksCount}
@@ -201,15 +195,21 @@ export const App: React.FC = () => {
         onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
       />
 
-      {/* Technology Category Navigation Bar */}
+      {/* Section 2: Technology Category Navigation Bar (Fixed, no scrollbar) */}
       <CategoryNav
         categories={CATEGORIES}
         selectedCategory={selectedCategory}
         onSelectCategory={setSelectedCategory}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+      {/* Scrollable Content Container: Scrollbar starts AFTER the two sections above */}
+      <div
+        ref={mainScrollRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col"
+      >
+        {/* Main Content Area */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pb-16">
 
         {/* Global Filter & Sorting Control Toolbar */}
         <FilterBar

@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowUpDown, 
   Code2, 
   LayoutGrid, 
   List, 
   RotateCcw,
-  Bookmark
+  Bookmark,
+  Star
 } from 'lucide-react';
 import { SortOption, ViewMode } from '../types';
 
@@ -42,12 +43,45 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onResetFilters,
   isFiltered
 }) => {
-  const starTiers = [
-    { label: 'All', value: 0 },
+  const presetTiers = [
+    { label: 'All (0+)', value: 0 },
     { label: '10k+ ★', value: 10000 },
     { label: '50k+ ★', value: 50000 },
     { label: '100k+ ★', value: 100000 },
   ];
+
+  const isCustom = !presetTiers.some((t) => t.value === minStars);
+
+  const [isCustomOpen, setIsCustomOpen] = useState(false);
+  const [customInput, setCustomInput] = useState(minStars > 0 && isCustom ? minStars.toString() : '');
+  const customRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (customRef.current && !customRef.current.contains(e.target as Node)) {
+        setIsCustomOpen(false);
+      }
+    };
+    if (isCustomOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isCustomOpen]);
+
+  const formatStarsLabel = (stars: number) => {
+    if (stars >= 1000000) return `${(stars / 1000000).toFixed(stars % 1000000 === 0 ? 0 : 1)}M+ ★`;
+    if (stars >= 1000) return `${(stars / 1000).toFixed(stars % 1000 === 0 ? 0 : 1)}k+ ★`;
+    return `${stars.toLocaleString()}+ ★`;
+  };
+
+  const handleApplyCustom = (val?: number) => {
+    const num = val !== undefined ? val : parseInt(customInput.replace(/[^0-9]/g, ''), 10);
+    const target = isNaN(num) || num < 0 ? 0 : num;
+    onMinStarsChange(target);
+    setIsCustomOpen(false);
+  };
 
   return (
     <div className="py-4">
@@ -93,21 +127,108 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             </select>
           </div>
 
-          {/* Star Threshold Pills */}
-          <div className="flex items-center gap-1 bg-surface-active p-0.5 rounded-xl border border-themeline shadow-sm">
-            {starTiers.map((tier) => (
+          {/* Star Threshold Filter with Presets & Custom Star Count */}
+          <div className="flex items-center gap-1 bg-surface-active p-0.5 rounded-xl border border-themeline shadow-sm relative" ref={customRef}>
+            {presetTiers.map((tier) => (
               <button
                 key={tier.value}
-                onClick={() => onMinStarsChange(tier.value)}
+                onClick={() => {
+                  setIsCustomOpen(false);
+                  onMinStarsChange(tier.value);
+                }}
                 className={`text-[11px] font-mono px-2.5 py-1 rounded-lg transition-all ${
-                  minStars === tier.value
+                  !isCustom && minStars === tier.value
                     ? 'bg-action text-txt-inverse font-bold shadow-sm'
                     : 'text-txt-muted hover:text-txt-primary hover:bg-surface-hover'
                 }`}
+                title={tier.value === 0 ? 'Show all repositories (0+ stars)' : `Filter repos with ≥ ${tier.value.toLocaleString()} stars`}
               >
                 {tier.label}
               </button>
             ))}
+
+            {/* Custom Star Trigger Button */}
+            <button
+              onClick={() => {
+                setCustomInput(minStars > 0 ? minStars.toString() : '');
+                setIsCustomOpen((prev) => !prev);
+              }}
+              className={`flex items-center gap-1 text-[11px] font-mono px-2.5 py-1 rounded-lg transition-all ${
+                isCustom
+                  ? 'bg-action text-txt-inverse font-bold shadow-sm'
+                  : 'text-txt-muted hover:text-txt-primary hover:bg-surface-hover'
+              }`}
+              title="Set custom minimum star count"
+            >
+              <Star className={`w-3 h-3 ${isCustom ? 'fill-current' : ''}`} />
+              <span>{isCustom ? formatStarsLabel(minStars) : 'Custom...'}</span>
+            </button>
+
+            {/* Custom Star Count Popover */}
+            {isCustomOpen && (
+              <div className="absolute top-9 left-auto right-0 sm:left-0 sm:right-auto w-64 bg-surface border border-themeline rounded-xl shadow-2xl p-3 z-50 animate-fadeIn backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-mono font-semibold text-txt-primary flex items-center gap-1.5">
+                    <Star className="w-3.5 h-3.5 text-action fill-current" />
+                    <span>Min Stars Filter</span>
+                  </span>
+                  <button
+                    onClick={() => setIsCustomOpen(false)}
+                    className="p-1 rounded text-txt-muted hover:text-txt-primary hover:bg-surface-active transition-colors text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 mb-2.5">
+                  <input
+                    type="number"
+                    min="0"
+                    step="100"
+                    value={customInput}
+                    onChange={(e) => setCustomInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleApplyCustom();
+                      }
+                    }}
+                    placeholder="e.g. 500, 2500"
+                    autoFocus
+                    className="w-full bg-surface-active border border-themeline rounded-lg px-2.5 py-1.5 text-xs font-mono text-txt-primary focus:outline-none focus:border-action"
+                  />
+                  <button
+                    onClick={() => handleApplyCustom()}
+                    className="px-3 py-1.5 rounded-lg bg-action hover:bg-action-hover text-txt-inverse text-xs font-mono font-bold transition-all shadow-sm"
+                  >
+                    Apply
+                  </button>
+                </div>
+
+                {/* Quick Shortcuts */}
+                <div className="flex items-center gap-1 flex-wrap pt-2 border-t border-themeline/60">
+                  <span className="text-[10px] font-mono text-txt-muted mr-1">Quick:</span>
+                  {[500, 1000, 2500, 5000, 25000].map((val) => (
+                    <button
+                      key={val}
+                      onClick={() => handleApplyCustom(val)}
+                      className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-active hover:bg-surface-hover text-txt-secondary hover:text-action border border-themeline transition-colors"
+                    >
+                      {val >= 1000 ? `${val / 1000}k` : val}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => {
+                      onMinStarsChange(0);
+                      setIsCustomOpen(false);
+                    }}
+                    className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-active hover:bg-surface-hover text-txt-muted hover:text-rose-500 border border-themeline transition-colors ml-auto"
+                    title="Reset to 0 stars (All)"
+                  >
+                    Reset (0)
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>

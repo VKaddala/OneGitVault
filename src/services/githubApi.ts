@@ -175,9 +175,9 @@ export function buildSearchQuery(
     qParts.push(`stars:>=${minStars}`);
   }
 
-  // 5. If query has no filters, query open-source repos with >500 stars
+  // 5. If query has no qualifiers, query open-source repos with stars:>=0 (all repositories with 0 or more stars)
   if (qParts.length === 0) {
-    qParts.push('stars:>500');
+    qParts.push('stars:>=0');
   }
 
   return qParts.join(' ');

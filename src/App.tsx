@@ -229,47 +229,45 @@ export const App: React.FC = () => {
           isFiltered={isFiltered}
         />
 
-        {/* Live Streaming Info Banner */}
-        <div className="my-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface border border-themeline rounded-2xl p-3.5 shadow-sm transition-colors duration-200">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-action animate-pulse" />
-              <h2 className="text-sm sm:text-base font-display font-bold text-txt-primary flex items-center gap-2">
-                <span>{activeCategoryObj.name}</span>
-                {searchQuery.trim() && (
-                  <span className="text-xs font-mono font-normal text-txt-muted">
-                    matching "<span className="text-action">{searchQuery}</span>"
-                  </span>
-                )}
-              </h2>
-            </div>
-            <p className="text-xs font-mono text-txt-muted mt-0.5">
-              {totalCount > 0 
+        {/* Live Streaming Info Banner (Compact Ribbon) */}
+        <div className="mb-3 flex items-center justify-between gap-2 bg-surface/80 border border-themeline rounded-xl px-3 py-1.5 text-xs transition-colors duration-200">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-action animate-pulse flex-shrink-0" />
+            <h2 className="text-xs sm:text-sm font-display font-bold text-txt-primary flex items-center gap-1.5 truncate">
+              <span>{activeCategoryObj.name}</span>
+              {searchQuery.trim() && (
+                <span className="text-[11px] font-mono font-normal text-txt-muted truncate">
+                  matching "<span className="text-action">{searchQuery}</span>"
+                </span>
+              )}
+            </h2>
+            <span className="text-[11px] font-mono text-txt-muted hidden sm:inline flex-shrink-0">
+              • {totalCount > 0 
                 ? `${displayedRepositories.length} of ${totalCount.toLocaleString()} loaded`
                 : activeCategoryObj.description}
-            </p>
+            </span>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {/* Visual representation when user clicks on refresh: loading pill beside it */}
             {isRefreshing && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-action-soft border border-action-border text-action text-xs font-mono animate-fadeIn shadow-sm">
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-action" />
-                <span>Fetching live repos...</span>
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-action-soft border border-action-border text-action text-[11px] font-mono animate-fadeIn">
+                <Loader2 className="w-3 h-3 animate-spin text-action" />
+                <span className="hidden md:inline">Fetching repos...</span>
               </div>
             )}
 
             {/* Auto-stream toggle */}
             <button
               onClick={() => setAutoScroll(!autoScroll)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono border transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono border transition-all ${
                 autoScroll
-                  ? 'bg-action text-txt-inverse border-action font-semibold shadow-sm'
+                  ? 'bg-action text-txt-inverse border-action font-semibold'
                   : 'bg-surface-active text-txt-muted border-themeline'
               }`}
               title="Toggle automatic streaming when scrolling down"
             >
-              <Zap className={`w-3.5 h-3.5 ${autoScroll ? 'text-txt-inverse' : 'text-action'}`} />
+              <Zap className={`w-3 h-3 ${autoScroll ? 'text-txt-inverse' : 'text-action'}`} />
               <span>Auto-Stream: {autoScroll ? 'ON' : 'OFF'}</span>
             </button>
 
@@ -277,10 +275,10 @@ export const App: React.FC = () => {
             <button
               onClick={refresh}
               disabled={isLoading || isRefreshing}
-              className="flex items-center gap-1.5 text-xs font-mono text-txt-secondary hover:text-action bg-surface-active hover:bg-surface px-3 py-1.5 rounded-xl border border-themeline transition-colors disabled:opacity-50 shadow-sm"
+              className="flex items-center gap-1 text-[11px] font-mono text-txt-secondary hover:text-action bg-surface-active hover:bg-surface px-2.5 py-1 rounded-lg border border-themeline transition-colors disabled:opacity-50"
               title="Fetch fresh repositories and update rate limit"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-action' : ''}`} />
+              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-action' : ''}`} />
               <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
             </button>
           </div>
@@ -382,52 +380,54 @@ export const App: React.FC = () => {
       {showScrollTop && (
         <button
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 p-3 rounded-2xl bg-surface hover:bg-surface-hover text-action shadow-xl border border-themeline hover:border-action-border transition-all duration-200 hover:scale-105 z-40"
+          className="fixed bottom-10 right-6 p-2.5 rounded-xl bg-surface hover:bg-surface-hover text-action shadow-xl border border-themeline hover:border-action-border transition-all duration-200 hover:scale-105 z-40"
           title="Scroll to Top"
         >
-          <ArrowUp className="w-5 h-5" />
+          <ArrowUp className="w-4 h-4" />
         </button>
       )}
 
-      {/* Footer */}
-      <footer className="mt-auto border-t border-themeline bg-surface-active py-6 transition-colors duration-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-txt-muted">
+      </div>
+
+      {/* Persistent Small Footer (Always visible at the bottom of the window) */}
+      <footer className="w-full flex-shrink-0 border-t border-themeline bg-header py-1.5 px-4 text-[11px] font-mono text-txt-muted z-30 transition-colors duration-200 select-none">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <OneGitVaultLogo className="w-5 h-5" />
+            <OneGitVaultLogo className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="font-display font-bold text-txt-primary">OneGitVault</span>
-            <span>• Standalone Open Source Observatory</span>
+            <span className="hidden sm:inline text-txt-muted">• Open-Source Observatory</span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <button
               onClick={handleManualCheckUpdates}
-              className="hover:text-action transition-colors flex items-center gap-1.5"
+              className="hover:text-action transition-colors flex items-center gap-1"
             >
-              <span>Check for Updates</span>
+              <span>Check Updates</span>
               {updateInfo?.hasUpdate && (
-                <span className="w-2 h-2 rounded-full bg-action animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-action animate-pulse" />
               )}
             </button>
+            <span className="text-themeline">•</span>
             <button
               onClick={() => setIsTokenModalOpen(true)}
               className="hover:text-action transition-colors"
             >
-              API Token Settings
+              API Token
             </button>
+            <span className="text-themeline hidden sm:inline">•</span>
             <a
               href="https://github.com/trending"
               target="_blank"
               rel="noreferrer"
-              className="hover:text-action transition-colors flex items-center gap-1"
+              className="hover:text-action transition-colors hidden sm:flex items-center gap-1"
             >
-              <Globe className="w-3.5 h-3.5" />
-              <span>GitHub Trending</span>
+              <Globe className="w-3 h-3" />
+              <span>Trending</span>
             </a>
           </div>
         </div>
       </footer>
-
-      </div>
 
       {/* Modals */}
       <UpdateModal

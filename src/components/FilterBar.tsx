@@ -44,7 +44,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   isFiltered
 }) => {
   const presetTiers = [
-    { label: 'All (0+)', value: 0 },
+    { label: 'All', value: 0 },
     { label: '10k+ ★', value: 10000 },
     { label: '50k+ ★', value: 50000 },
     { label: '100k+ ★', value: 100000 },
@@ -84,20 +84,20 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   };
 
   return (
-    <div className="py-4">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface border border-themeline rounded-2xl p-3.5 backdrop-blur-sm transition-colors duration-200 shadow-sm">
+    <div className="pt-2.5 pb-1.5 relative z-30">
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-surface border border-themeline rounded-xl px-3 py-1.5 backdrop-blur-sm transition-colors duration-200 shadow-sm relative z-30">
         
         {/* Left Side: Summary & Filters */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           
-          <div className="text-xs font-mono text-txt-muted mr-1">
-            <span className="text-action font-bold">{totalResults.toLocaleString()}</span> repositories
+          <div className="text-xs font-mono text-txt-muted whitespace-nowrap mr-1">
+            <span className="text-action font-bold">{totalResults.toLocaleString()}</span> repos
           </div>
 
           {/* Sort By Dropdown */}
-          <div className="flex items-center gap-1.5 bg-surface-active border border-themeline rounded-xl px-2.5 py-1.5 text-xs text-txt-primary shadow-sm">
-            <ArrowUpDown className="w-3.5 h-3.5 text-action" />
-            <span className="text-txt-muted font-mono text-[11px]">Sort:</span>
+          <div className="flex items-center gap-1 bg-surface-active border border-themeline rounded-lg px-2 py-1 text-xs text-txt-primary shadow-sm">
+            <ArrowUpDown className="w-3 h-3 text-action" />
+            <span className="text-txt-muted font-mono text-[11px] hidden sm:inline">Sort:</span>
             <select
               value={sortBy}
               onChange={(e) => onSortChange(e.target.value as SortOption)}
@@ -110,13 +110,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </div>
 
           {/* Language Filter */}
-          <div className="flex items-center gap-1.5 bg-surface-active border border-themeline rounded-xl px-2.5 py-1.5 text-xs text-txt-primary shadow-sm">
-            <Code2 className="w-3.5 h-3.5 text-action" />
-            <span className="text-txt-muted font-mono text-[11px]">Lang:</span>
+          <div className="flex items-center gap-1 bg-surface-active border border-themeline rounded-lg px-2 py-1 text-xs text-txt-primary shadow-sm">
+            <Code2 className="w-3 h-3 text-action" />
+            <span className="text-txt-muted font-mono text-[11px] hidden sm:inline">Lang:</span>
             <select
               value={selectedLanguage}
               onChange={(e) => onLanguageChange(e.target.value)}
-              className="bg-transparent text-txt-primary font-medium focus:outline-none cursor-pointer max-w-[130px] text-xs"
+              className="bg-transparent text-txt-primary font-medium focus:outline-none cursor-pointer max-w-[115px] text-xs"
             >
               <option value="" className="bg-surface text-txt-primary">All Languages</option>
               {availableLanguages.map((lang) => (
@@ -128,7 +128,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </div>
 
           {/* Star Threshold Filter with Presets & Custom Star Count */}
-          <div className="flex items-center gap-1 bg-surface-active p-0.5 rounded-xl border border-themeline shadow-sm relative" ref={customRef}>
+          <div className="flex items-center gap-0.5 bg-surface-active p-0.5 rounded-lg border border-themeline shadow-sm relative" ref={customRef}>
             {presetTiers.map((tier) => (
               <button
                 key={tier.value}
@@ -136,7 +136,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   setIsCustomOpen(false);
                   onMinStarsChange(tier.value);
                 }}
-                className={`text-[11px] font-mono px-2.5 py-1 rounded-lg transition-all ${
+                className={`text-[11px] font-mono px-2 py-0.5 rounded-md transition-all ${
                   !isCustom && minStars === tier.value
                     ? 'bg-action text-txt-inverse font-bold shadow-sm'
                     : 'text-txt-muted hover:text-txt-primary hover:bg-surface-hover'
@@ -153,7 +153,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 setCustomInput(minStars > 0 ? minStars.toString() : '');
                 setIsCustomOpen((prev) => !prev);
               }}
-              className={`flex items-center gap-1 text-[11px] font-mono px-2.5 py-1 rounded-lg transition-all ${
+              className={`flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-md transition-all ${
                 isCustom
                   ? 'bg-action text-txt-inverse font-bold shadow-sm'
                   : 'text-txt-muted hover:text-txt-primary hover:bg-surface-hover'
@@ -166,21 +166,21 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
             {/* Custom Star Count Popover */}
             {isCustomOpen && (
-              <div className="absolute top-9 left-auto right-0 sm:left-0 sm:right-auto w-64 bg-surface border border-themeline rounded-xl shadow-2xl p-3 z-50 animate-fadeIn backdrop-blur-xl">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-mono font-semibold text-txt-primary flex items-center gap-1.5">
-                    <Star className="w-3.5 h-3.5 text-action fill-current" />
+              <div className="absolute top-8 left-0 sm:left-auto sm:right-0 w-60 bg-surface border border-themeline rounded-xl shadow-2xl p-2.5 z-50 animate-fadeIn backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-mono font-semibold text-txt-primary flex items-center gap-1">
+                    <Star className="w-3 h-3 text-action fill-current" />
                     <span>Min Stars Filter</span>
                   </span>
                   <button
                     onClick={() => setIsCustomOpen(false)}
-                    className="p-1 rounded text-txt-muted hover:text-txt-primary hover:bg-surface-active transition-colors text-xs"
+                    className="p-0.5 rounded text-txt-muted hover:text-txt-primary hover:bg-surface-active transition-colors text-xs"
                   >
                     ✕
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2 mb-2.5">
+                <div className="flex items-center gap-1.5 mb-2">
                   <input
                     type="number"
                     min="0"
@@ -194,19 +194,19 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                     }}
                     placeholder="e.g. 500, 2500"
                     autoFocus
-                    className="w-full bg-surface-active border border-themeline rounded-lg px-2.5 py-1.5 text-xs font-mono text-txt-primary focus:outline-none focus:border-action"
+                    className="w-full bg-surface-active border border-themeline rounded-lg px-2 py-1 text-xs font-mono text-txt-primary focus:outline-none focus:border-action"
                   />
                   <button
                     onClick={() => handleApplyCustom()}
-                    className="px-3 py-1.5 rounded-lg bg-action hover:bg-action-hover text-txt-inverse text-xs font-mono font-bold transition-all shadow-sm"
+                    className="px-2.5 py-1 rounded-lg bg-action hover:bg-action-hover text-txt-inverse text-xs font-mono font-bold transition-all shadow-sm"
                   >
                     Apply
                   </button>
                 </div>
 
                 {/* Quick Shortcuts */}
-                <div className="flex items-center gap-1 flex-wrap pt-2 border-t border-themeline/60">
-                  <span className="text-[10px] font-mono text-txt-muted mr-1">Quick:</span>
+                <div className="flex items-center gap-1 flex-wrap pt-1.5 border-t border-themeline/60">
+                  <span className="text-[10px] font-mono text-txt-muted mr-0.5">Quick:</span>
                   {[500, 1000, 2500, 5000, 25000].map((val) => (
                     <button
                       key={val}
@@ -234,18 +234,18 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
 
         {/* Right Side: View Mode & Bookmarks & Reset */}
-        <div className="flex items-center gap-2 self-end lg:self-auto">
+        <div className="flex items-center gap-1.5">
           
           {/* Only Bookmarked Toggle */}
           <button
             onClick={onToggleBookmarked}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono border transition-all ${
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono border transition-all ${
               onlyBookmarked
                 ? 'bg-action text-txt-inverse border-action font-bold shadow-sm'
                 : 'bg-surface-active hover:bg-surface-hover text-txt-secondary hover:text-txt-primary border-themeline'
             }`}
           >
-            <Bookmark className={`w-3.5 h-3.5 ${onlyBookmarked ? 'fill-current text-txt-inverse' : 'text-action'}`} />
+            <Bookmark className={`w-3 h-3 ${onlyBookmarked ? 'fill-current text-txt-inverse' : 'text-action'}`} />
             <span>Vault Only</span>
           </button>
 
@@ -253,7 +253,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           {isFiltered && (
             <button
               onClick={onResetFilters}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-mono text-txt-muted hover:text-txt-primary bg-surface-active hover:bg-surface-hover border border-themeline transition-all"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono text-txt-muted hover:text-txt-primary bg-surface-active hover:bg-surface-hover border border-themeline transition-all"
               title="Reset all filters"
             >
               <RotateCcw className="w-3 h-3" />
@@ -262,24 +262,24 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           )}
 
           {/* View Mode Toggle */}
-          <div className="flex items-center bg-surface-active p-0.5 rounded-xl border border-themeline shadow-sm">
+          <div className="flex items-center bg-surface-active p-0.5 rounded-lg border border-themeline shadow-sm">
             <button
               onClick={() => onViewModeChange('grid')}
-              className={`p-1.5 rounded-lg transition-all ${
+              className={`p-1 rounded-md transition-all ${
                 viewMode === 'grid' ? 'bg-action text-txt-inverse font-bold' : 'text-txt-muted hover:text-txt-primary'
               }`}
               title="Grid View"
             >
-              <LayoutGrid className="w-4 h-4" />
+              <LayoutGrid className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => onViewModeChange('list')}
-              className={`p-1.5 rounded-lg transition-all ${
+              className={`p-1 rounded-md transition-all ${
                 viewMode === 'list' ? 'bg-action text-txt-inverse font-bold' : 'text-txt-muted hover:text-txt-primary'
               }`}
               title="List View"
             >
-              <List className="w-4 h-4" />
+              <List className="w-3.5 h-3.5" />
             </button>
           </div>
 

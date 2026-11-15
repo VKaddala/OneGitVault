@@ -28,40 +28,52 @@ if (!token) {
 
 const REPO_OWNER = 'VKaddala';
 const REPO_NAME = 'OneGitVault';
-const TAG_NAME = 'v1.0.4';
-const RELEASE_NAME = 'v1.0.4 — Modular Theme Architecture, Theme Selector Popup & GitHub Themes';
+const TAG_NAME = 'v2.0.0';
+const RELEASE_NAME = 'v2.0.0 — Unified TitleBar, In-App GitHub Trending, 4-Column Responsive Grid & Enhanced Vault';
 
-const RELEASE_BODY = `## 🚀 What's New in v1.0.4
+const RELEASE_BODY = `## 🚀 What's New in v2.0.0
 
-### 🎨 Modular Theme Plugin Architecture
-- **Plugin-Based Themes**: Introduced a type-safe \`ThemePlugin\` contract and central \`ThemeRegistry\` (\`src/themes/\`), decoupling color definitions from UI code.
-- **Header Theme Selector Popup**: Replaced simple button cycling with an elevated, solid opaque theme selection popup rendered via portals. Features dual-panel live preview swatches, light/dark mode tags, palette subtitles, and active checkmarks.
-- **5 High-Contrast Handcrafted Themes**:
-  1. **Prometheus Dark**: Deep cinematic petrol teal (\`#0c1519\` / \`#16272f\`) with vermilion flame accents (\`#e64833\`) and biscuit typography (\`#fbe9d0\`).
-  2. **Sand & Ivory Light**: Warm biscuit sand canvas (\`#FBE9D0\`) with bright ivory cards (\`#FFF9F0\`), petrol headings, and vermilion pills.
-  3. **Ambient Twilight**: Cool midnight slate (\`#0a0e14\` / \`#161e2b\`) with serene sky-cyan accents (\`#38bdf8\`) designed for relaxed long-session comfort.
-  4. **GitHub Simple Light**: Off-white canvas (\`#f6f8fa\`) with crisp white elevated cards (\`#ffffff\`), dark charcoal typography, and classic GitHub blue highlights (\`#0969da\`).
-  5. **GitHub Simple Dark**: Deep GitHub slate canvas (\`#0d1117\`) with elevated containers (\`#1c2128\`), gold stars (\`#e3b341\`), and signature blue accents (\`#1f6feb\`).
+### 📐 4-Column Responsive Grid & Compact Modern Cards
+- **High-Density Desktop Grid**: Transitioned from a 3-column layout with excessive edge gutters to an expansive, responsive 4-column grid (\`xl:grid-cols-4 2xl:grid-cols-4\`) that maximizes widescreen real estate.
+- **Compact & Feature-Rich Project Cards**: Reduced vertical bulk while preserving 100% of interactive capabilities:
+  - Instant \`git clone\` copy button with visual checkmark feedback.
+  - One-click Vault bookmark toggle with counter updates.
+  - Interactive topic pills, language color indicators, and repository license badges.
+  - Direct README & Release inspector access on card click.
 
 ---
 
-### 🛠️ Bug Fixes & Visual Polish
-- **Transparent Background Elimination**: Resolved an issue where Tailwind CSS variables with slash-opacity generated invalid CSS rules, causing components to drop their backgrounds.
-- **Elevated Contrast Ratios**: Re-tuned container-to-canvas deltas and card borders across all themes to eliminate flat/washed-out cards.
-- **Vibrant Selection & Hover States**: Ensured active category pills, star tiers, and the Auto-Stream toggle prominently highlight with the active theme's signature accent.
+### 🔥 Built-In In-App GitHub Trending Modal
+- **Zero Redirection**: Replaced external browser tabs with an integrated, in-app GitHub Trending inspection modal.
+- **Time Ranges**: Seamlessly switch between **Daily**, **Weekly**, and **Monthly** trending repositories across the global GitHub ecosystem.
+- **Direct README Inspection**: Click any trending repository to immediately preview its documentation and release binaries without losing your place.
 
 ---
 
-### 🏛️ Modular SOLID Refactoring
-- **Custom Hooks**: Extracted repository querying, pagination, and streaming into \`useRepositories\`, and bookmark state into \`useBookmarks\`.
-- **Domain Services**: Decoupled rate-limit handling into \`rateLimitManager\` with a subscriber pattern, and storage interactions into \`storageService\`.
+### 🪟 Unified Frameless Window Header & Flyout Search
+- **Unified Titlebar**: Consolidated the native window controls, brand identity, API quota status, trending launcher, vault bookmarks, and theme selector into a single streamlined top header.
+- **Expanded Flyout Search Bar**: Clicking the search icon or pressing \`Ctrl+K\` / \`Cmd+K\` reveals a full-width search flyout with quick-filter topic tags and instant keyboard dismissal (\`Esc\`).
+- **Mobile & Small-Screen Compliant**: Dynamic flex wrapping and compact button styling prevent overflow even on narrow window dimensions down to 500px.
+- **Fixed Theme Palette Trigger**: Permanent palette icon ensures UI consistency across all 5 handcrafted themes.
+
+---
+
+### 🌐 Persistent Location & Clock Footer
+- **Live Regional Clock**: Real-time 12-hour ticking digital clock in the bottom footer.
+- **Automatic Geo/Timezone Detection**: Detects and displays the user's country and GMT offset (e.g., \`🌐 India (GMT+5:30)\`).
+
+---
+
+### ⭐ Custom Stars Filter Portal
+- **Flexible Star Ranges**: Allows filtering from \`All (0+)\` stars up to any custom threshold (\`500\`, \`2,500\`, \`50,000+\`).
+- **Body-Portaled Popover**: Portaled to \`document.body\` with high z-index to guarantee it always renders crisply above cards and panels without clipping.
 
 ---
 
 ### 📦 Downloads & Verification
-| File | Type | Architecture | SHA-256 / Size |
+| File | Type | Architecture | Setup Type |
 |---|---|---|---|
-| **\`OneGitVault-Setup-1.0.4.exe\`** | Inno Setup Windows Installer | x64 | ~83.9 MB |
+| **\`OneGitVault-Setup-2.0.0.exe\`** | Inno Setup Windows Installer | x64 | Clean Upgrade / Seamless Replace |
 
 *Built with Electron 33, React 18, TypeScript, and Vite.*
 `;
@@ -176,15 +188,15 @@ function uploadAsset(uploadUrlTemplate, filePath, fileName) {
 async function main() {
   try {
     const release = await createRelease();
-    const installerPath = path.resolve(__dirname, '../release/setup/OneGitVault-Setup-1.0.4.exe');
+    const installerPath = path.resolve(__dirname, '../release/setup/OneGitVault-Setup-2.0.0.exe');
     if (!fs.existsSync(installerPath)) {
       throw new Error(`Installer file not found at: ${installerPath}`);
     }
 
     // Check if asset already exists on release
-    const existingAsset = (release.assets || []).find(a => a.name === 'OneGitVault-Setup-1.0.4.exe');
+    const existingAsset = (release.assets || []).find(a => a.name === 'OneGitVault-Setup-2.0.0.exe');
     if (existingAsset) {
-      console.log(`Asset OneGitVault-Setup-1.0.4.exe already exists (ID: ${existingAsset.id}), deleting old one first...`);
+      console.log(`Asset OneGitVault-Setup-2.0.0.exe already exists (ID: ${existingAsset.id}), deleting old one first...`);
       await request({
         hostname: 'api.github.com',
         path: `/repos/${REPO_OWNER}/${REPO_NAME}/releases/assets/${existingAsset.id}`,
@@ -197,7 +209,7 @@ async function main() {
       });
     }
 
-    await uploadAsset(release.upload_url, installerPath, 'OneGitVault-Setup-1.0.4.exe');
+    await uploadAsset(release.upload_url, installerPath, 'OneGitVault-Setup-2.0.0.exe');
     console.log(`\n🎉 RELEASE COMPLETE!`);
     console.log(`URL: ${release.html_url}`);
   } catch (err) {

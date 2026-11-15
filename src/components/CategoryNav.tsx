@@ -41,8 +41,8 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
 
   return (
     <div className="w-full bg-header border-b border-themeline flex-shrink-0 z-30 backdrop-blur-xl transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-2 overflow-x-auto py-3 no-scrollbar scroll-smooth">
+      <div className="max-w-[1720px] mx-auto px-3 sm:px-5 lg:px-6">
+        <div className="flex items-center gap-2 overflow-x-auto py-2.5 no-scrollbar scroll-smooth">
           {categories.map((cat) => {
             const isActive = selectedCategory === cat.id;
             return (

@@ -269,7 +269,7 @@ export const App: React.FC = () => {
         className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col"
       >
         {/* Main Content Area */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+        <main className="flex-1 max-w-[1720px] w-full mx-auto px-3 sm:px-5 lg:px-6 pb-16">
 
         {/* Global Filter & Sorting Control Toolbar */}
         <FilterBar
@@ -358,8 +358,8 @@ export const App: React.FC = () => {
         {!isLoading && (
           <div className={
             viewMode === 'grid'
-              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
-              : 'flex flex-col gap-3'
+              ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-3'
+              : 'flex flex-col gap-2.5'
           }>
             {displayedRepositories.map((repo) => (
               <ProjectCard

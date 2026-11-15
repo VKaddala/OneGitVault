@@ -70,9 +70,26 @@ export default {
           brand: '#e64833', // mapped to flame vermilion
           deep: '#c73a27',
           dark: '#874f41',  // mapped to terracotta
+        },
+        // ── Ambient Theme Palette (Pleasant Cool Twilight Slate & Sky Cyan) ──
+        ambient: {
+          bg: '#0f141c',        // Deep cool twilight slate background
+          surface: '#17202c',   // Restful slate surface
+          hover: '#1e2938',     // Smooth surface hover
+          border: '#273548',    // Muted twilight border
+          text: '#f1f5f9',      // High-contrast readable font
+          muted: '#94a3b8',     // Pleasant cool slate text
+          accent: '#38bdf8',    // Serene sky cyan (no harsh glare)
+          accentHover: '#7dd3fc',
+          accentSoft: 'rgba(56, 189, 248, 0.12)',
+          accentBorder: 'rgba(56, 189, 248, 0.35)',
         }
       }
     },
   },
-  plugins: [],
+  plugins: [
+    function({ addVariant }) {
+      addVariant('ambient', '.ambient &');
+    }
+  ],
 }

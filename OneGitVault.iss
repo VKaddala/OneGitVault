@@ -39,7 +39,8 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 SetupIconFile=assets\icons\onegitvault.ico
 UninstallDisplayName={#AppName}
-UninstallDisplayIcon={app}\{#AppExeName}
+UninstallDisplayIcon={app}\app.ico
+ChangesAssociations=yes
 ShowLanguageDialog=no
 
 [Languages]
@@ -51,17 +52,23 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [InstallDelete]
 ; Clean out previous application bundle to prevent stale cache on upgrade
 Type: filesandordirs; Name: "{app}\resources\app\dist"
+Type: files; Name: "{autodesktop}\{#AppName}.lnk"
+Type: files; Name: "{userdesktop}\{#AppName}.lnk"
+Type: files; Name: "{commondesktop}\{#AppName}.lnk"
+Type: files; Name: "{group}\{#AppName}.lnk"
 
 [Files]
+; Copy dedicated ICO icon file directly to root so Windows shortcut icon cache binds directly
+Source: "assets\icons\onegitvault.ico"; DestDir: "{app}"; DestName: "app.ico"; Flags: ignoreversion
 ; Copy all files from the updated build directory, overwriting any previous version
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 ; Start Menu shortcut
-Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\app.ico"
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
 ; Desktop shortcut (optional, based on task)
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\app.ico"; Tasks: desktopicon
 
 [Run]
 ; Offer to launch the app after install

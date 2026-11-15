@@ -1,7 +1,7 @@
 {
   "name": "onegitvault",
   "productName": "OneGitVault",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Unified Open-Source Observatory — Stream, discover and bookmark open-source GitHub repositories",
   "main": "electron/main.cjs",
   "type": "module",

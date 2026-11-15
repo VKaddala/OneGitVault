@@ -1,4 +1,4 @@
-import { Repository, CategoryId, SortOption } from '../types';
+import { Repository, CategoryId, SortOption, Release } from '../types';
 import { CURATED_PROJECTS } from '../data/curatedProjects';
 
 const CACHE_PREFIX = 'onegitvault_cache_v1_';
@@ -39,6 +39,20 @@ export function setStoredToken(token: string): void {
 
 export function getCurrentRateLimit(): RateLimitInfo {
   return currentRateLimit;
+}
+
+function updateRateLimitFromHeaders(headers: Headers): void {
+  const limit = headers.get('x-ratelimit-limit');
+  const remaining = headers.get('x-ratelimit-remaining');
+  const reset = headers.get('x-ratelimit-reset');
+
+  if (limit && remaining) {
+    currentRateLimit = {
+      limit: parseInt(limit, 10),
+      remaining: parseInt(remaining, 10),
+      resetTime: reset ? new Date(parseInt(reset, 10) * 1000) : null,
+    };
+  }
 }
 
 export interface FetchResult {
@@ -172,17 +186,7 @@ export async function fetchRepositories(
     clearTimeout(timeoutId);
 
     // Track rate limit headers
-    const limit = res.headers.get('x-ratelimit-limit');
-    const remaining = res.headers.get('x-ratelimit-remaining');
-    const reset = res.headers.get('x-ratelimit-reset');
-
-    if (limit && remaining) {
-      currentRateLimit = {
-        limit: parseInt(limit, 10),
-        remaining: parseInt(remaining, 10),
-        resetTime: reset ? new Date(parseInt(reset, 10) * 1000) : null,
-      };
-    }
+    updateRateLimitFromHeaders(res.headers);
 
     if (!res.ok) {
       console.warn(`GitHub API search failed (${res.status} ${res.statusText}) for query "${query}". Using curated fallback.`);
@@ -307,4 +311,36 @@ function getFallbackResults(
     hasMore: start + perPage < list.length,
     page,
   };
+}
+
+/**
+ * Fetches recent GitHub releases and their downloadable binary assets
+ */
+export async function fetchRepositoryReleases(fullName: string): Promise<Release[]> {
+  const token = getStoredToken();
+  const headers: HeadersInit = {
+    Accept: 'application/vnd.github.v3+json',
+    'User-Agent': 'OneGitVault-Desktop',
+  };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  try {
+    const res = await fetch(`https://api.github.com/repos/${fullName}/releases?per_page=10`, {
+      headers,
+    });
+    updateRateLimitFromHeaders(res.headers);
+    if (!res.ok) {
+      return [];
+    }
+    const data = await res.json();
+    if (Array.isArray(data)) {
+      return data as Release[];
+    }
+    return [];
+  } catch (e) {
+    console.error(`Failed to fetch releases for ${fullName}`, e);
+    return [];
+  }
 }

@@ -4,28 +4,30 @@
 [![React](https://img.shields.io/badge/React-18-149eca?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Electron](https://img.shields.io/badge/Electron-33-47848f?logo=electron&logoColor=white)](https://www.electronjs.org/)
-[![Version](https://img.shields.io/badge/version-1.0.0-informational)](package.json)
+[![Version](https://img.shields.io/badge/version-1.0.3-informational)](package.json)
 [![GitHub stars](https://img.shields.io/github/stars/VKaddala/OneGitVault)](https://github.com/VKaddala/OneGitVault/stargazers)
 [![License](https://img.shields.io/github/license/VKaddala/OneGitVault)](LICENSE)
 
 **OneGitVault** is a standalone native Windows desktop application and modern open-source observatory for discovering, inspecting, bookmarking, and synchronizing high-impact repositories from GitHub.
 
-Featuring a Raycast/Arc-inspired **Warm Charcoal & Honey Amber** design language with seamless Dark & Light theme parity, interactive repository README previews, and cross-device GitHub Gist bookmark synchronization.
+Featuring three curated themes (**Dark**, **Light**, and **Ambient** twilight slate), a centered README modal inspector with direct **GitHub Releases binary downloader**, and cross-device GitHub Gist bookmark synchronization.
 
 ---
 
 ## ✨ Features
 
-- **Interactive README Inspector**: Click any repository tile to slide open the project's README directly in-app. Renders GitHub Flavored Markdown (code blocks, directory trees, tables, links, images) with a quick action footer to **Copy `git clone`**, **Download ZIP**, open the **Homepage**, or launch on **GitHub**.
+- **Centered README & Releases Inspector**: Click any repository tile to open a centered modal inspector.
+  - **README View**: Renders GitHub Flavored Markdown (code blocks, directory trees, tables, links, images) with a quick action footer to **Copy `git clone`**, **Download ZIP**, open the **Homepage**, or launch on **GitHub**. All external links open securely in your default browser.
+  - **Releases Downloader**: If the repository publishes releases, view recent release tags, dates, changelogs, and directly download release assets (`.exe`, `.zip`, `.tar.gz`, `.deb`, etc.) with file sizes and download counts.
+- **Three Ergonomic Themes**: Toggle seamlessly between **Dark** (Warm Charcoal & Honey Amber), **Light** (Sand & Ivory), and **Ambient** (Twilight Slate with zero eye glare and sky cyan accents). All modals, repository cards, and README styling dynamically adapt.
 - **Live Search & Streaming**: Infinite pagination streaming repository batches directly from GitHub's REST API, with an Auto-Stream toggle and manual page loading.
 - **7 Curated Technology Sectors**: Instant filtering across AI & Machine Learning, Web & Frameworks, Cloud & DevOps, Developer Tools, Databases, Mobile & Cross-platform, and Cybersecurity.
 - **Precision Multi-Filter Engine**: Filter live by language (TypeScript, Rust, Python, Go, C++, etc.) and minimum star thresholds (`10k+`, `50k+`, `100k+`), with star, fork, and update-time sorting.
 - **Repository Vault with GitHub Gist Cloud Sync**:
   - Save your favorite repositories locally in an organized bookmark drawer.
   - When a GitHub Personal Access Token is connected, use **Push** and **Pull** to sync and back up bookmarks to your personal GitHub account as a private Gist (`onegitvault-bookmarks.json`) across machines.
-- **Complete Dark & Light Theme Modes**: Toggle seamlessly between Warm Charcoal Dark Mode and Sand/Ivory Light Mode. All modals, repository cards, and README panels dynamically adapt.
 - **Rate Limit Tracker & Offline Resilience**: Built-in quota monitor for GitHub API limits (60/hr unauthenticated, 5,000/hr with token) and an offline fallback vault of 30+ curated projects.
-- **Bespoke Application Icon**: Custom amber vault insignia embedded into the Windows `.exe`, installer wizard, title bar, and browser favicon.
+- **Bespoke Application Icon**: Custom amber vault insignia embedded into the Windows `.exe`, installer wizard, title bar, desktop shortcut, and browser favicon.
 
 ---
 
@@ -33,7 +35,7 @@ Featuring a Raycast/Arc-inspired **Warm Charcoal & Honey Amber** design language
 
 ### 1. Standalone Installer (Recommended)
 
-1. Download **`OneGitVault-Setup-1.0.2.exe`** from `release/setup/` (or [GitHub Releases](https://github.com/VKaddala/OneGitVault/releases)).
+1. Download **`OneGitVault-Setup-1.0.3.exe`** from `release/setup/` (or [GitHub Releases](https://github.com/VKaddala/OneGitVault/releases)).
 2. Double-click the installer and follow the setup wizard.
 3. Automatically creates Start Menu and Desktop shortcuts with the custom OneGitVault icon and installs an uninstaller in Windows *Add or remove programs*.
 

@@ -46,6 +46,31 @@ export interface Category {
 
 export type SortOption = 'stars' | 'forks' | 'updated';
 export type ViewMode = 'grid' | 'list';
+export type ThemeMode = 'dark' | 'light' | 'ambient';
+
+export interface ReleaseAsset {
+  id: number;
+  name: string;
+  size: number;
+  download_count: number;
+  browser_download_url: string;
+  content_type: string;
+  created_at: string;
+}
+
+export interface Release {
+  id: number;
+  tag_name: string;
+  name: string | null;
+  body: string | null;
+  draft: boolean;
+  prerelease: boolean;
+  published_at: string;
+  html_url: string;
+  assets: ReleaseAsset[];
+  zipball_url?: string;
+  tarball_url?: string;
+}
 
 export interface FilterState {
   searchQuery: string;

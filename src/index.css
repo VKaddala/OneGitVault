@@ -50,6 +50,19 @@ code, pre, .font-mono {
   border-radius: 4px;
 }
 
+.ambient ::-webkit-scrollbar-track {
+  background: #0f141c;
+}
+
+.ambient ::-webkit-scrollbar-thumb {
+  background: #273548;
+  border-radius: 4px;
+}
+
+.ambient ::-webkit-scrollbar-thumb:hover {
+  background: #38bdf8;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #e64833;
 }
@@ -232,4 +245,62 @@ code, pre, .font-mono {
 :root:not(.dark) .readme-body th,
 :root:not(.dark) .readme-body td {
   border-color: #d8c8b4;
+}
+
+/* ── Ambient Mode Markdown Overrides ── */
+.ambient .readme-body {
+  color: #f1f5f9;
+}
+.ambient .readme-body h1,
+.ambient .readme-body h2,
+.ambient .readme-body h4,
+.ambient .readme-body h5,
+.ambient .readme-body h6 {
+  color: #f1f5f9;
+  border-color: #273548;
+}
+.ambient .readme-body h3 {
+  color: #38bdf8;
+}
+.ambient .readme-body p,
+.ambient .readme-body li {
+  color: #cbd5e1;
+}
+.ambient .readme-body pre {
+  background: #131b26;
+  border-color: #273548;
+}
+.ambient .readme-body pre code {
+  color: #f1f5f9;
+}
+.ambient .readme-body :not(pre) > code {
+  background: #1a2332;
+  border-color: #273548;
+  color: #38bdf8;
+}
+.ambient .readme-body a {
+  color: #38bdf8;
+}
+.ambient .readme-body a:hover {
+  color: #7dd3fc;
+}
+.ambient .readme-body blockquote {
+  border-left-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  color: #e2e8f0;
+}
+.ambient .readme-body hr {
+  border-top-color: #273548;
+}
+.ambient .readme-body th {
+  background: #1a2332;
+  color: #f1f5f9;
+  border-color: #273548;
+}
+.ambient .readme-body th,
+.ambient .readme-body td {
+  border-color: #273548;
+}
+.ambient .readme-body tr:nth-child(even) {
+  background: rgba(30, 41, 59, 0.4);
 }

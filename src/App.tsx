@@ -13,7 +13,8 @@ import {
   Repository, 
   CategoryId, 
   SortOption, 
-  ViewMode 
+  ViewMode,
+  ThemeMode 
 } from './types';
 import { 
   fetchRepositories, 
@@ -34,34 +35,40 @@ const BOOKMARKS_STORAGE_KEY = 'onegitvault_bookmarks_v1';
 const THEME_STORAGE_KEY = 'onegitvault_theme_mode';
 
 export const App: React.FC = () => {
-  // Theme State (Dark default with full Light toggle)
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+  // Theme State: 'dark' (Prometheus Petrol) | 'light' (Prometheus Cream) | 'ambient' (Cool Twilight Slate)
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     try {
       const saved = localStorage.getItem(THEME_STORAGE_KEY);
-      if (saved) return saved === 'dark';
-      return true;
+      if (saved === 'ambient' || saved === 'light' || saved === 'dark') return saved;
+      return 'dark';
     } catch {
-      return true;
+      return 'dark';
     }
   });
 
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
+    const el = document.documentElement;
+    el.classList.remove('dark', 'light', 'ambient');
+    if (themeMode === 'ambient') {
+      el.classList.add('dark', 'ambient');
+    } else if (themeMode === 'light') {
+      el.classList.add('light');
     } else {
-      document.documentElement.classList.remove('dark');
-      document.documentElement.classList.add('light');
+      el.classList.add('dark');
     }
     try {
-      localStorage.setItem(THEME_STORAGE_KEY, isDarkMode ? 'dark' : 'light');
+      localStorage.setItem(THEME_STORAGE_KEY, themeMode);
     } catch (e) {
       // ignore
     }
-  }, [isDarkMode]);
+  }, [themeMode]);
 
-  const handleToggleTheme = () => {
-    setIsDarkMode(prev => !prev);
+  const handleCycleTheme = () => {
+    setThemeMode((prev) => {
+      if (prev === 'dark') return 'light';
+      if (prev === 'light') return 'ambient';
+      return 'dark';
+    });
   };
 
   // Navigation & Search State
@@ -314,7 +321,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FBE9D0] text-[#244855] dark:bg-[#101b20] dark:text-[#FBE9D0] flex flex-col font-sans transition-colors duration-200 selection:bg-flame-brand/30 selection:text-flame-brand">
+    <div className="min-h-screen bg-[#FBE9D0] text-[#244855] dark:bg-[#101b20] dark:text-[#FBE9D0] ambient:bg-[#0f141c] ambient:text-[#f1f5f9] flex flex-col font-sans transition-colors duration-200 selection:bg-flame-brand/30 selection:text-flame-brand ambient:selection:bg-[#38bdf8]/30 ambient:selection:text-[#38bdf8]">
       
       {/* Top Navigation */}
       <Header
@@ -323,8 +330,8 @@ export const App: React.FC = () => {
         bookmarksCount={bookmarks.length}
         onOpenBookmarks={() => setIsBookmarksOpen(true)}
         onOpenTokenModal={() => setIsTokenModalOpen(true)}
-        isDarkMode={isDarkMode}
-        onToggleTheme={handleToggleTheme}
+        themeMode={themeMode}
+        onCycleTheme={handleCycleTheme}
         rateLimit={rateLimit}
         isOfflineFallback={isOfflineFallback}
       />
@@ -351,21 +358,21 @@ export const App: React.FC = () => {
         
         {/* Offline / Rate Limit Notice */}
         {isOfflineFallback && (
-          <div className="mb-6 p-4 rounded-2xl bg-[#E64833]/10 border border-[#E64833]/30 dark:bg-[#16272f] dark:border-[#244855] flex items-start justify-between gap-4">
+          <div className="mb-6 p-4 rounded-2xl bg-[#E64833]/10 border border-[#E64833]/30 dark:bg-[#16272f] dark:border-[#244855] ambient:bg-[#17202c] ambient:border-[#273548] flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-[#E64833] flex-shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-[#E64833] ambient:text-[#38bdf8] flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-sm font-display font-bold text-[#244855] dark:text-[#FBE9D0]">
+                <h4 className="text-sm font-display font-bold text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc]">
                   Curated Vault Active (GitHub IP Quota Limit)
                 </h4>
-                <p className="text-xs font-sans text-[#874F41] dark:text-[#90AEAD] mt-0.5 leading-relaxed">
+                <p className="text-xs font-sans text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] mt-0.5 leading-relaxed">
                   GitHub allows 60 queries/hour without authorization. Connect your Personal Access Token in the top-right corner to unlock 5,000 live requests/hr.
                 </p>
               </div>
             </div>
             <button
               onClick={() => setIsTokenModalOpen(true)}
-              className="text-xs font-mono font-medium px-3 py-1.5 rounded-xl bg-[#E64833] hover:bg-[#c73a27] text-white border border-[#E64833] whitespace-nowrap transition-colors shadow-sm"
+              className="text-xs font-mono font-medium px-3 py-1.5 rounded-xl bg-[#E64833] hover:bg-[#c73a27] ambient:bg-[#38bdf8] ambient:hover:bg-[#7dd3fc] text-white ambient:text-[#0f141c] border border-[#E64833] ambient:border-[#38bdf8] whitespace-nowrap transition-colors shadow-sm"
             >
               Add Token
             </button>
@@ -391,20 +398,20 @@ export const App: React.FC = () => {
         />
 
         {/* Live Streaming Info Banner */}
-        <div className="my-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FFF9F0] dark:bg-[#16272f] border border-[#e3d1ba] dark:border-[#244855] rounded-2xl p-3.5 shadow-sm transition-colors duration-200">
+        <div className="my-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FFF9F0] dark:bg-[#16272f] ambient:bg-[#161b22] border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#273548] rounded-2xl p-3.5 shadow-sm transition-colors duration-200">
           <div>
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#E64833] animate-pulse" />
-              <h2 className="text-sm sm:text-base font-display font-bold text-[#244855] dark:text-[#FBE9D0] flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#E64833] ambient:bg-[#38bdf8] animate-pulse" />
+              <h2 className="text-sm sm:text-base font-display font-bold text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc] flex items-center gap-2">
                 <span>{activeCategoryObj.name}</span>
                 {debouncedQuery && (
-                  <span className="text-xs font-mono font-normal text-[#874F41] dark:text-[#90AEAD]">
-                    matching "<span className="text-[#E64833]">{debouncedQuery}</span>"
+                  <span className="text-xs font-mono font-normal text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]">
+                    matching "<span className="text-[#E64833] ambient:text-[#38bdf8]">{debouncedQuery}</span>"
                   </span>
                 )}
               </h2>
             </div>
-            <p className="text-xs font-mono text-[#874F41] dark:text-[#90AEAD] mt-0.5">
+            <p className="text-xs font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] mt-0.5">
               {totalCount > 0 
                 ? `Loaded ${displayedRepositories.length} of ${totalCount.toLocaleString()} repositories from GitHub`
                 : activeCategoryObj.description}
@@ -417,12 +424,12 @@ export const App: React.FC = () => {
               onClick={() => setAutoScroll(!autoScroll)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono border transition-all ${
                 autoScroll
-                  ? 'bg-[#E64833] text-white border-[#E64833] font-semibold shadow-sm'
-                  : 'bg-[#FAF0E4] text-[#244855] border-[#e3d1ba] dark:bg-[#101b20] dark:text-[#90AEAD] dark:border-[#244855]'
+                  ? 'bg-[#E64833] ambient:bg-[#38bdf8] text-white ambient:text-[#0f141c] border-[#E64833] ambient:border-[#38bdf8] font-semibold shadow-sm'
+                  : 'bg-[#FAF0E4] text-[#244855] border-[#e3d1ba] dark:bg-[#101b20] dark:text-[#90AEAD] dark:border-[#244855] ambient:bg-[#0f141c] ambient:text-[#94a3b8] ambient:border-[#273548]'
               }`}
               title="Toggle automatic streaming when scrolling down"
             >
-              <Zap className={`w-3.5 h-3.5 ${autoScroll ? 'text-white' : 'text-[#874F41] dark:text-[#90AEAD]'}`} />
+              <Zap className={`w-3.5 h-3.5 ${autoScroll ? 'text-white ambient:text-[#0f141c]' : 'text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]'}`} />
               <span>Auto-Stream: {autoScroll ? 'ON' : 'OFF'}</span>
             </button>
 
@@ -430,10 +437,10 @@ export const App: React.FC = () => {
             <button
               onClick={loadInitialData}
               disabled={isLoading}
-              className="flex items-center gap-1.5 text-xs font-mono text-[#244855] hover:text-[#E64833] bg-[#FAF0E4] hover:bg-[#F2DFCA] dark:text-[#90AEAD] dark:hover:text-[#FBE9D0] dark:bg-[#101b20] dark:hover:bg-[#132229] px-3 py-1.5 rounded-xl border border-[#e3d1ba] dark:border-[#244855] transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs font-mono text-[#244855] hover:text-[#E64833] bg-[#FAF0E4] hover:bg-[#F2DFCA] dark:text-[#90AEAD] dark:hover:text-[#FBE9D0] dark:bg-[#101b20] dark:hover:bg-[#132229] ambient:text-[#94a3b8] ambient:hover:text-white ambient:bg-[#0f141c] ambient:hover:bg-[#17202c] px-3 py-1.5 rounded-xl border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#273548] transition-colors disabled:opacity-50"
               title="Refresh stream"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#E64833]' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#E64833] ambient:text-[#38bdf8]' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
@@ -442,8 +449,8 @@ export const App: React.FC = () => {
         {/* Initial Loading Spinner */}
         {isLoading && (
           <div className="py-24 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="w-8 h-8 text-[#E64833] animate-spin" />
-            <p className="text-xs font-mono text-[#874F41] dark:text-[#90AEAD]">
+            <Loader2 className="w-8 h-8 text-[#E64833] ambient:text-[#38bdf8] animate-spin" />
+            <p className="text-xs font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]">
               Querying GitHub for live repositories...
             </p>
           </div>
@@ -472,15 +479,15 @@ export const App: React.FC = () => {
 
         {/* Empty State */}
         {!isLoading && displayedRepositories.length === 0 && (
-          <div className="py-20 text-center rounded-2xl border border-[#e3d1ba] dark:border-[#244855] bg-[#FFF9F0] dark:bg-[#16272f] p-8">
-            <FolderSearch className="w-12 h-12 text-[#874F41]/50 dark:text-[#90AEAD]/50 mx-auto mb-3" />
-            <h3 className="text-base font-display font-bold text-[#244855] dark:text-[#FBE9D0]">No repositories found</h3>
-            <p className="text-xs font-sans text-[#874F41] dark:text-[#90AEAD] max-w-sm mx-auto mt-1 mb-4">
+          <div className="py-20 text-center rounded-2xl border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#273548] bg-[#FFF9F0] dark:bg-[#16272f] ambient:bg-[#161b22] p-8">
+            <FolderSearch className="w-12 h-12 text-[#874F41]/50 dark:text-[#90AEAD]/50 ambient:text-[#94a3b8]/50 mx-auto mb-3" />
+            <h3 className="text-base font-display font-bold text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc]">No repositories found</h3>
+            <p className="text-xs font-sans text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8] max-w-sm mx-auto mt-1 mb-4">
               We couldn't find any repositories matching your current query.
             </p>
             <button
               onClick={handleResetFilters}
-              className="px-4 py-2 text-xs font-mono font-bold text-white bg-[#E64833] hover:bg-[#c73a27] rounded-xl shadow-md transition-all"
+              className="px-4 py-2 text-xs font-mono font-bold text-white ambient:text-[#0f141c] bg-[#E64833] hover:bg-[#c73a27] ambient:bg-[#38bdf8] ambient:hover:bg-[#7dd3fc] rounded-xl shadow-md transition-all"
             >
               Reset Filters
             </button>
@@ -493,7 +500,7 @@ export const App: React.FC = () => {
             
             {/* Loading more spinner */}
             {isLoadingMore && (
-              <div className="flex items-center gap-2 text-xs font-mono text-[#E64833] py-4 animate-fadeIn">
+              <div className="flex items-center gap-2 text-xs font-mono text-[#E64833] ambient:text-[#38bdf8] py-4 animate-fadeIn">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Streaming next batch of repositories from GitHub...</span>
               </div>
@@ -503,10 +510,10 @@ export const App: React.FC = () => {
             {!isLoadingMore && hasMore && (
               <button
                 onClick={loadNextPage}
-                className="group flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#FFF9F0] hover:bg-white text-[#244855] border-[#e3d1ba] dark:bg-[#16272f] dark:hover:bg-[#1c323c] dark:text-[#FBE9D0] dark:hover:text-white border dark:border-[#244855] hover:border-[#E64833]/40 font-mono text-xs shadow-sm transition-all active:scale-95"
+                className="group flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#FFF9F0] hover:bg-white text-[#244855] border-[#e3d1ba] dark:bg-[#16272f] dark:hover:bg-[#1c323c] dark:text-[#FBE9D0] dark:hover:text-white ambient:bg-[#161b22] ambient:hover:bg-[#1f2937] ambient:text-[#f0f6fc] border dark:border-[#244855] ambient:border-[#273548] hover:border-[#E64833]/40 ambient:hover:border-[#38bdf8]/40 font-mono text-xs shadow-sm transition-all active:scale-95"
               >
                 <span>Load Next 40 Repositories</span>
-                <span className="text-[11px] text-[#E64833] font-bold">
+                <span className="text-[11px] text-[#E64833] ambient:text-[#38bdf8] font-bold">
                   (Page {currentPage + 1})
                 </span>
               </button>
@@ -514,7 +521,7 @@ export const App: React.FC = () => {
 
             {/* End of list reached */}
             {!hasMore && (
-              <div className="text-center py-6 text-xs font-mono text-[#874F41] dark:text-[#90AEAD]">
+              <div className="text-center py-6 text-xs font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]">
                 <span>✦ End of available search stream for this query.</span>
               </div>
             )}
@@ -531,7 +538,7 @@ export const App: React.FC = () => {
       {showScrollTop && (
         <button
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 p-3 rounded-2xl bg-[#FFF9F0] hover:bg-white text-[#E64833] dark:bg-[#16272f] dark:hover:bg-[#1c323c] dark:text-[#ff5c47] shadow-xl border border-[#e3d1ba] dark:border-[#244855] hover:border-[#E64833]/50 transition-all duration-200 hover:scale-105 z-40"
+          className="fixed bottom-6 right-6 p-3 rounded-2xl bg-[#FFF9F0] hover:bg-white text-[#E64833] dark:bg-[#16272f] dark:hover:bg-[#1c323c] dark:text-[#ff5c47] ambient:bg-[#161b22] ambient:hover:bg-[#1f2937] ambient:text-[#38bdf8] shadow-xl border border-[#e3d1ba] dark:border-[#244855] ambient:border-[#273548] hover:border-[#E64833]/50 ambient:hover:border-[#38bdf8]/50 transition-all duration-200 hover:scale-105 z-40"
           title="Scroll to Top"
         >
           <ArrowUp className="w-5 h-5" />
@@ -539,18 +546,18 @@ export const App: React.FC = () => {
       )}
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-[#e3d1ba] dark:border-[#1e343e] bg-[#FAF0E4] dark:bg-[#0c1519] py-6 transition-colors duration-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-[#874F41] dark:text-[#90AEAD]">
+      <footer className="mt-auto border-t border-[#e3d1ba] dark:border-[#1e343e] ambient:border-[#21262d] bg-[#FAF0E4] dark:bg-[#0c1519] ambient:bg-[#090d13] py-6 transition-colors duration-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-[#874F41] dark:text-[#90AEAD] ambient:text-[#94a3b8]">
           <div className="flex items-center gap-2">
             <OneGitVaultLogo className="w-5 h-5" />
-            <span className="font-display font-bold text-[#244855] dark:text-[#FBE9D0]">OneGitVault</span>
+            <span className="font-display font-bold text-[#244855] dark:text-[#FBE9D0] ambient:text-[#f0f6fc]">OneGitVault</span>
             <span>• Standalone Open Source Observatory</span>
           </div>
 
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsTokenModalOpen(true)}
-              className="hover:text-[#E64833] transition-colors"
+              className="hover:text-[#E64833] ambient:hover:text-[#38bdf8] transition-colors"
             >
               API Token Settings
             </button>
@@ -558,7 +565,7 @@ export const App: React.FC = () => {
               href="https://github.com/trending"
               target="_blank"
               rel="noreferrer"
-              className="hover:text-[#E64833] transition-colors flex items-center gap-1"
+              className="hover:text-[#E64833] ambient:hover:text-[#38bdf8] transition-colors flex items-center gap-1"
             >
               <Globe className="w-3.5 h-3.5" />
               <span>GitHub Trending</span>

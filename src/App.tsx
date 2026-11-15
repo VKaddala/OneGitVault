@@ -6,6 +6,7 @@ import { ProjectCard } from './components/ProjectCard';
 import { TokenModal } from './components/TokenModal';
 import { BookmarksModal } from './components/BookmarksModal';
 import { RepoDetailPanel } from './components/RepoDetailPanel';
+import { TrendingModal } from './components/TrendingModal';
 import { UpdateModal } from './components/UpdateModal';
 import { OneGitVaultLogo } from './components/OneGitVaultLogo';
 import { CATEGORIES } from './data/curatedProjects';
@@ -69,6 +70,7 @@ export const App: React.FC = () => {
   const [isTokenModalOpen, setIsTokenModalOpen] = useState<boolean>(false);
   const [isBookmarksOpen, setIsBookmarksOpen] = useState<boolean>(false);
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
+  const [isTrendingOpen, setIsTrendingOpen] = useState<boolean>(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [isCheckingUpdates, setIsCheckingUpdates] = useState<boolean>(false);
@@ -244,6 +246,7 @@ export const App: React.FC = () => {
         bookmarksCount={bookmarksCount}
         onOpenBookmarks={() => setIsBookmarksOpen(true)}
         onOpenTokenModal={() => setIsTokenModalOpen(true)}
+        onOpenTrending={() => setIsTrendingOpen(true)}
         rateLimit={rateLimit}
         isOfflineFallback={isOfflineFallback}
         updateInfo={updateInfo}
@@ -499,6 +502,14 @@ export const App: React.FC = () => {
         repo={selectedRepo}
         isBookmarked={selectedRepo ? isBookmarked(selectedRepo.id) : false}
         onClose={() => setSelectedRepo(null)}
+        onToggleBookmark={toggleBookmark}
+      />
+
+      <TrendingModal
+        isOpen={isTrendingOpen}
+        onClose={() => setIsTrendingOpen(false)}
+        onSelectRepo={(r) => setSelectedRepo(r)}
+        isBookmarked={isBookmarked}
         onToggleBookmark={toggleBookmark}
       />
 

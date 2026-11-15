@@ -394,3 +394,80 @@ export async function fetchRepositoryReleases(fullName: string): Promise<Release
     return [];
   }
 }
+
+/**
+ * Fetches live trending GitHub repositories for the selected period & language
+ */
+export async function fetchTrendingRepositories(
+  period: 'daily' | 'weekly' | 'monthly' = 'daily',
+  language?: string
+): Promise<Repository[]> {
+  const now = new Date();
+  let daysAgo = 3;
+  if (period === 'weekly') daysAgo = 7;
+  if (period === 'monthly') daysAgo = 30;
+
+  const targetDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+  const dateStr = targetDate.toISOString().split('T')[0];
+
+  let query = `created:>=${dateStr}`;
+  if (language) {
+    query += ` language:${language}`;
+  }
+
+  const token = getStoredToken();
+  const headers: HeadersInit = {
+    Accept: 'application/vnd.github+json',
+    'User-Agent': 'OneGitVault-Desktop',
+  };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=30`;
+  try {
+    const res = await fetch(url, { headers });
+    updateRateLimitFromHeaders(res.headers);
+    if (res.ok) {
+      const data = await res.json();
+      const items = data.items || [];
+      return items.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        full_name: item.full_name,
+        owner: {
+          login: item.owner?.login || '',
+          avatar_url: item.owner?.avatar_url || '',
+          html_url: item.owner?.html_url || '',
+        },
+        description: item.description,
+        html_url: item.html_url,
+        homepage: item.homepage,
+        stargazers_count: item.stargazers_count,
+        forks_count: item.forks_count,
+        open_issues_count: item.open_issues_count,
+        language: item.language,
+        topics: item.topics || [],
+        updated_at: item.updated_at,
+        created_at: item.created_at,
+        category: 'all',
+        license: item.license
+          ? {
+              key: item.license.key,
+              name: item.license.name,
+              spdx_id: item.license.spdx_id,
+            }
+          : null,
+      }));
+    }
+  } catch (e) {
+    console.error('Failed to fetch trending repos from GitHub', e);
+  }
+
+  // Graceful fallback to top curated projects
+  let fallback = CURATED_PROJECTS;
+  if (language) {
+    fallback = fallback.filter((r) => r.language?.toLowerCase() === language.toLowerCase());
+  }
+  return fallback.slice(0, 20);
+}

@@ -32,6 +32,7 @@ interface TitleBarProps {
   bookmarksCount: number;
   onOpenBookmarks: () => void;
   onOpenTokenModal: () => void;
+  onOpenTrending: () => void;
   rateLimit: RateLimitInfo;
   isOfflineFallback: boolean;
   updateInfo: UpdateInfo | null;
@@ -46,6 +47,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   bookmarksCount,
   onOpenBookmarks,
   onOpenTokenModal,
+  onOpenTrending,
   rateLimit,
   isOfflineFallback,
   updateInfo,
@@ -377,8 +379,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           )}
         </div>
 
-        {/* ── Center: Search Trigger (Flyout Launcher) ── */}
-        <div className="flex-1 max-w-lg mx-3 flex items-center justify-center app-no-drag">
+        {/* ── Center: Search Trigger (Flyout Launcher - Mobile Responsive) ── */}
+        <div className="flex-1 max-w-lg mx-1.5 sm:mx-3 flex items-center justify-center app-no-drag min-w-0">
           <button
             data-search-trigger="true"
             onClick={(e) => {
@@ -387,25 +389,28 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               if (isAboutOpen) setIsAboutOpen(false);
               if (showThemeMenu) setShowThemeMenu(false);
             }}
-            className={`w-full max-w-md flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl border text-xs font-sans transition-all duration-150 shadow-inner group ${
+            className={`w-full max-w-md flex items-center justify-between gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-xl border text-xs font-sans transition-all duration-150 shadow-inner group ${
               isSearchFlyoutOpen
                 ? 'bg-surface-active border-action ring-1 ring-action/30 text-txt-primary'
                 : 'bg-surface/80 hover:bg-surface border-themeline hover:border-action-border text-txt-muted hover:text-txt-primary'
             }`}
             title="Click to search repositories (Ctrl+K)"
           >
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0 truncate">
               <Search className="w-3.5 h-3.5 text-action flex-shrink-0" />
               <span className="truncate text-left text-xs">
                 {searchQuery.trim() ? (
                   <span className="font-semibold text-txt-primary">"{searchQuery}"</span>
                 ) : (
-                  <span className="text-txt-muted">Search repositories (e.g. rust, llm, vite)...</span>
+                  <>
+                    <span className="hidden sm:inline text-txt-muted">Search repositories (e.g. rust, llm, vite)...</span>
+                    <span className="sm:hidden text-txt-muted">Search...</span>
+                  </>
                 )}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="flex items-center gap-1 flex-shrink-0">
               {searchQuery.trim() && (
                 <span
                   onClick={(e) => {
@@ -418,7 +423,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                   ✕
                 </span>
               )}
-              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded bg-canvas border border-themeline text-txt-muted group-hover:text-txt-secondary">
+              <kbd className="hidden md:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded bg-canvas border border-themeline text-txt-muted group-hover:text-txt-secondary">
                 Ctrl+K
               </kbd>
             </div>
@@ -428,10 +433,10 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         {/* ── Right Side: Smaller Icons Near Minimize Button ── */}
         <div className="flex items-center gap-1 app-no-drag flex-shrink-0">
           
-          {/* Rate Limit Badge Pill */}
+          {/* Rate Limit Badge Pill (Dynamic for mobile) */}
           <button
             onClick={onOpenTokenModal}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-mono border transition-all ${
+            className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg text-xs font-mono border transition-all ${
               isOfflineFallback
                 ? 'bg-action-soft text-action border-action-border'
                 : 'bg-surface hover:bg-surface-hover text-txt-primary border-themeline hover:border-action-border hover:text-action shadow-sm'
@@ -445,15 +450,15 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               </>
             ) : (
               <>
-                <span className="w-1.5 h-1.5 rounded-full bg-action animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-action animate-pulse flex-shrink-0" />
                 <span className="text-[11px] font-bold">{rateLimit.remaining}</span>
-                <span className="hidden lg:inline text-[10px] text-txt-muted font-normal">calls</span>
+                <span className="hidden xl:inline text-[10px] text-txt-muted font-normal">calls</span>
               </>
             )}
-            <Key className="w-3 h-3 text-txt-muted ml-0.5" />
+            <Key className="w-3 h-3 text-txt-muted ml-0.5 hidden sm:inline" />
           </button>
 
-          {/* Theme Selector Button */}
+          {/* Theme Selector Button (Fixed Palette Icon - never changes with active theme) */}
           <button
             ref={themeTriggerRef}
             data-theme-trigger="true"
@@ -463,10 +468,10 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               if (isAboutOpen) setIsAboutOpen(false);
               if (isSearchFlyoutOpen) setIsSearchFlyoutOpen(false);
             }}
-            className="p-1.5 rounded-lg bg-surface hover:bg-surface-hover text-txt-primary hover:text-action border border-themeline transition-all shadow-sm"
-            title={`Active Theme: ${currentTheme.name} (Click to change)`}
+            className="p-1.5 rounded-lg bg-surface hover:bg-surface-hover text-txt-primary hover:text-action border border-themeline transition-all shadow-sm flex items-center justify-center"
+            title={`Themes: ${currentTheme.name} (Click to change theme)`}
           >
-            {getThemeIcon(currentTheme.iconName, currentTheme.isDark)}
+            <Palette className="w-3.5 h-3.5 text-action" />
           </button>
 
           {/* Theme Selection Portal */}
@@ -626,19 +631,17 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             )}
           </button>
 
-          {/* GitHub Trending Link */}
-          <a
-            href="https://github.com/trending"
-            target="_blank"
-            rel="noreferrer"
-            className="p-1.5 rounded-lg bg-surface hover:bg-surface-hover text-txt-primary hover:text-action border border-themeline transition-all shadow-sm"
-            title="GitHub Trending"
+          {/* GitHub Trending in-app Button */}
+          <button
+            onClick={onOpenTrending}
+            className="p-1.5 rounded-lg bg-surface hover:bg-surface-hover text-txt-primary hover:text-action border border-themeline transition-all shadow-sm flex items-center justify-center"
+            title="GitHub Trending Repositories (In-App View)"
           >
-            <GithubIcon className="w-3.5 h-3.5" />
-          </a>
+            <Flame className="w-3.5 h-3.5 text-action" />
+          </button>
 
           {/* Vertical Divider before Window Controls */}
-          <div className="h-4 w-px bg-themeline mx-1" />
+          <div className="h-4 w-px bg-themeline mx-0.5 sm:mx-1" />
 
           {/* Native-style Window Controls */}
           {isElectron && (
@@ -646,7 +649,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               {/* Minimize */}
               <button
                 onClick={handleMinimize}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-txt-muted hover:text-txt-primary hover:bg-surface-hover transition-colors"
+                className="w-7 sm:w-8 h-8 flex items-center justify-center rounded-lg text-txt-muted hover:text-txt-primary hover:bg-surface-hover transition-colors"
                 title="Minimize"
                 aria-label="Minimize"
               >
@@ -656,7 +659,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               {/* Maximize / Restore */}
               <button
                 onClick={handleMaximize}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-txt-muted hover:text-txt-primary hover:bg-surface-hover transition-colors"
+                className="w-7 sm:w-8 h-8 flex items-center justify-center rounded-lg text-txt-muted hover:text-txt-primary hover:bg-surface-hover transition-colors"
                 title={isMaximized ? 'Restore' : 'Maximize'}
                 aria-label={isMaximized ? 'Restore' : 'Maximize'}
               >
@@ -670,7 +673,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               {/* Close */}
               <button
                 onClick={handleClose}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-txt-muted hover:text-white hover:bg-rose-600 transition-colors"
+                className="w-7 sm:w-8 h-8 flex items-center justify-center rounded-lg text-txt-muted hover:text-white hover:bg-rose-600 transition-colors"
                 title="Close"
                 aria-label="Close"
               >

@@ -218,12 +218,34 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
   const popularTopics = ['rust', 'deepseek', 'llm', 'agents', 'vite', 'python', 'react', 'database'];
 
+  const hasAnyPopoverOpen = isAboutOpen || isSearchFlyoutOpen || showThemeMenu;
+
+  const handleTitleBarClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const isInsideAbout = target.closest('[data-about-popover="true"]') || target.closest('[data-about-trigger="true"]');
+    const isInsideFlyout = target.closest('[data-search-flyout="true"]') || target.closest('[data-search-trigger="true"]');
+    const isInsideTheme = target.closest('#titlebar-theme-portal') || target.closest('[data-theme-trigger="true"]');
+
+    if (!isInsideAbout && isAboutOpen) {
+      setIsAboutOpen(false);
+    }
+    if (!isInsideFlyout && isSearchFlyoutOpen) {
+      setIsSearchFlyoutOpen(false);
+    }
+    if (!isInsideTheme && showThemeMenu) {
+      setShowThemeMenu(false);
+    }
+  };
+
   return (
     <>
       {/* ── Main Unified TitleBar ── */}
       <div
         onDoubleClick={handleDoubleClickDrag}
-        className="w-full h-11 bg-header border-b border-themeline flex items-center justify-between px-3 select-none app-drag-region relative z-50 flex-shrink-0 transition-colors duration-200"
+        onMouseDown={handleTitleBarClick}
+        className={`w-full h-11 bg-header border-b border-themeline flex items-center justify-between px-3 select-none relative z-50 flex-shrink-0 transition-colors duration-200 ${
+          hasAnyPopoverOpen ? 'app-no-drag' : 'app-drag-region'
+        }`}
       >
         {/* ── Left Side: App Brand & Expand About ── */}
         <div className="flex items-center gap-1.5 app-no-drag relative flex-shrink-0" ref={aboutDropdownRef}>
@@ -244,7 +266,13 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
           {/* Expand chevron that toggles About popover */}
           <button
-            onClick={() => setIsAboutOpen((prev) => !prev)}
+            data-about-trigger="true"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsAboutOpen((prev) => !prev);
+              if (isSearchFlyoutOpen) setIsSearchFlyoutOpen(false);
+              if (showThemeMenu) setShowThemeMenu(false);
+            }}
             className={`flex items-center justify-center p-1 rounded-md text-txt-muted hover:text-txt-primary hover:bg-surface-hover transition-colors ${
               isAboutOpen ? 'bg-surface-hover text-txt-primary' : ''
             }`}
@@ -270,9 +298,17 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             </button>
           )}
 
-          {/* About Popover */}
+          {/* About Popover with Click-Away Backdrop */}
           {isAboutOpen && (
-            <div className="absolute top-9 left-0 w-80 bg-surface border border-themeline rounded-xl shadow-2xl p-4 z-50 animate-fadeIn text-left backdrop-blur-xl">
+            <>
+              <div 
+                className="fixed inset-0 z-40 app-no-drag"
+                onClick={() => setIsAboutOpen(false)}
+              />
+              <div 
+                data-about-popover="true"
+                className="absolute top-9 left-0 w-80 bg-surface border border-themeline rounded-xl shadow-2xl p-4 z-50 animate-fadeIn text-left backdrop-blur-xl"
+              >
               <div className="flex items-start gap-3">
                 <div className="p-2 rounded-xl bg-surface-active border border-themeline flex-shrink-0 shadow-sm">
                   <OneGitVaultLogo className="w-6 h-6" />
@@ -337,6 +373,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                 )}
               </div>
             </div>
+            </>
           )}
         </div>
 
@@ -344,7 +381,12 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         <div className="flex-1 max-w-lg mx-3 flex items-center justify-center app-no-drag">
           <button
             data-search-trigger="true"
-            onClick={() => setIsSearchFlyoutOpen((prev) => !prev)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsSearchFlyoutOpen((prev) => !prev);
+              if (isAboutOpen) setIsAboutOpen(false);
+              if (showThemeMenu) setShowThemeMenu(false);
+            }}
             className={`w-full max-w-md flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl border text-xs font-sans transition-all duration-150 shadow-inner group ${
               isSearchFlyoutOpen
                 ? 'bg-surface-active border-action ring-1 ring-action/30 text-txt-primary'
@@ -414,7 +456,13 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           {/* Theme Selector Button */}
           <button
             ref={themeTriggerRef}
-            onClick={handleToggleThemeMenu}
+            data-theme-trigger="true"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleThemeMenu();
+              if (isAboutOpen) setIsAboutOpen(false);
+              if (isSearchFlyoutOpen) setIsSearchFlyoutOpen(false);
+            }}
             className="p-1.5 rounded-lg bg-surface hover:bg-surface-hover text-txt-primary hover:text-action border border-themeline transition-all shadow-sm"
             title={`Active Theme: ${currentTheme.name} (Click to change)`}
           >
@@ -635,12 +683,19 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
       {/* ── Below TitleBar: Expandable Flyout Searchbar (Responsive & Longer) ── */}
       {isSearchFlyoutOpen && (
-        <div className="fixed top-11 inset-x-0 z-50 animate-fadeIn select-none">
-          <div className="max-w-3xl w-full mx-auto px-4 pt-2">
-            <div 
-              ref={searchFlyoutRef}
-              className="bg-surface/95 backdrop-blur-2xl border border-themeline rounded-2xl shadow-2xl p-3 text-txt-primary transition-all duration-200"
-            >
+        <>
+          {/* Full-screen backdrop to dismiss on outside click including titlebar */}
+          <div
+            className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[1px] app-no-drag"
+            onClick={() => setIsSearchFlyoutOpen(false)}
+          />
+          <div className="fixed top-11 inset-x-0 z-50 animate-fadeIn select-none pointer-events-none">
+            <div className="max-w-3xl w-full mx-auto px-4 pt-2 pointer-events-auto">
+              <div 
+                ref={searchFlyoutRef}
+                data-search-flyout="true"
+                className="bg-surface/95 backdrop-blur-2xl border border-themeline rounded-2xl shadow-2xl p-3 text-txt-primary transition-all duration-200"
+              >
               {/* Input Row */}
               <div className="relative flex items-center gap-2">
                 <Search className="w-4 h-4 text-action ml-2 flex-shrink-0" />
@@ -715,6 +770,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             </div>
           </div>
         </div>
+        </>
       )}
     </>
   );

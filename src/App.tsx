@@ -20,7 +20,8 @@ import {
   FolderSearch, 
   ArrowUp,
   Zap,
-  Globe
+  Globe,
+  Clock
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -100,6 +101,69 @@ export const App: React.FC = () => {
   const [rateLimit, setRateLimit] = useState<RateLimitInfo>(rateLimitManager.get());
   useEffect(() => {
     return rateLimitManager.subscribe(setRateLimit);
+  }, []);
+
+  // Live Digital Clock & Country / Location in Footer
+  const [currentTime, setCurrentTime] = useState<string>('');
+  const [countryName, setCountryName] = useState<string>('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setCurrentTime(
+        now.toLocaleTimeString(undefined, {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        })
+      );
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+      const intlLocale = Intl.DateTimeFormat().resolvedOptions().locale || '';
+      let country = '';
+
+      if (tz.includes('Kolkata') || tz.includes('Calcutta') || intlLocale.endsWith('-IN')) {
+        country = 'India';
+      } else if (tz.startsWith('America/')) {
+        if (tz.includes('Toronto') || tz.includes('Vancouver') || tz.includes('Montreal')) country = 'Canada';
+        else if (tz.includes('Sao_Paulo')) country = 'Brazil';
+        else if (tz.includes('Mexico_City')) country = 'Mexico';
+        else country = 'United States';
+      } else if (tz.startsWith('Europe/')) {
+        if (tz.includes('London')) country = 'United Kingdom';
+        else if (tz.includes('Paris')) country = 'France';
+        else if (tz.includes('Berlin')) country = 'Germany';
+        else country = 'Europe';
+      } else if (tz.startsWith('Asia/')) {
+        if (tz.includes('Tokyo')) country = 'Japan';
+        else if (tz.includes('Singapore')) country = 'Singapore';
+        else if (tz.includes('Dubai')) country = 'UAE';
+        else if (tz.includes('Seoul')) country = 'South Korea';
+        else country = tz.split('/')[1]?.replace(/_/g, ' ') || 'Asia';
+      } else if (tz.startsWith('Australia/')) {
+        country = 'Australia';
+      } else if (tz.includes('/')) {
+        country = tz.split('/')[1]?.replace(/_/g, ' ') || tz;
+      } else {
+        country = tz || 'Local';
+      }
+
+      const tzShort = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' })
+        .formatToParts(new Date())
+        .find((p) => p.type === 'timeZoneName')?.value || '';
+
+      setCountryName(country ? `${country} (${tzShort})` : tzShort);
+    } catch {
+      setCountryName('Local');
+    }
   }, []);
 
   const observerTarget = useRef<HTMLDivElement | null>(null);
@@ -383,7 +447,7 @@ export const App: React.FC = () => {
       </div>
 
       {/* Persistent Small Footer (Always visible at the bottom of the window) */}
-      <footer className="w-full flex-shrink-0 border-t border-themeline bg-header py-1.5 px-4 text-[11px] font-mono text-txt-muted z-30 transition-colors duration-200 select-none">
+      <footer className="w-full flex-shrink-0 border-t border-themeline bg-header py-1 px-4 text-[11px] font-mono text-txt-muted z-30 transition-colors duration-200 select-none">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <OneGitVaultLogo className="w-3.5 h-3.5 flex-shrink-0" />
@@ -391,33 +455,17 @@ export const App: React.FC = () => {
             <span className="hidden sm:inline text-txt-muted">• Open-Source Observatory</span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleManualCheckUpdates}
-              className="hover:text-action transition-colors flex items-center gap-1"
-            >
-              <span>Check Updates</span>
-              {updateInfo?.hasUpdate && (
-                <span className="w-1.5 h-1.5 rounded-full bg-action animate-pulse" />
-              )}
-            </button>
+          {/* Country & Live Clock */}
+          <div className="flex items-center gap-2 text-txt-muted font-mono text-[11px]">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-active/60 border border-themeline text-txt-primary">
+              <Globe className="w-3 h-3 text-action" />
+              <span>{countryName}</span>
+            </div>
             <span className="text-themeline">•</span>
-            <button
-              onClick={() => setIsTokenModalOpen(true)}
-              className="hover:text-action transition-colors"
-            >
-              API Token
-            </button>
-            <span className="text-themeline hidden sm:inline">•</span>
-            <a
-              href="https://github.com/trending"
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-action transition-colors hidden sm:flex items-center gap-1"
-            >
-              <Globe className="w-3 h-3" />
-              <span>Trending</span>
-            </a>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-active/60 border border-themeline text-txt-primary font-semibold">
+              <Clock className="w-3 h-3 text-action" />
+              <span>{currentTime}</span>
+            </div>
           </div>
         </div>
       </footer>

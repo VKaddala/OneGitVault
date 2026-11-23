@@ -436,7 +436,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           {/* Rate Limit Badge Pill (Dynamic for mobile) */}
           <button
             onClick={onOpenTokenModal}
-            className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg text-xs font-mono border transition-all ${
+            className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg text-xs font-sans font-medium border transition-all ${
               isOfflineFallback
                 ? 'bg-action-soft text-action border-action-border'
                 : 'bg-surface hover:bg-surface-hover text-txt-primary border-themeline hover:border-action-border hover:text-action shadow-sm'

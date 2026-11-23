@@ -254,8 +254,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         {/* Left Side: Summary & Custom Themed Dropdown Filters */}
         <div className="flex flex-wrap items-center gap-2">
           
-          <div className="text-xs font-sans font-medium text-txt-muted whitespace-nowrap mr-1">
-            <span className="text-action font-bold">{totalResults.toLocaleString()}</span> repos
+          <div className="text-xs font-sans font-medium text-txt-muted whitespace-nowrap mr-1 flex items-center gap-1">
+            <span className="text-action font-bold text-xs sm:text-[13px] font-sans tracking-tight">{totalResults.toLocaleString()}</span>
+            <span>repos</span>
           </div>
 
           {/* 1. Custom Themed Category Dropdown */}
@@ -264,7 +265,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               ref={categoryTriggerRef}
               onClick={handleToggleCategory}
               type="button"
-              className={`flex items-center gap-1.5 bg-surface-active hover:bg-surface border rounded-lg px-2.5 py-1 text-xs text-txt-primary shadow-sm transition-all group ${
+              className={`flex items-center gap-1.5 bg-surface-active hover:bg-surface border rounded-lg px-2.5 py-1 text-xs font-sans text-txt-primary shadow-sm transition-all group ${
                 isCategoryOpen ? 'border-action ring-1 ring-action/30 bg-surface' : 'border-themeline hover:border-action-border'
               }`}
               title="Select technology sector"
@@ -272,7 +273,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <span className="text-action flex-shrink-0">
                 {getCategoryIcon(selectedCategoryObj?.icon || 'Sparkles')}
               </span>
-              <span className="text-txt-muted font-mono text-[11px] hidden sm:inline">Category:</span>
+              <span className="text-txt-muted font-sans font-medium text-[11px] hidden sm:inline">Category:</span>
               <span className="font-semibold text-txt-primary truncate max-w-[140px]">
                 {selectedCategoryObj.name}
               </span>
@@ -297,11 +298,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 className="bg-surface border border-themeline rounded-2xl shadow-2xl p-1.5 animate-fadeIn backdrop-blur-2xl max-h-[420px] overflow-y-auto no-scrollbar"
               >
                 <div className="flex items-center justify-between px-2.5 py-1.5 mb-1 border-b border-themeline/60">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-txt-muted flex items-center gap-1.5">
+                  <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-txt-muted flex items-center gap-1.5">
                     <Sparkles className="w-3 h-3 text-action" />
                     <span>Technology Sectors</span>
                   </span>
-                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-surface-active border border-themeline text-txt-muted">
+                  <span className="text-[9px] font-sans font-semibold px-1.5 py-0.5 rounded-full bg-surface-active border border-themeline text-txt-muted">
                     {categories.length} Sectors
                   </span>
                 </div>
@@ -350,13 +351,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               ref={sortTriggerRef}
               onClick={handleToggleSort}
               type="button"
-              className={`flex items-center gap-1.5 bg-surface-active hover:bg-surface border rounded-lg px-2.5 py-1 text-xs text-txt-primary shadow-sm transition-all group ${
+              className={`flex items-center gap-1.5 bg-surface-active hover:bg-surface border rounded-lg px-2.5 py-1 text-xs font-sans text-txt-primary shadow-sm transition-all group ${
                 isSortOpen ? 'border-action ring-1 ring-action/30 bg-surface' : 'border-themeline hover:border-action-border'
               }`}
               title="Sort repositories"
             >
               <ArrowUpDown className="w-3 h-3 text-action flex-shrink-0" />
-              <span className="text-txt-muted font-mono text-[11px] hidden sm:inline">Sort:</span>
+              <span className="text-txt-muted font-sans font-medium text-[11px] hidden sm:inline">Sort:</span>
               <span className="font-semibold text-txt-primary">
                 {sortBy === 'stars' ? 'Most Stars' : sortBy === 'forks' ? 'Most Forks' : 'Recently Updated'}
               </span>
@@ -381,7 +382,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 className="bg-surface border border-themeline rounded-2xl shadow-2xl p-1.5 animate-fadeIn backdrop-blur-2xl"
               >
                 <div className="px-2.5 py-1 mb-1 border-b border-themeline/60">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-txt-muted">
+                  <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-txt-muted">
                     Sort Criteria
                   </span>
                 </div>
@@ -422,13 +423,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               ref={langTriggerRef}
               onClick={handleToggleLang}
               type="button"
-              className={`flex items-center gap-1.5 bg-surface-active hover:bg-surface border rounded-lg px-2.5 py-1 text-xs text-txt-primary shadow-sm transition-all group ${
+              className={`flex items-center gap-1.5 bg-surface-active hover:bg-surface border rounded-lg px-2.5 py-1 text-xs font-sans text-txt-primary shadow-sm transition-all group ${
                 isLangOpen ? 'border-action ring-1 ring-action/30 bg-surface' : 'border-themeline hover:border-action-border'
               }`}
               title="Filter by programming language"
             >
               <Code2 className="w-3 h-3 text-action flex-shrink-0" />
-              <span className="text-txt-muted font-mono text-[11px] hidden sm:inline">Lang:</span>
+              <span className="text-txt-muted font-sans font-medium text-[11px] hidden sm:inline">Lang:</span>
               <span className="font-semibold text-txt-primary truncate max-w-[110px]">
                 {selectedLanguage || 'All Languages'}
               </span>
@@ -520,7 +521,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   setIsCustomOpen(false);
                   onMinStarsChange(tier.value);
                 }}
-                className={`text-[11px] font-mono px-2 py-0.5 rounded-md transition-all ${
+                className={`text-[11px] font-sans font-medium px-2 py-0.5 rounded-md transition-all ${
                   !isCustom && minStars === tier.value
                     ? 'bg-action text-txt-inverse font-bold shadow-sm'
                     : 'text-txt-muted hover:text-txt-primary hover:bg-surface-hover'
@@ -535,7 +536,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             <button
               ref={customTriggerRef}
               onClick={handleToggleCustom}
-              className={`flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-md transition-all ${
+              className={`flex items-center gap-1 text-[11px] font-sans font-medium px-2 py-0.5 rounded-md transition-all ${
                 isCustom
                   ? 'bg-action text-txt-inverse font-bold shadow-sm'
                   : 'text-txt-muted hover:text-txt-primary hover:bg-surface-hover'
@@ -560,7 +561,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 className="bg-surface border border-themeline rounded-2xl shadow-2xl p-2.5 animate-fadeIn backdrop-blur-2xl"
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-mono font-semibold text-txt-primary flex items-center gap-1">
+                  <span className="text-[11px] font-sans font-semibold text-txt-primary flex items-center gap-1">
                     <Star className="w-3 h-3 text-action fill-current" />
                     <span>Min Stars Filter</span>
                   </span>
@@ -586,11 +587,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                     }}
                     placeholder="e.g. 500, 2500"
                     autoFocus
-                    className="w-full bg-surface-active border border-themeline rounded-lg px-2 py-1 text-xs font-mono text-txt-primary focus:outline-none focus:border-action"
+                    className="w-full bg-surface-active border border-themeline rounded-lg px-2 py-1 text-xs font-sans text-txt-primary focus:outline-none focus:border-action"
                   />
                   <button
                     onClick={() => handleApplyCustom()}
-                    className="px-2.5 py-1 rounded-lg bg-action hover:bg-action-hover text-txt-inverse text-xs font-mono font-bold transition-all shadow-sm"
+                    className="px-2.5 py-1 rounded-lg bg-action hover:bg-action-hover text-txt-inverse text-xs font-sans font-bold transition-all shadow-sm"
                   >
                     Apply
                   </button>
@@ -598,12 +599,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
                 {/* Quick Shortcuts */}
                 <div className="flex items-center gap-1 flex-wrap pt-1.5 border-t border-themeline/60">
-                  <span className="text-[10px] font-mono text-txt-muted mr-0.5">Quick:</span>
+                  <span className="text-[10px] font-sans text-txt-muted mr-0.5">Quick:</span>
                   {[500, 1000, 2500, 5000, 25000].map((val) => (
                     <button
                       key={val}
                       onClick={() => handleApplyCustom(val)}
-                      className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-active hover:bg-surface-hover text-txt-secondary hover:text-action border border-themeline transition-colors"
+                      className="text-[10px] font-sans px-1.5 py-0.5 rounded bg-surface-active hover:bg-surface-hover text-txt-secondary hover:text-action border border-themeline transition-colors"
                     >
                       {val >= 1000 ? `${val / 1000}k` : val}
                     </button>
@@ -613,7 +614,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                       onMinStarsChange(0);
                       setIsCustomOpen(false);
                     }}
-                    className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-active hover:bg-surface-hover text-txt-muted hover:text-rose-500 border border-themeline transition-colors ml-auto"
+                    className="text-[10px] font-sans px-1.5 py-0.5 rounded bg-surface-active hover:bg-surface-hover text-txt-muted hover:text-rose-500 border border-themeline transition-colors ml-auto"
                     title="Reset to 0 stars (All)"
                   >
                     Reset (0)
@@ -632,7 +633,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           {/* Only Bookmarked Toggle */}
           <button
             onClick={onToggleBookmarked}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono border transition-all ${
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-sans font-medium border transition-all ${
               onlyBookmarked
                 ? 'bg-action text-txt-inverse border-action font-bold shadow-sm'
                 : 'bg-surface-active hover:bg-surface-hover text-txt-secondary hover:text-txt-primary border-themeline'
@@ -646,7 +647,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           {isFiltered && (
             <button
               onClick={onResetFilters}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono text-txt-muted hover:text-txt-primary bg-surface-active hover:bg-surface-hover border border-themeline transition-all"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-sans text-txt-muted hover:text-txt-primary bg-surface-active hover:bg-surface-hover border border-themeline transition-all"
               title="Reset all filters"
             >
               <RotateCcw className="w-3 h-3" />

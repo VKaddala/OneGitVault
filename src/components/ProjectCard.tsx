@@ -94,10 +94,10 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                 <span>{repo.name}</span>
                 <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-txt-muted" />
               </a>
-              <span className="text-xs font-mono text-txt-muted">/{repo.owner.login}</span>
+              <span className="text-xs font-sans font-medium text-txt-muted">/{repo.owner.login}</span>
 
               {repo.license && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-txt-muted bg-surface-active px-2 py-0.5 rounded-md border border-themeline">
+                <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-txt-muted bg-surface-active px-2 py-0.5 rounded-md border border-themeline">
                   <Scale className="w-3 h-3 text-txt-muted" />
                   {repo.license.spdx_id || repo.license.name}
                 </span>
@@ -116,7 +116,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                     e.stopPropagation();
                     onSelectTopic(topic);
                   }}
-                  className="text-[11px] font-mono bg-tag-bg text-tag-txt hover:text-tag-hoverTxt border border-tag-border hover:border-action px-2 py-0.5 rounded-md transition-colors"
+                  className="text-[11px] font-sans font-medium bg-tag-bg text-tag-txt hover:text-tag-hoverTxt border border-tag-border hover:border-action px-2 py-0.5 rounded-md transition-colors"
                 >
                   #{topic}
                 </button>
@@ -129,7 +129,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         <div className="flex items-center gap-3.5 flex-shrink-0 self-end md:self-center border-t md:border-t-0 pt-3 md:pt-0 border-themeline">
           {/* Language */}
           {repo.language && (
-            <div className="flex items-center gap-1.5 text-xs text-txt-primary font-mono">
+            <div className="flex items-center gap-1.5 text-xs text-txt-primary font-sans font-medium">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: langColor }} />
               <span>{repo.language}</span>
             </div>
@@ -141,7 +141,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               e.stopPropagation();
               onToggleStar?.(repo);
             }}
-            className={`flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1 rounded-lg border shadow-sm transition-all hover:scale-105 active:scale-95 ${
+            className={`flex items-center gap-1.5 text-xs font-sans font-bold px-2.5 py-1 rounded-lg border shadow-sm transition-all hover:scale-105 active:scale-95 ${
               isStarred
                 ? 'bg-amber-500 text-white border-amber-600 shadow-amber-500/20'
                 : 'text-star bg-star-bg hover:bg-star-bg/80 border-star-border hover:border-star'
@@ -157,7 +157,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           </button>
 
           {/* Forks */}
-          <div className="flex items-center gap-1 text-xs font-mono font-medium text-txt-muted bg-surface-active border border-themeline px-2 py-1 rounded-lg">
+          <div className="flex items-center gap-1 text-xs font-sans font-medium text-txt-muted bg-surface-active border border-themeline px-2 py-1 rounded-lg">
             <GitFork className="w-3.5 h-3.5" />
             <span>{formatNumber(repo.forks_count)}</span>
           </div>
@@ -305,7 +305,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                 e.stopPropagation();
                 onToggleStar?.(repo);
               }}
-              className={`flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1 rounded-lg border shadow-sm transition-all hover:scale-105 active:scale-95 ${
+              className={`flex items-center gap-1.5 text-xs font-sans font-bold px-2.5 py-1 rounded-lg border shadow-sm transition-all hover:scale-105 active:scale-95 ${
                 isStarred
                   ? 'bg-amber-500 text-white border-amber-600 shadow-amber-500/20'
                   : 'text-star bg-star-bg border-star-border hover:border-star'
@@ -321,7 +321,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             </button>
 
             {/* Forks */}
-            <div className="flex items-center gap-1 text-xs font-mono font-medium text-txt-muted bg-surface-active border border-themeline px-2 py-1 rounded-lg">
+            <div className="flex items-center gap-1 text-xs font-sans font-medium text-txt-muted bg-surface-active border border-themeline px-2 py-1 rounded-lg">
               <GitFork className="w-3.5 h-3.5 flex-shrink-0" />
               <span>{formatNumber(repo.forks_count)}</span>
             </div>
@@ -344,7 +344,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               href={repo.html_url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-mono font-semibold text-txt-muted hover:text-action hover:bg-surface-active px-2 py-1 rounded-md transition-colors"
+              className="inline-flex items-center gap-1 text-xs font-sans font-semibold text-txt-muted hover:text-action hover:bg-surface-active px-2 py-1 rounded-md transition-colors"
             >
               <span>GitHub</span>
               <ExternalLink className="w-3 h-3" />

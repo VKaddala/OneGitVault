@@ -8,8 +8,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ['"Inter"', '"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
-        sans: ['"Inter"', '"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+        display: ['"Google Sans Rounded"', '"Nunito"', '"Google Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['"Google Sans Rounded"', '"Nunito"', '"Google Sans Text"', '"Google Sans"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       colors: {

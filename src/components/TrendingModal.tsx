@@ -37,6 +37,7 @@ export const TrendingModal: React.FC<TrendingModalProps> = ({
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [trendingRepos, setTrendingRepos] = useState<Repository[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [lastFetchedKey, setLastFetchedKey] = useState<string>('');
 
   // Close on Escape key
   useEffect(() => {
@@ -48,9 +49,14 @@ export const TrendingModal: React.FC<TrendingModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Fetch trending repositories
+  // Fetch trending repositories (skips re-fetch if already loaded for current period & language)
   useEffect(() => {
     if (!isOpen) return;
+    const currentKey = `${period}:${selectedLanguage}`;
+    if (lastFetchedKey === currentKey && trendingRepos.length > 0) {
+      return;
+    }
+
     let isMounted = true;
     setIsLoading(true);
 
@@ -58,6 +64,7 @@ export const TrendingModal: React.FC<TrendingModalProps> = ({
       .then((repos) => {
         if (isMounted) {
           setTrendingRepos(repos);
+          setLastFetchedKey(currentKey);
           setIsLoading(false);
         }
       })
@@ -68,7 +75,7 @@ export const TrendingModal: React.FC<TrendingModalProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [isOpen, period, selectedLanguage]);
+  }, [isOpen, period, selectedLanguage, lastFetchedKey, trendingRepos.length]);
 
   if (!isOpen) return null;
 
@@ -185,8 +192,8 @@ export const TrendingModal: React.FC<TrendingModalProps> = ({
               return (
                 <div
                   key={repo.id}
+                  data-trending-item="true"
                   onClick={() => {
-                    onClose();
                     onSelectRepo(repo);
                   }}
                   className="group relative flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-surface-active/60 hover:bg-surface-active border border-themeline hover:border-action-border transition-all duration-150 gap-3.5 cursor-pointer shadow-sm"
@@ -247,9 +254,9 @@ export const TrendingModal: React.FC<TrendingModalProps> = ({
                   {/* Right: Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
                     <button
+                      data-trending-readme="true"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onClose();
                         onSelectRepo(repo);
                       }}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface hover:bg-surface-hover border border-themeline hover:border-action-border text-xs font-mono text-txt-primary hover:text-action transition-all shadow-sm"

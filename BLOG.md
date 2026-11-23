@@ -74,14 +74,24 @@ No matter if you're on a laptop or a 32-inch widescreen monitor, the canvas adap
 
 ---
 
-### 3. Integrated Global Trending: Discovering What’s Hot Today
+### 3. Integrated Global Trending & Seamless Back Navigation
 **The Decision:** Bring the pulse of open source directly to your fingertips.
 
 Normally, checking what's trending requires opening external sites and navigating away. OneGitVault embeds a live **Trending Explorer** directly into the top bar.
 
-With a single tap, you can see what developers across the globe are most excited about **Today**, **This Week**, or **This Month**. You can filter by language and immediately preview any trending project's documentation with zero browser redirection.
+With a single tap, you can see what developers across the globe are most excited about **Today**, **This Week**, or **This Month**. You can filter by language and immediately preview any trending project's documentation. Best of all, a dedicated **`← Back to Trending`** header navigation returns you right back to your exact spot in the trending list, keeping your selected timeframe and filters intact without re-fetching lag.
 
 ![In-App GitHub Trending](https://raw.githubusercontent.com/VKaddala/OneGitVault/main/assets/screenshots/07-sand-light-trending.png)
+
+---
+
+### 4. 9 Curated Technology Sectors (Including Android APKs & Videography Tools)
+**The Decision:** Cut through the noise with instant category focus.
+
+Instead of generic keyword spam, OneGitVault provides curated discovery across 9 specialized sectors:
+- **Android & APK Releases**: Direct-to-consumer open-source Android applications, standalone APK packages, and mobile utilities (e.g. NewPipe, Seal, ReVanced).
+- **Videography & Media**: Video editing software, screen recorders, encoders, converters, and streaming suites (e.g. FFmpeg, OBS Studio, LosslessCut, Remotion).
+- **AI & Machine Learning**, **Web & Frameworks**, **Cloud & DevOps**, **Developer Tools**, **Databases & Storage**, **Mobile & Desktop**, and **Security & Privacy**.
 
 ---
 

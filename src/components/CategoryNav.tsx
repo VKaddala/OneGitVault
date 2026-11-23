@@ -7,7 +7,9 @@ import {
   Wrench, 
   Database, 
   Smartphone, 
-  Shield 
+  Shield,
+  Package,
+  Video
 } from 'lucide-react';
 import { Category, CategoryId } from '../types';
 
@@ -33,6 +35,8 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
       case 'Database': return <Database className="w-3.5 h-3.5" />;
       case 'Smartphone': return <Smartphone className="w-3.5 h-3.5" />;
       case 'Shield': return <Shield className="w-3.5 h-3.5" />;
+      case 'Package': return <Package className="w-3.5 h-3.5" />;
+      case 'Video': return <Video className="w-3.5 h-3.5" />;
       case 'Sparkles':
       default:
         return <Sparkles className="w-3.5 h-3.5" />;

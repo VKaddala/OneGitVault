@@ -57,6 +57,20 @@ export const CATEGORIES: Category[] = [
     icon: 'Shield',
     queryTopic: 'topic:security OR topic:infosec OR topic:cryptography',
   },
+  {
+    id: 'android-apks',
+    name: 'Android & APKs',
+    description: 'Open-source Android applications, standalone APK releases, and mobile utilities.',
+    icon: 'Package',
+    queryTopic: 'topic:android-app',
+  },
+  {
+    id: 'videography-media',
+    name: 'Videography & Media',
+    description: 'Video editors, streaming tools, encoders, converters, and multimedia engines.',
+    icon: 'Video',
+    queryTopic: 'topic:video',
+  },
 ];
 
 export const CURATED_PROJECTS: Repository[] = [
@@ -639,6 +653,136 @@ export const CURATED_PROJECTS: Repository[] = [
     updated_at: '2026-11-14T05:40:00Z',
     category: 'cybersecurity',
     license: { key: 'apache-2.0', name: 'Apache License 2.0', spdx_id: 'Apache-2.0' }
+  },
+
+  // Android Releases & APKs
+  {
+    id: 'apk-1',
+    name: 'NewPipe',
+    full_name: 'TeamNewPipe/NewPipe',
+    owner: {
+      login: 'TeamNewPipe',
+      avatar_url: 'https://avatars.githubusercontent.com/u/16053351?v=4',
+      html_url: 'https://github.com/TeamNewPipe'
+    },
+    description: 'A libre lightweight streaming frontend for Android with APK releases and no Google Play Services dependency.',
+    html_url: 'https://github.com/TeamNewPipe/NewPipe',
+    homepage: 'https://newpipe.net',
+    stargazers_count: 32400,
+    forks_count: 3100,
+    open_issues_count: 850,
+    language: 'Java',
+    topics: ['android-app', 'apk', 'streaming', 'media-player', 'f-droid'],
+    updated_at: '2026-11-20T10:00:00Z',
+    category: 'android-apks',
+    license: { key: 'gpl-3.0', name: 'GNU General Public License v3.0', spdx_id: 'GPL-3.0' }
+  },
+  {
+    id: 'apk-2',
+    name: 'revanced-manager',
+    full_name: 'ReVanced/revanced-manager',
+    owner: {
+      login: 'ReVanced',
+      avatar_url: 'https://avatars.githubusercontent.com/u/98959966?v=4',
+      html_url: 'https://github.com/ReVanced'
+    },
+    description: 'The official Android application to use ReVanced and manage patched APK packages.',
+    html_url: 'https://github.com/ReVanced/revanced-manager',
+    homepage: 'https://revanced.app',
+    stargazers_count: 22800,
+    forks_count: 1400,
+    open_issues_count: 190,
+    language: 'Dart',
+    topics: ['android-app', 'apk', 'flutter', 'patcher'],
+    updated_at: '2026-11-21T14:30:00Z',
+    category: 'android-apks',
+    license: { key: 'gpl-3.0', name: 'GNU General Public License v3.0', spdx_id: 'GPL-3.0' }
+  },
+  {
+    id: 'apk-3',
+    name: 'Seal',
+    full_name: 'JunkFood02/Seal',
+    owner: {
+      login: 'JunkFood02',
+      avatar_url: 'https://avatars.githubusercontent.com/u/69201948?v=4',
+      html_url: 'https://github.com/JunkFood02'
+    },
+    description: 'Video/Audio downloader for Android, based on yt-dlp, designed with Material You and direct APK releases.',
+    html_url: 'https://github.com/JunkFood02/Seal',
+    homepage: 'https://github.com/JunkFood02/Seal',
+    stargazers_count: 19200,
+    forks_count: 890,
+    open_issues_count: 120,
+    language: 'Kotlin',
+    topics: ['android-app', 'apk', 'yt-dlp', 'downloader', 'material-you'],
+    updated_at: '2026-11-22T08:15:00Z',
+    category: 'android-apks',
+    license: { key: 'gpl-3.0', name: 'GNU General Public License v3.0', spdx_id: 'GPL-3.0' }
+  },
+
+  // Videography & Media Tools
+  {
+    id: 'vid-1',
+    name: 'FFmpeg',
+    full_name: 'FFmpeg/FFmpeg',
+    owner: {
+      login: 'FFmpeg',
+      avatar_url: 'https://avatars.githubusercontent.com/u/3294165?v=4',
+      html_url: 'https://github.com/FFmpeg'
+    },
+    description: 'A complete, cross-platform solution to record, convert, transcode, and stream audio and video.',
+    html_url: 'https://github.com/FFmpeg/FFmpeg',
+    homepage: 'https://ffmpeg.org',
+    stargazers_count: 68100,
+    forks_count: 15400,
+    open_issues_count: 0,
+    language: 'C',
+    topics: ['video', 'ffmpeg', 'audio', 'streaming', 'converter', 'multimedia'],
+    updated_at: '2026-11-23T18:00:00Z',
+    category: 'videography-media',
+    license: { key: 'lgpl-2.1', name: 'GNU Lesser General Public License v2.1', spdx_id: 'LGPL-2.1' }
+  },
+  {
+    id: 'vid-2',
+    name: 'obs-studio',
+    full_name: 'obsproject/obs-studio',
+    owner: {
+      login: 'obsproject',
+      avatar_url: 'https://avatars.githubusercontent.com/u/10292723?v=4',
+      html_url: 'https://github.com/obsproject'
+    },
+    description: 'Free and open source software for live video recording and live streaming to YouTube, Twitch, and more.',
+    html_url: 'https://github.com/obsproject/obs-studio',
+    homepage: 'https://obsproject.com',
+    stargazers_count: 63200,
+    forks_count: 8300,
+    open_issues_count: 420,
+    language: 'C++',
+    topics: ['video', 'streaming', 'recording', 'broadcasting', 'obs'],
+    updated_at: '2026-11-23T12:00:00Z',
+    category: 'videography-media',
+    license: { key: 'gpl-2.0', name: 'GNU General Public License v2.0', spdx_id: 'GPL-2.0' }
+  },
+  {
+    id: 'vid-3',
+    name: 'lossless-cut',
+    full_name: 'mifi/lossless-cut',
+    owner: {
+      login: 'mifi',
+      avatar_url: 'https://avatars.githubusercontent.com/u/403155?v=4',
+      html_url: 'https://github.com/mifi'
+    },
+    description: 'The Swiss Army knife of lossless video/audio editing. Trim, cut, merge, and export video files without re-encoding.',
+    html_url: 'https://github.com/mifi/lossless-cut',
+    homepage: 'https://github.com/mifi/lossless-cut',
+    stargazers_count: 46400,
+    forks_count: 2400,
+    open_issues_count: 310,
+    language: 'JavaScript',
+    topics: ['video', 'video-editor', 'ffmpeg', 'lossless', 'electron'],
+    updated_at: '2026-11-22T20:10:00Z',
+    category: 'videography-media',
+    license: { key: 'gpl-2.0', name: 'GNU General Public License v2.0', spdx_id: 'GPL-2.0' }
   }
 ];
 

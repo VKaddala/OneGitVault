@@ -39,10 +39,10 @@ Built with **React 18**, **TypeScript**, **Tailwind CSS**, and **Electron 33**, 
   - **Telemetry & Language Badges**: Official color-coded language dot, license badge (`MIT`, `Apache-2.0`, `GPLv3`), and calendar update timestamps.
   - **Star & Fork Badges**: Real-time metrics formatted compactly (`14.2k`, `1.5M`).
 
-### 🔥 2. In-App GitHub Trending Explorer
+### 🔥 2. In-App GitHub Trending Explorer & Back Navigation
 - **Native In-App Modal**: Explore GitHub's trending open-source projects without leaving the desktop app or switching to an external browser tab.
 - **Time Ranges**: Toggle instantly between **Daily**, **Weekly**, and **Monthly** trending repositories across the global ecosystem.
-- **Deep README Inspection**: Click any trending repository to immediately preview its live documentation and release assets.
+- **Deep README Inspection & Seamless Back Navigation**: Click any trending repository to immediately preview its live documentation and release assets. Includes a dedicated **`← 🔥 Back to Trending`** header button (and `Esc` support) that takes you straight back to your exact trending list, preserving your selected time period and language filter without re-fetching lag.
 
 ### 🪟 3. Unified Frameless Window Header & Flyout Search
 - **Consolidated Window Header**: Combines native window controls (minimize, maximize/restore, close), branding, live API quota badge, trending launcher, vault drawer, and theme selector into a single streamlined top bar.
@@ -79,7 +79,7 @@ Built with **React 18**, **TypeScript**, **Tailwind CSS**, and **Electron 33**, 
 - **Body-Portaled Popover**: Portaled to document root to ensure perfect layering above cards and scroll areas.
 
 ### 🗂️ 9. Curated Technology Sectors & Sorting
-- **7 Curated Technology Sectors**: Instant filtering across **AI & Machine Learning**, **Web & Frameworks**, **Cloud & DevOps**, **Developer Tools**, **Databases & Storage**, **Mobile & Desktop**, and **Security & Privacy**.
+- **9 Curated Technology Sectors**: Instant filtering across **AI & Machine Learning**, **Web & Frameworks**, **Cloud & DevOps**, **Developer Tools**, **Databases & Storage**, **Mobile & Desktop**, **Security & Privacy**, **Android & APK Releases** (standalone Android applications and direct APK packages), and **Videography & Media** (video editors, ffmpeg tools, encoders, screen recorders, and streaming engines).
 - **Multi-Sort Engine**: Sort live by **Most Stars**, **Most Forks**, or **Recently Updated**.
 - **Language Filtering**: Live dynamic language filter populated by loaded repository languages.
 
@@ -268,6 +268,18 @@ OneGitVault functions out-of-the-box with unauthenticated public GitHub API acce
 | Floating Theme Palette Selector | Vault Bookmarks & Cloud Gist Sync |
 |:---:|:---:|
 | ![Theme Palette](assets/screenshots/05-theme-palette.png) | ![Vault Bookmarks](assets/screenshots/08-vault-bookmarks.png) |
+
+---
+
+### 📱 4. Android Releases, Videography Tools & Back Navigation
+
+| Android & APK Releases Sector | Videography & Media Tools Sector |
+|:---:|:---:|
+| ![Android & APKs](assets/screenshots/11-android-apks-category.png) | ![Videography & Media](assets/screenshots/12-videography-media-category.png) |
+
+| Seamless Back to Trending Navigation |
+|:---:|
+| ![Back to Trending](assets/screenshots/10-trending-back-navigation.png) |
 
 ---
 

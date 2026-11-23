@@ -151,6 +151,12 @@ export function buildSearchQuery(
     case 'cybersecurity':
       qParts.push('topic:security');
       break;
+    case 'android-apks':
+      qParts.push('topic:android-app');
+      break;
+    case 'videography-media':
+      qParts.push('topic:video');
+      break;
     case 'all':
     default:
       break;

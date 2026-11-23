@@ -70,6 +70,7 @@ export const App: React.FC = () => {
   const [isTokenModalOpen, setIsTokenModalOpen] = useState<boolean>(false);
   const [isBookmarksOpen, setIsBookmarksOpen] = useState<boolean>(false);
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
+  const [detailSource, setDetailSource] = useState<'main' | 'trending' | null>(null);
   const [isTrendingOpen, setIsTrendingOpen] = useState<boolean>(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
@@ -98,6 +99,29 @@ export const App: React.FC = () => {
       setIsCheckingUpdates(false);
     }
   }, []);
+
+  const handleSelectTrendingRepo = useCallback((repo: Repository) => {
+    setIsTrendingOpen(false);
+    setSelectedRepo(repo);
+    setDetailSource('trending');
+  }, []);
+
+  const handleBackToTrending = useCallback(() => {
+    setSelectedRepo(null);
+    setIsTrendingOpen(true);
+    setDetailSource(null);
+  }, []);
+
+  const handleCloseDetail = useCallback(() => {
+    if (detailSource === 'trending') {
+      setSelectedRepo(null);
+      setIsTrendingOpen(true);
+      setDetailSource(null);
+    } else {
+      setSelectedRepo(null);
+      setDetailSource(null);
+    }
+  }, [detailSource]);
 
   // Rate limit subscription
   const [rateLimit, setRateLimit] = useState<RateLimitInfo>(rateLimitManager.get());
@@ -369,7 +393,10 @@ export const App: React.FC = () => {
                 isBookmarked={isBookmarked(repo.id)}
                 onToggleBookmark={toggleBookmark}
                 onSelectTopic={(topic) => setSearchQuery(topic)}
-                onOpenDetail={(r) => setSelectedRepo(r)}
+                onOpenDetail={(r) => {
+                  setSelectedRepo(r);
+                  setDetailSource('main');
+                }}
               />
             ))}
           </div>
@@ -501,14 +528,16 @@ export const App: React.FC = () => {
       <RepoDetailPanel
         repo={selectedRepo}
         isBookmarked={selectedRepo ? isBookmarked(selectedRepo.id) : false}
-        onClose={() => setSelectedRepo(null)}
+        onClose={handleCloseDetail}
         onToggleBookmark={toggleBookmark}
+        onBack={detailSource === 'trending' ? handleBackToTrending : undefined}
+        backLabel="Back to Trending"
       />
 
       <TrendingModal
         isOpen={isTrendingOpen}
         onClose={() => setIsTrendingOpen(false)}
-        onSelectRepo={(r) => setSelectedRepo(r)}
+        onSelectRepo={handleSelectTrendingRepo}
         isBookmarked={isBookmarked}
         onToggleBookmark={toggleBookmark}
       />

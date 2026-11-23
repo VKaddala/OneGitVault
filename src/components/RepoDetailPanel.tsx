@@ -3,7 +3,7 @@ import {
   X, Star, GitFork, ExternalLink, Copy, Check,
   Bookmark, Download, Terminal, Globe, Scale,
   Calendar, FileText, Loader2, AlertCircle, ChevronDown,
-  Package, Tag, ArrowDownToLine, Clock, FolderArchive
+  Package, Tag, ArrowDownToLine, Clock, FolderArchive, ArrowLeft, Flame
 } from 'lucide-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -16,6 +16,8 @@ interface RepoDetailPanelProps {
   isBookmarked: boolean;
   onClose: () => void;
   onToggleBookmark: (repo: Repository) => void;
+  onBack?: () => void;
+  backLabel?: string;
 }
 
 type ReadmeState = 'idle' | 'loading' | 'success' | 'error' | 'not_found';
@@ -63,6 +65,8 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
   isBookmarked,
   onClose,
   onToggleBookmark,
+  onBack,
+  backLabel,
 }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('readme');
   const [readmeContent, setReadmeContent] = useState<string>('');
@@ -158,14 +162,20 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
     }
   }, [repo, fetchReadme, fetchReleases]);
 
-  // Handle ESC key to close modal
+  // Handle ESC key to close modal or go back
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        if (onBack) {
+          onBack();
+        } else {
+          onClose();
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [onClose, onBack]);
 
   // Intercept anchor link clicks inside rendered markdown so app navigation is protected
   const handleReadmeLinkClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -242,12 +252,24 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
       >
 
         {/* ── HEADER ── */}
-        <div className="flex items-start justify-between gap-4 p-5 border-b border-themeline bg-surface-active flex-shrink-0">
-          <div className="flex items-center gap-3.5 min-w-0">
+        <div className="flex items-start justify-between gap-4 p-4 sm:p-5 border-b border-themeline bg-surface-active flex-shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface hover:bg-surface-hover text-txt-primary hover:text-action border border-themeline hover:border-action-border text-xs font-mono transition-all mr-1 shadow-sm font-semibold flex-shrink-0 group"
+                title={backLabel || "Back to Trending"}
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-action group-hover:-translate-x-0.5 transition-transform" />
+                <Flame className="w-3.5 h-3.5 text-action fill-current" />
+                <span className="hidden sm:inline">{backLabel || "Back to Trending"}</span>
+                <span className="sm:hidden">Back</span>
+              </button>
+            )}
             <img
               src={repo.owner.avatar_url}
               alt={repo.owner.login}
-              className="w-11 h-11 rounded-xl ring-1 ring-themeline flex-shrink-0 shadow-sm"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl ring-1 ring-themeline flex-shrink-0 shadow-sm"
             />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -261,7 +283,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                   </span>
                 )}
               </div>
-              <h2 className="font-display font-bold text-lg sm:text-xl text-txt-primary truncate leading-tight mt-0.5">
+              <h2 className="font-display font-bold text-base sm:text-lg md:text-xl text-txt-primary truncate leading-tight mt-0.5">
                 {repo.name}
               </h2>
             </div>

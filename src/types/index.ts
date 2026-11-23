@@ -33,7 +33,9 @@ export type CategoryId =
   | 'developer-tools'
   | 'databases'
   | 'mobile-crossplatform'
-  | 'cybersecurity';
+  | 'cybersecurity'
+  | 'android-apks'
+  | 'videography-media';
 
 export interface Category {
   id: CategoryId;

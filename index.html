@@ -1,15 +1,36 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OneGitVault - Open Source Observatory</title>
+    <script>
+      (function() {
+        try {
+          var isExplicit = localStorage.getItem('onegitvault_theme_user_explicit') === 'true';
+          var saved = localStorage.getItem('onegitvault_active_theme_plugin');
+          var isDark = true;
+          if (isExplicit && saved) {
+            isDark = saved !== 'github-light' && saved !== 'sand-light' && saved !== 'light';
+          } else {
+            isDark = !window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+          } else {
+            document.documentElement.classList.add('light');
+            document.documentElement.classList.remove('dark');
+          }
+        } catch(e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&family=Google+Sans:wght@400;500;600;700&family=Google+Sans+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   </head>
-  <body class="font-sans antialiased min-h-screen" style="background-color: var(--bg-canvas, #101b20); color: var(--text-primary, #fbe9d0);">
+  <body class="font-sans antialiased min-h-screen" style="background-color: var(--bg-canvas, #0d1117); color: var(--text-primary, #f0f6fc);">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

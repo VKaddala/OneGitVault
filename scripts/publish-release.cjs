@@ -28,52 +28,50 @@ if (!token) {
 
 const REPO_OWNER = 'VKaddala';
 const REPO_NAME = 'OneGitVault';
-const TAG_NAME = 'v2.0.0';
-const RELEASE_NAME = 'v2.0.0 — Unified TitleBar, In-App GitHub Trending, 4-Column Responsive Grid & Enhanced Vault';
+const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
+const VERSION = pkg.version;
+const TAG_NAME = `v${VERSION}`;
+const RELEASE_NAME = `v${VERSION} — System Theme Auto-Default, Google Rounded Sans, Star Integration & Themed Filters`;
 
-const RELEASE_BODY = `## 🚀 What's New in v2.0.0
+const RELEASE_BODY = `## 🚀 What's New in v${VERSION}
 
-### 📐 4-Column Responsive Grid & Compact Modern Cards
-- **High-Density Desktop Grid**: Transitioned from a 3-column layout with excessive edge gutters to an expansive, responsive 4-column grid (\`xl:grid-cols-4 2xl:grid-cols-4\`) that maximizes widescreen real estate.
-- **Compact & Feature-Rich Project Cards**: Reduced vertical bulk while preserving 100% of interactive capabilities:
-  - Instant \`git clone\` copy button with visual checkmark feedback.
-  - One-click Vault bookmark toggle with counter updates.
-  - Interactive topic pills, language color indicators, and repository license badges.
-  - Direct README & Release inspector access on card click.
-
----
-
-### 🔥 Built-In In-App GitHub Trending Modal
-- **Zero Redirection**: Replaced external browser tabs with an integrated, in-app GitHub Trending inspection modal.
-- **Time Ranges**: Seamlessly switch between **Daily**, **Weekly**, and **Monthly** trending repositories across the global GitHub ecosystem.
-- **Direct README Inspection**: Click any trending repository to immediately preview its documentation and release binaries without losing your place.
+### 🌓 System Theme Auto-Default (GitHub Simple Light & Dark)
+- **Automatic OS Theme Alignment**: OneGitVault now intelligently detects your operating system theme preference:
+  - Defaults to **GitHub Simple Light** on light mode.
+  - Defaults to **GitHub Simple Dark** on dark mode.
+  - Actively listens to system theme transitions in real time while preserving any explicitly chosen theme overrides.
+- **Instant Paint**: Zero flash of unstyled content (FOUC) on startup.
 
 ---
 
-### 🪟 Unified Frameless Window Header & Flyout Search
-- **Unified Titlebar**: Consolidated the native window controls, brand identity, API quota status, trending launcher, vault bookmarks, and theme selector into a single streamlined top header.
-- **Expanded Flyout Search Bar**: Clicking the search icon or pressing \`Ctrl+K\` / \`Cmd+K\` reveals a full-width search flyout with quick-filter topic tags and instant keyboard dismissal (\`Esc\`).
-- **Mobile & Small-Screen Compliant**: Dynamic flex wrapping and compact button styling prevent overflow even on narrow window dimensions down to 500px.
-- **Fixed Theme Palette Trigger**: Permanent palette icon ensures UI consistency across all 5 handcrafted themes.
+### 🔤 Google Rounded Sans Typography (Nunito & Google Sans)
+- **Enhanced Legibility**: Applied Google rounded sans (\`Nunito\` / \`Google Sans\`) across cards, titles, descriptions, and detail dialogs for soft, modern, high-comfort reading.
+- **Proportional Numbers**: Replaced rigid typewriter monospace fonts on repository numbers, star counters, and filter tags with beautifully proportioned rounded numerals.
 
 ---
 
-### 🌐 Persistent Location & Clock Footer
-- **Live Regional Clock**: Real-time 12-hour ticking digital clock in the bottom footer.
-- **Automatic Geo/Timezone Detection**: Detects and displays the user's country and GMT offset (e.g., \`🌐 India (GMT+5:30)\`).
+### 🎛️ Custom-Themed Floating Dropdown Filters
+- **Native OS Selects Replaced**: FilterBar dropdowns for Category, Sorting, and Language now feature custom-styled floating popover menus with sector icons, checkmarks, search inputs, and backdrop blur.
+- **New Technology Sectors**: Added dedicated filters for "Android & APK Releases" and "Videography & Media Tools".
 
 ---
 
-### ⭐ Custom Stars Filter Portal
-- **Flexible Star Ranges**: Allows filtering from \`All (0+)\` stars up to any custom threshold (\`500\`, \`2,500\`, \`50,000+\`).
-- **Body-Portaled Popover**: Portaled to \`document.body\` with high z-index to guarantee it always renders crisply above cards and panels without clipping.
+### ⭐ Direct GitHub Repository Starring
+- **Interactive Star Toggle**: Authenticated users can now star or unstar repositories directly from the app with live counter feedback and visual pulse animations.
+
+---
+
+### ⏱️ Decoupled API Quotas & Gist Sync Fixes
+- **Separated Quotas**: Independently tracks Core (5,000 req/hr) and Search (30 req/min) rate limits with 2s live polling and countdown timers.
+- **Reliable Gist Bookmarks**: Fixed "No backup found" bug by querying single Gist endpoints directly by ID.
+- **Streamlined Navigation**: Clean, uncluttered icon-only \`[ ← ]\` back navigation in repository details.
 
 ---
 
 ### 📦 Downloads & Verification
 | File | Type | Architecture | Setup Type |
 |---|---|---|---|
-| **\`OneGitVault-Setup-2.0.0.exe\`** | Inno Setup Windows Installer | x64 | Clean Upgrade / Seamless Replace |
+| **\`OneGitVault-Setup-${VERSION}.exe\`** | Inno Setup Windows Installer | x64 | Clean Upgrade / Seamless Replace |
 
 *Built with Electron 33, React 18, TypeScript, and Vite.*
 `;
@@ -188,15 +186,16 @@ function uploadAsset(uploadUrlTemplate, filePath, fileName) {
 async function main() {
   try {
     const release = await createRelease();
-    const installerPath = path.resolve(__dirname, '../release/setup/OneGitVault-Setup-2.0.0.exe');
+    const installerName = `OneGitVault-Setup-${VERSION}.exe`;
+    const installerPath = path.resolve(__dirname, `../release/setup/${installerName}`);
     if (!fs.existsSync(installerPath)) {
       throw new Error(`Installer file not found at: ${installerPath}`);
     }
 
     // Check if asset already exists on release
-    const existingAsset = (release.assets || []).find(a => a.name === 'OneGitVault-Setup-2.0.0.exe');
+    const existingAsset = (release.assets || []).find(a => a.name === installerName);
     if (existingAsset) {
-      console.log(`Asset OneGitVault-Setup-2.0.0.exe already exists (ID: ${existingAsset.id}), deleting old one first...`);
+      console.log(`Asset ${installerName} already exists (ID: ${existingAsset.id}), deleting old one first...`);
       await request({
         hostname: 'api.github.com',
         path: `/repos/${REPO_OWNER}/${REPO_NAME}/releases/assets/${existingAsset.id}`,
@@ -209,7 +208,7 @@ async function main() {
       });
     }
 
-    await uploadAsset(release.upload_url, installerPath, 'OneGitVault-Setup-2.0.0.exe');
+    await uploadAsset(release.upload_url, installerPath, installerName);
     console.log(`\n🎉 RELEASE COMPLETE!`);
     console.log(`URL: ${release.html_url}`);
   } catch (err) {

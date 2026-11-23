@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/VKaddala/OneGitVault"><img src="https://img.shields.io/badge/platform-Windows-blue?logo=windows&logoColor=white" alt="Windows" /></a>
-  <a href="https://github.com/VKaddala/OneGitVault/releases"><img src="https://img.shields.io/badge/version-2.0.0-emerald?logo=github" alt="Version 2.0.0" /></a>
+  <a href="https://github.com/VKaddala/OneGitVault/releases"><img src="https://img.shields.io/badge/version-2.1.0-emerald?logo=github" alt="Version 2.1.0" /></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-18.3-149eca?logo=react&logoColor=white" alt="React 18" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.6-3178c6?logo=typescript&logoColor=white" alt="TypeScript 5" /></a>
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-33-47848f?logo=electron&logoColor=white" alt="Electron 33" /></a>
@@ -96,6 +96,17 @@ Built with **React 18**, **TypeScript**, **Tailwind CSS**, and **Electron 33**, 
 
 ## 📜 Full Version Release History
 
+### 🚀 v2.1.0
+- **System Theme Auto-Default**: Defaults to GitHub Simple Light on light OS mode, and GitHub Simple Dark on dark OS mode with live OS preference sync.
+- **Google Rounded Sans Typography**: Applied Google rounded sans (`Nunito` / `Google Sans`) across titles, cards, descriptions, and detail views for optimal reading comfort.
+- **Proportional UI Numbers & Badges**: Replaced rigid monospace fonts on repository numbers, star counters, and filter tags with clean, modern rounded numerals.
+- **Custom Themed Filter Menus**: Replaced native select elements with custom-styled floating popovers for Categories, Sorting, and Language.
+- **New Technology Sectors**: Added dedicated filters for "Android & APK Releases" and "Videography & Media Tools".
+- **GitHub Starring Integration**: Direct in-app starring and unstarring with visual feedback when a GitHub PAT is configured.
+- **Decoupled API Quota Tracking**: Independent Core (5,000 req/hr) and Search (30 req/min) rate tracking with live 2s polling and countdown ticker.
+- **Cloud Gist Bookmark Sync Fix**: Resolved "No backup found" issue by fetching single Gist payloads directly by ID.
+- **Streamlined Back Navigation**: Clean icon-only `[ ← ]` back button in the repository detail panel.
+
 ### 🚀 v2.0.0
 - **Responsive 4-Column Grid**: Expanded container to `max-w-[1720px]` and introduced 4 columns (`xl:grid-cols-4 2xl:grid-cols-4`).
 - **In-App GitHub Trending Modal**: Embedded Daily, Weekly, and Monthly trending explorer with direct README inspection.
@@ -165,7 +176,7 @@ OneGitVault/
 
 ### Option 1: Standalone Windows Installer (Recommended)
 
-1. Download **`OneGitVault-Setup-2.0.0.exe`** from [GitHub Releases](https://github.com/VKaddala/OneGitVault/releases).
+1. Download **`OneGitVault-Setup-2.1.0.exe`** from [GitHub Releases](https://github.com/VKaddala/OneGitVault/releases).
 2. Run the installer. It automatically detects and cleanly upgrades any previous installation without orphan files.
 3. Launch **OneGitVault** from your Desktop or Start Menu.
 

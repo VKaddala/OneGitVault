@@ -7,25 +7,34 @@ import { githubDarkTheme } from './plugins/githubDark';
 
 class ThemeRegistry {
   private themes: Map<string, ThemePlugin> = new Map();
-  private defaultThemeId: ThemeId = 'prometheus-dark';
 
   constructor() {
+    this.register(githubDarkTheme);
+    this.register(githubLightTheme);
     this.register(prometheusDarkTheme);
     this.register(sandLightTheme);
     this.register(ambientTwilightTheme);
-    this.register(githubLightTheme);
-    this.register(githubDarkTheme);
   }
 
   public register(plugin: ThemePlugin): void {
     this.themes.set(plugin.id, plugin);
   }
 
-  public get(id: string): ThemePlugin {
-    // Also handle legacy aliases: 'dark' -> 'prometheus-dark', 'light' -> 'sand-light'
-    if (id === 'dark') return prometheusDarkTheme;
-    if (id === 'light') return sandLightTheme;
-    return this.themes.get(id) || this.themes.get(this.defaultThemeId) || prometheusDarkTheme;
+  public getSystemThemeId(): ThemeId {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'github-dark' : 'github-light';
+    }
+    return 'github-dark';
+  }
+
+  public get(id?: string): ThemePlugin {
+    // Map generic 'dark' and 'light' to GitHub Dark and GitHub Light
+    if (id === 'dark') return githubDarkTheme;
+    if (id === 'light') return githubLightTheme;
+    if (id && this.themes.has(id)) {
+      return this.themes.get(id)!;
+    }
+    return this.themes.get(this.getSystemThemeId()) || githubDarkTheme;
   }
 
   public getAll(): ThemePlugin[] {

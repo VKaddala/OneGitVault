@@ -235,7 +235,7 @@ Behind the clean surface, building a native desktop application that communicate
 OneGitVault is completely **free**, **open-source**, and packaged as a clean, single-click Windows app.
 
 ### 📥 1. The Easy Installer (Recommended)
-1. Download **[`OneGitVault-Setup-2.0.0.exe`](https://github.com/VKaddala/OneGitVault/releases/tag/v2.0.0)** directly from the GitHub releases page.
+1. Download **[`OneGitVault-Setup-2.1.0.exe`](https://github.com/VKaddala/OneGitVault/releases/tag/v2.1.0)** directly from the GitHub releases page.
 2. Run the installer. It sets up shortcuts on your Desktop and Start Menu in under 10 seconds.
 3. Upgrades are seamless: installing a new version automatically updates the app without leaving duplicate files.
 
@@ -249,7 +249,7 @@ Don't want to install anything? Download the portable version and run `OneGitVau
 OneGitVault is built under the permissive **MIT License**. If you're a designer, curious enthusiast, or developer, you can inspect the entire repository, star it, or contribute:
 
 - 🔗 **GitHub Repository**: [https://github.com/VKaddala/OneGitVault](https://github.com/VKaddala/OneGitVault)
-- 📦 **Latest Release (v2.0.0)**: [https://github.com/VKaddala/OneGitVault/releases/tag/v2.0.0](https://github.com/VKaddala/OneGitVault/releases/tag/v2.0.0)
+- 📦 **Latest Release (v2.1.0)**: [https://github.com/VKaddala/OneGitVault/releases/tag/v2.1.0](https://github.com/VKaddala/OneGitVault/releases/tag/v2.1.0)
 
 ---
 

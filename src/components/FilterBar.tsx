@@ -17,7 +17,12 @@ import {
   Smartphone,
   Shield,
   Package,
-  Video
+  Video,
+  ChevronDown,
+  Check,
+  GitFork,
+  Calendar,
+  Search
 } from 'lucide-react';
 import { SortOption, ViewMode, Category, CategoryId } from '../types';
 
@@ -69,10 +74,27 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
   const isCustom = !presetTiers.some((t) => t.value === minStars);
 
+  // ── Custom Star Count State ──
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const [customInput, setCustomInput] = useState(minStars > 0 && isCustom ? minStars.toString() : '');
   const customTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
+
+  // ── Custom Themed Category Menu State ──
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const categoryTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [categoryPos, setCategoryPos] = useState<{ top: number; left: number } | null>(null);
+
+  // ── Custom Themed Sort Menu State ──
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const sortTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [sortPos, setSortPos] = useState<{ top: number; left: number } | null>(null);
+
+  // ── Custom Themed Language Menu State ──
+  const [isLangOpen, setIsLangOpen] = useState(false);
+  const [langSearch, setLangSearch] = useState('');
+  const langTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [langPos, setLangPos] = useState<{ top: number; left: number } | null>(null);
 
   const selectedCategoryObj = useMemo(() => {
     return categories.find((c) => c.id === selectedCategory) || categories[0];
@@ -95,61 +117,109 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     }
   };
 
-  const updatePopoverPos = useCallback(() => {
-    if (customTriggerRef.current) {
-      const rect = customTriggerRef.current.getBoundingClientRect();
-      const popoverWidth = 240;
-      let left = rect.left;
-      if (left + popoverWidth > window.innerWidth - 12) {
-        left = window.innerWidth - popoverWidth - 12;
-      }
-      setPopoverPos({
-        top: rect.bottom + 6,
-        left: Math.max(12, left),
-      });
+  // Helper to compute dropdown screen position
+  const computePos = (trigger: HTMLElement | null, width: number) => {
+    if (!trigger) return null;
+    const rect = trigger.getBoundingClientRect();
+    let left = rect.left;
+    if (left + width > window.innerWidth - 12) {
+      left = window.innerWidth - width - 12;
     }
+    return {
+      top: rect.bottom + 6,
+      left: Math.max(12, left),
+    };
+  };
+
+  const updateAllPositions = useCallback(() => {
+    if (categoryTriggerRef.current) setCategoryPos(computePos(categoryTriggerRef.current, 270));
+    if (sortTriggerRef.current) setSortPos(computePos(sortTriggerRef.current, 200));
+    if (langTriggerRef.current) setLangPos(computePos(langTriggerRef.current, 220));
+    if (customTriggerRef.current) setPopoverPos(computePos(customTriggerRef.current, 240));
   }, []);
+
+  const handleToggleCategory = () => {
+    if (!isCategoryOpen) {
+      setCategoryPos(computePos(categoryTriggerRef.current, 270));
+      setIsCategoryOpen(true);
+      setIsSortOpen(false);
+      setIsLangOpen(false);
+      setIsCustomOpen(false);
+    } else {
+      setIsCategoryOpen(false);
+    }
+  };
+
+  const handleToggleSort = () => {
+    if (!isSortOpen) {
+      setSortPos(computePos(sortTriggerRef.current, 200));
+      setIsSortOpen(true);
+      setIsCategoryOpen(false);
+      setIsLangOpen(false);
+      setIsCustomOpen(false);
+    } else {
+      setIsSortOpen(false);
+    }
+  };
+
+  const handleToggleLang = () => {
+    if (!isLangOpen) {
+      setLangPos(computePos(langTriggerRef.current, 220));
+      setLangSearch('');
+      setIsLangOpen(true);
+      setIsCategoryOpen(false);
+      setIsSortOpen(false);
+      setIsCustomOpen(false);
+    } else {
+      setIsLangOpen(false);
+    }
+  };
 
   const handleToggleCustom = () => {
     if (!isCustomOpen) {
-      updatePopoverPos();
+      setPopoverPos(computePos(customTriggerRef.current, 240));
       setCustomInput(minStars > 0 ? minStars.toString() : '');
       setIsCustomOpen(true);
+      setIsCategoryOpen(false);
+      setIsSortOpen(false);
+      setIsLangOpen(false);
     } else {
       setIsCustomOpen(false);
     }
   };
 
+  // Close menus when clicking outside or resizing
   useEffect(() => {
-    if (!isCustomOpen) return;
-
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
-      const insideTrigger = customTriggerRef.current?.contains(target);
-      const insidePopover = document.getElementById('custom-stars-portal')?.contains(target);
-      if (!insideTrigger && !insidePopover) {
-        setIsCustomOpen(false);
-      }
+      
+      const insideCatTrigger = categoryTriggerRef.current?.contains(target);
+      const insideCatPortal = document.getElementById('category-dropdown-portal')?.contains(target);
+      if (!insideCatTrigger && !insideCatPortal) setIsCategoryOpen(false);
+
+      const insideSortTrigger = sortTriggerRef.current?.contains(target);
+      const insideSortPortal = document.getElementById('sort-dropdown-portal')?.contains(target);
+      if (!insideSortTrigger && !insideSortPortal) setIsSortOpen(false);
+
+      const insideLangTrigger = langTriggerRef.current?.contains(target);
+      const insideLangPortal = document.getElementById('lang-dropdown-portal')?.contains(target);
+      if (!insideLangTrigger && !insideLangPortal) setIsLangOpen(false);
+
+      const insideStarTrigger = customTriggerRef.current?.contains(target);
+      const insideStarPortal = document.getElementById('custom-stars-portal')?.contains(target);
+      if (!insideStarTrigger && !insideStarPortal) setIsCustomOpen(false);
     };
 
-    const handleWindowResize = () => {
-      updatePopoverPos();
-    };
-
-    const handleWindowScroll = () => {
-      updatePopoverPos();
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('resize', handleWindowResize);
-    window.addEventListener('scroll', handleWindowScroll, true);
+    window.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('resize', updateAllPositions);
+    window.addEventListener('scroll', updateAllPositions, true);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('resize', handleWindowResize);
-      window.removeEventListener('scroll', handleWindowScroll, true);
+      window.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', updateAllPositions);
+      window.removeEventListener('scroll', updateAllPositions, true);
     };
-  }, [isCustomOpen, updatePopoverPos]);
+  }, [updateAllPositions]);
 
   const handleApplyCustom = (val?: number) => {
     const stars = val !== undefined ? val : parseInt(customInput, 10);
@@ -165,70 +235,283 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     return `${count}+ ★`;
   };
 
+  const filteredLanguages = useMemo(() => {
+    if (!langSearch.trim()) return availableLanguages;
+    const q = langSearch.toLowerCase();
+    return availableLanguages.filter((l) => l.toLowerCase().includes(q));
+  }, [availableLanguages, langSearch]);
+
+  const sortOptions: { value: SortOption; label: string; icon: React.ReactNode }[] = [
+    { value: 'stars', label: 'Most Stars', icon: <Star className="w-3.5 h-3.5 text-amber-500 fill-current" /> },
+    { value: 'forks', label: 'Most Forks', icon: <GitFork className="w-3.5 h-3.5 text-action" /> },
+    { value: 'updated', label: 'Recently Updated', icon: <Calendar className="w-3.5 h-3.5 text-emerald-500" /> },
+  ];
+
   return (
     <div className="w-full bg-surface border border-themeline rounded-2xl p-2.5 sm:p-3 my-3 sm:my-4 shadow-sm transition-colors duration-200">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         
-        {/* Left Side: Summary & Filters */}
+        {/* Left Side: Summary & Custom Themed Dropdown Filters */}
         <div className="flex flex-wrap items-center gap-2">
           
-          <div className="text-xs font-mono text-txt-muted whitespace-nowrap mr-1">
+          <div className="text-xs font-sans font-medium text-txt-muted whitespace-nowrap mr-1">
             <span className="text-action font-bold">{totalResults.toLocaleString()}</span> repos
           </div>
 
-          {/* Category Dropdown Filter */}
-          <div className="flex items-center gap-1.5 bg-surface-active hover:bg-surface border border-themeline hover:border-action-border rounded-lg px-2.5 py-1 text-xs text-txt-primary shadow-sm transition-all group">
-            <span className="text-action flex-shrink-0">
-              {getCategoryIcon(selectedCategoryObj?.icon || 'Sparkles')}
-            </span>
-            <span className="text-txt-muted font-mono text-[11px] hidden sm:inline">Category:</span>
-            <select
-              value={selectedCategory}
-              onChange={(e) => onSelectCategory(e.target.value as CategoryId)}
-              className="bg-transparent text-txt-primary font-semibold focus:outline-none cursor-pointer text-xs pr-1"
+          {/* 1. Custom Themed Category Dropdown */}
+          <div className="relative">
+            <button
+              ref={categoryTriggerRef}
+              onClick={handleToggleCategory}
+              type="button"
+              className={`flex items-center gap-1.5 bg-surface-active hover:bg-surface border rounded-lg px-2.5 py-1 text-xs text-txt-primary shadow-sm transition-all group ${
+                isCategoryOpen ? 'border-action ring-1 ring-action/30 bg-surface' : 'border-themeline hover:border-action-border'
+              }`}
+              title="Select technology sector"
             >
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id} className="bg-surface text-txt-primary py-1">
-                  {cat.name}
-                </option>
-              ))}
-            </select>
+              <span className="text-action flex-shrink-0">
+                {getCategoryIcon(selectedCategoryObj?.icon || 'Sparkles')}
+              </span>
+              <span className="text-txt-muted font-mono text-[11px] hidden sm:inline">Category:</span>
+              <span className="font-semibold text-txt-primary truncate max-w-[140px]">
+                {selectedCategoryObj.name}
+              </span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-txt-muted transition-transform duration-200 ${
+                  isCategoryOpen ? 'rotate-180 text-action' : 'group-hover:text-txt-primary'
+                }`}
+              />
+            </button>
+
+            {/* Themed Category Menu Portal */}
+            {isCategoryOpen && categoryPos && ReactDOM.createPortal(
+              <div
+                id="category-dropdown-portal"
+                style={{
+                  position: 'fixed',
+                  top: categoryPos.top,
+                  left: categoryPos.left,
+                  width: '270px',
+                  zIndex: 99999,
+                }}
+                className="bg-surface border border-themeline rounded-2xl shadow-2xl p-1.5 animate-fadeIn backdrop-blur-2xl max-h-[420px] overflow-y-auto no-scrollbar"
+              >
+                <div className="flex items-center justify-between px-2.5 py-1.5 mb-1 border-b border-themeline/60">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-txt-muted flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-action" />
+                    <span>Technology Sectors</span>
+                  </span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-surface-active border border-themeline text-txt-muted">
+                    {categories.length} Sectors
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-0.5">
+                  {categories.map((cat) => {
+                    const isSelected = cat.id === selectedCategory;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          onSelectCategory(cat.id);
+                          setIsCategoryOpen(false);
+                        }}
+                        className={`flex items-center justify-between w-full px-2.5 py-2 rounded-xl text-xs text-left transition-all group ${
+                          isSelected
+                            ? 'bg-action-soft text-action border border-action-border font-bold'
+                            : 'text-txt-primary hover:bg-surface-hover hover:text-action border border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className={`p-1 rounded-lg ${isSelected ? 'bg-action text-white' : 'bg-surface-active text-txt-muted group-hover:text-action'}`}>
+                            {getCategoryIcon(cat.icon)}
+                          </span>
+                          <span className="truncate block font-medium">
+                            {cat.name}
+                          </span>
+                        </div>
+
+                        {isSelected && (
+                          <Check className="w-4 h-4 text-action flex-shrink-0 ml-2" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>,
+              document.body
+            )}
           </div>
 
-          {/* Sort By Dropdown */}
-          <div className="flex items-center gap-1 bg-surface-active border border-themeline rounded-lg px-2 py-1 text-xs text-txt-primary shadow-sm">
-            <ArrowUpDown className="w-3 h-3 text-action" />
-            <span className="text-txt-muted font-mono text-[11px] hidden sm:inline">Sort:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => onSortChange(e.target.value as SortOption)}
-              className="bg-transparent text-txt-primary font-medium focus:outline-none cursor-pointer text-xs"
+          {/* 2. Custom Themed Sort Dropdown */}
+          <div className="relative">
+            <button
+              ref={sortTriggerRef}
+              onClick={handleToggleSort}
+              type="button"
+              className={`flex items-center gap-1.5 bg-surface-active hover:bg-surface border rounded-lg px-2.5 py-1 text-xs text-txt-primary shadow-sm transition-all group ${
+                isSortOpen ? 'border-action ring-1 ring-action/30 bg-surface' : 'border-themeline hover:border-action-border'
+              }`}
+              title="Sort repositories"
             >
-              <option value="stars" className="bg-surface text-txt-primary">Most Stars</option>
-              <option value="forks" className="bg-surface text-txt-primary">Most Forks</option>
-              <option value="updated" className="bg-surface text-txt-primary">Recently Updated</option>
-            </select>
+              <ArrowUpDown className="w-3 h-3 text-action flex-shrink-0" />
+              <span className="text-txt-muted font-mono text-[11px] hidden sm:inline">Sort:</span>
+              <span className="font-semibold text-txt-primary">
+                {sortBy === 'stars' ? 'Most Stars' : sortBy === 'forks' ? 'Most Forks' : 'Recently Updated'}
+              </span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-txt-muted transition-transform duration-200 ${
+                  isSortOpen ? 'rotate-180 text-action' : 'group-hover:text-txt-primary'
+                }`}
+              />
+            </button>
+
+            {/* Themed Sort Menu Portal */}
+            {isSortOpen && sortPos && ReactDOM.createPortal(
+              <div
+                id="sort-dropdown-portal"
+                style={{
+                  position: 'fixed',
+                  top: sortPos.top,
+                  left: sortPos.left,
+                  width: '200px',
+                  zIndex: 99999,
+                }}
+                className="bg-surface border border-themeline rounded-2xl shadow-2xl p-1.5 animate-fadeIn backdrop-blur-2xl"
+              >
+                <div className="px-2.5 py-1 mb-1 border-b border-themeline/60">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-txt-muted">
+                    Sort Criteria
+                  </span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  {sortOptions.map((opt) => {
+                    const isSelected = opt.value === sortBy;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          onSortChange(opt.value);
+                          setIsSortOpen(false);
+                        }}
+                        className={`flex items-center justify-between w-full px-2.5 py-2 rounded-xl text-xs text-left transition-all ${
+                          isSelected
+                            ? 'bg-action-soft text-action border border-action-border font-bold'
+                            : 'text-txt-primary hover:bg-surface-hover hover:text-action border border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {opt.icon}
+                          <span>{opt.label}</span>
+                        </div>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-action flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>,
+              document.body
+            )}
           </div>
 
-          {/* Language Filter */}
-          <div className="flex items-center gap-1 bg-surface-active border border-themeline rounded-lg px-2 py-1 text-xs text-txt-primary shadow-sm">
-            <Code2 className="w-3 h-3 text-action" />
-            <span className="text-txt-muted font-mono text-[11px] hidden sm:inline">Lang:</span>
-            <select
-              value={selectedLanguage}
-              onChange={(e) => onLanguageChange(e.target.value)}
-              className="bg-transparent text-txt-primary font-medium focus:outline-none cursor-pointer max-w-[115px] text-xs"
+          {/* 3. Custom Themed Language Dropdown */}
+          <div className="relative">
+            <button
+              ref={langTriggerRef}
+              onClick={handleToggleLang}
+              type="button"
+              className={`flex items-center gap-1.5 bg-surface-active hover:bg-surface border rounded-lg px-2.5 py-1 text-xs text-txt-primary shadow-sm transition-all group ${
+                isLangOpen ? 'border-action ring-1 ring-action/30 bg-surface' : 'border-themeline hover:border-action-border'
+              }`}
+              title="Filter by programming language"
             >
-              <option value="" className="bg-surface text-txt-primary">All Languages</option>
-              {availableLanguages.map((lang) => (
-                <option key={lang} value={lang} className="bg-surface text-txt-primary">
-                  {lang}
-                </option>
-              ))}
-            </select>
+              <Code2 className="w-3 h-3 text-action flex-shrink-0" />
+              <span className="text-txt-muted font-mono text-[11px] hidden sm:inline">Lang:</span>
+              <span className="font-semibold text-txt-primary truncate max-w-[110px]">
+                {selectedLanguage || 'All Languages'}
+              </span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-txt-muted transition-transform duration-200 ${
+                  isLangOpen ? 'rotate-180 text-action' : 'group-hover:text-txt-primary'
+                }`}
+              />
+            </button>
+
+            {/* Themed Language Menu Portal */}
+            {isLangOpen && langPos && ReactDOM.createPortal(
+              <div
+                id="lang-dropdown-portal"
+                style={{
+                  position: 'fixed',
+                  top: langPos.top,
+                  left: langPos.left,
+                  width: '230px',
+                  zIndex: 99999,
+                }}
+                className="bg-surface border border-themeline rounded-2xl shadow-2xl p-2 animate-fadeIn backdrop-blur-2xl max-h-[380px] flex flex-col"
+              >
+                {/* Search input for languages */}
+                <div className="relative mb-2">
+                  <Search className="w-3 h-3 text-txt-muted absolute left-2.5 top-2.5" />
+                  <input
+                    type="text"
+                    value={langSearch}
+                    onChange={(e) => setLangSearch(e.target.value)}
+                    placeholder="Search language..."
+                    autoFocus
+                    className="w-full pl-7 pr-2.5 py-1.5 bg-surface-active border border-themeline rounded-lg text-xs font-mono text-txt-primary placeholder-txt-muted/50 focus:outline-none focus:border-action"
+                  />
+                </div>
+
+                <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-0.5 max-h-[280px]">
+                  {/* Option: All Languages */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onLanguageChange('');
+                      setIsLangOpen(false);
+                    }}
+                    className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg text-xs text-left transition-all ${
+                      !selectedLanguage
+                        ? 'bg-action-soft text-action border border-action-border font-bold'
+                        : 'text-txt-primary hover:bg-surface-hover hover:text-action border border-transparent'
+                    }`}
+                  >
+                    <span>All Languages</span>
+                    {!selectedLanguage && <Check className="w-3.5 h-3.5 text-action" />}
+                  </button>
+
+                  {/* Filtered available languages */}
+                  {filteredLanguages.map((lang) => {
+                    const isSelected = selectedLanguage.toLowerCase() === lang.toLowerCase();
+                    return (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => {
+                          onLanguageChange(lang);
+                          setIsLangOpen(false);
+                        }}
+                        className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg text-xs text-left transition-all ${
+                          isSelected
+                            ? 'bg-action-soft text-action border border-action-border font-bold'
+                            : 'text-txt-primary hover:bg-surface-hover hover:text-action border border-transparent'
+                        }`}
+                      >
+                        <span className="truncate">{lang}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-action" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>,
+              document.body
+            )}
           </div>
 
-          {/* Star Threshold Filter with Presets & Custom Star Count */}
+          {/* 4. Star Threshold Filter with Presets & Custom Star Count */}
           <div className="flex items-center gap-0.5 bg-surface-active p-0.5 rounded-lg border border-themeline shadow-sm relative">
             {presetTiers.map((tier) => (
               <button
@@ -274,7 +557,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   width: '240px',
                   zIndex: 99999,
                 }}
-                className="bg-surface border border-themeline rounded-xl shadow-2xl p-2.5 animate-fadeIn backdrop-blur-xl"
+                className="bg-surface border border-themeline rounded-2xl shadow-2xl p-2.5 animate-fadeIn backdrop-blur-2xl"
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[11px] font-mono font-semibold text-txt-primary flex items-center gap-1">

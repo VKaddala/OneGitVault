@@ -209,7 +209,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               loading="lazy"
             />
             <div className="min-w-0">
-              <span className="text-[11px] font-mono text-txt-muted truncate block leading-tight">
+              <span className="text-[11px] font-sans font-medium text-txt-muted truncate block leading-tight">
                 {repo.owner.login}
               </span>
               <a
@@ -263,13 +263,13 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                 e.stopPropagation();
                 onSelectTopic(topic);
               }}
-              className="text-[11px] font-mono bg-tag-bg text-tag-txt hover:text-tag-hoverTxt border border-tag-border hover:border-action px-2 py-0.5 rounded-md transition-colors truncate max-w-[130px]"
+              className="text-[11px] font-sans font-medium bg-tag-bg text-tag-txt hover:text-tag-hoverTxt border border-tag-border hover:border-action px-2 py-0.5 rounded-md transition-colors truncate max-w-[130px]"
             >
               #{topic}
             </button>
           ))}
           {repo.topics.length > 3 && (
-            <span className="text-[10px] font-mono text-txt-muted px-1 py-0.5">
+            <span className="text-[10px] font-sans font-medium text-txt-muted px-1 py-0.5">
               +{repo.topics.length - 3}
             </span>
           )}
@@ -278,7 +278,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
 
       {/* Footer Info: Popularity, Language, Date */}
       <div className="pt-3 border-t border-themeline">
-        <div className="flex items-center justify-between text-xs text-txt-muted mb-2.5 font-mono">
+        <div className="flex items-center justify-between text-xs text-txt-muted mb-2.5 font-sans">
           {/* Language Dot */}
           {repo.language ? (
             <div className="flex items-center gap-1.5">

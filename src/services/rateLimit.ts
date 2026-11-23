@@ -15,10 +15,22 @@ class RateLimitManager {
 
     // Check live rate limit immediately on initialization
     checkLiveRateLimit().catch(() => {});
+
+    // Periodic 1-second ticker to automatically reset counters when resetTime passes
+    setInterval(() => {
+      const updated = getCurrentRateLimit();
+      if (
+        updated.remaining !== this.current.remaining ||
+        updated.searchRemaining !== this.current.searchRemaining
+      ) {
+        this.current = { ...updated };
+        this.notify();
+      }
+    }, 1000);
   }
 
   public get(): RateLimitInfo {
-    return this.current;
+    return getCurrentRateLimit();
   }
 
   public update(info: RateLimitInfo): void {
@@ -27,7 +39,12 @@ class RateLimitManager {
   }
 
   public syncFromApi(): void {
-    this.update(getCurrentRateLimit());
+    checkLiveRateLimit()
+      .then((info) => {
+        this.current = info;
+        this.notify();
+      })
+      .catch(() => {});
   }
 
   public subscribe(cb: RateLimitSubscriber): () => void {

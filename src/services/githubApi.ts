@@ -31,21 +31,28 @@ export function getStoredToken(): string {
   }
 }
 
-export function setStoredToken(token: string): void {
+export async function setStoredToken(token: string): Promise<void> {
   try {
     if (token) {
       localStorage.setItem(TOKEN_KEY, token.trim());
     } else {
       localStorage.removeItem(TOKEN_KEY);
     }
-    // Update live rate limit quota with new token
-    checkLiveRateLimit().catch(() => {});
+    // Update live rate limit quota with new token immediately
+    await checkLiveRateLimit();
   } catch (e) {
     console.error('Failed to store GitHub token', e);
   }
 }
 
 export function getCurrentRateLimit(): RateLimitInfo {
+  const now = Date.now();
+  if (currentRateLimit.resetTime && now >= currentRateLimit.resetTime.getTime()) {
+    currentRateLimit.remaining = currentRateLimit.limit;
+  }
+  if (currentRateLimit.searchResetTime && now >= currentRateLimit.searchResetTime.getTime()) {
+    currentRateLimit.searchRemaining = currentRateLimit.searchLimit || 30;
+  }
   return currentRateLimit;
 }
 

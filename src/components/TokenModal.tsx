@@ -60,16 +60,25 @@ export const TokenModal: React.FC<TokenModalProps> = ({
         </div>
 
         {/* Current status */}
-        <div className="mb-4 p-3 bg-surface-active rounded-xl border border-themeline text-xs font-mono">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-txt-muted">Current Quota:</span>
-            <span className="font-bold text-txt-primary">{rateLimit.remaining} / {rateLimit.limit} req/hr</span>
+        <div className="mb-4 p-3 bg-surface-active rounded-xl border border-themeline text-xs font-mono space-y-2">
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-txt-muted">Core API Quota:</span>
+              <span className="font-bold text-txt-primary">{rateLimit.remaining} / {rateLimit.limit} req/hr</span>
+            </div>
+            <div className="w-full bg-surface h-1.5 rounded-full overflow-hidden border border-themeline">
+              <div 
+                className="bg-action h-full rounded-full transition-all"
+                style={{ width: `${Math.min(100, (rateLimit.remaining / rateLimit.limit) * 100)}%` }}
+              />
+            </div>
           </div>
-          <div className="w-full bg-surface h-1.5 rounded-full overflow-hidden mt-1.5 border border-themeline">
-            <div 
-              className="bg-action h-full rounded-full transition-all"
-              style={{ width: `${Math.min(100, (rateLimit.remaining / rateLimit.limit) * 100)}%` }}
-            />
+
+          <div className="pt-1 border-t border-themeline/50 flex justify-between items-center text-[11px]">
+            <span className="text-txt-muted">Search API Quota:</span>
+            <span className="font-semibold text-txt-primary">
+              {rateLimit.searchRemaining !== undefined ? `${rateLimit.searchRemaining} / ${rateLimit.searchLimit || 30}` : '30 / 30'} req/min
+            </span>
           </div>
         </div>
 

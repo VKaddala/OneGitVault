@@ -14,6 +14,7 @@ import { Repository, ViewMode } from './types';
 import { rateLimitManager, RateLimitInfo } from './services/rateLimit';
 import { useRepositories } from './hooks/useRepositories';
 import { useBookmarks } from './hooks/useBookmarks';
+import { useGitHubStars } from './hooks/useGitHubStars';
 import { checkForAppUpdates, UpdateInfo } from './services/updateService';
 import { 
   Loader2, 
@@ -59,6 +60,13 @@ export const App: React.FC = () => {
     clearBookmarks,
     setBookmarks,
   } = useBookmarks();
+
+  const {
+    hasToken,
+    isStarred,
+    getRepoStarCount,
+    toggleStar: handleToggleStar,
+  } = useGitHubStars();
 
   // Local View State
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -122,6 +130,13 @@ export const App: React.FC = () => {
       setDetailSource(null);
     }
   }, [detailSource]);
+
+  const handleRepoStarToggle = useCallback(async (repo: Repository) => {
+    const res = await handleToggleStar(repo);
+    if (res.needToken) {
+      setIsTokenModalOpen(true);
+    }
+  }, [handleToggleStar]);
 
   // Rate limit subscription
   const [rateLimit, setRateLimit] = useState<RateLimitInfo>(rateLimitManager.get());
@@ -293,7 +308,7 @@ export const App: React.FC = () => {
         className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col"
       >
         {/* Main Content Area */}
-        <main className="flex-1 max-w-[1720px] w-full mx-auto px-3 sm:px-5 lg:px-6 pb-16">
+        <main className="flex-1 max-w-[2400px] w-full mx-auto px-3 sm:px-5 lg:px-6 pb-16">
 
         {/* Global Filter & Sorting Control Toolbar */}
         <FilterBar
@@ -382,7 +397,7 @@ export const App: React.FC = () => {
         {!isLoading && (
           <div className={
             viewMode === 'grid'
-              ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-3'
+              ? 'grid grid-cols-[repeat(auto-fill,minmax(330px,1fr))] gap-4 sm:gap-5'
               : 'flex flex-col gap-2.5'
           }>
             {displayedRepositories.map((repo) => (
@@ -397,6 +412,10 @@ export const App: React.FC = () => {
                   setSelectedRepo(r);
                   setDetailSource('main');
                 }}
+                isStarred={isStarred(repo.full_name)}
+                starCount={getRepoStarCount(repo)}
+                hasToken={hasToken}
+                onToggleStar={handleRepoStarToggle}
               />
             ))}
           </div>
@@ -532,6 +551,10 @@ export const App: React.FC = () => {
         onToggleBookmark={toggleBookmark}
         onBack={detailSource === 'trending' ? handleBackToTrending : undefined}
         backLabel="Back to Trending"
+        isStarred={selectedRepo ? isStarred(selectedRepo.full_name) : false}
+        starCount={selectedRepo ? getRepoStarCount(selectedRepo) : undefined}
+        hasToken={hasToken}
+        onToggleStar={handleRepoStarToggle}
       />
 
       <TrendingModal
@@ -540,6 +563,10 @@ export const App: React.FC = () => {
         onSelectRepo={handleSelectTrendingRepo}
         isBookmarked={isBookmarked}
         onToggleBookmark={toggleBookmark}
+        isStarred={isStarred}
+        getStarCount={getRepoStarCount}
+        hasToken={hasToken}
+        onToggleStar={handleRepoStarToggle}
       />
 
     </div>

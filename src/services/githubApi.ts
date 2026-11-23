@@ -9,12 +9,18 @@ export interface RateLimitInfo {
   limit: number;
   remaining: number;
   resetTime: Date | null;
+  searchLimit?: number;
+  searchRemaining?: number;
+  searchResetTime?: Date | null;
 }
 
 let currentRateLimit: RateLimitInfo = {
   limit: 60,
   remaining: 60,
   resetTime: null,
+  searchLimit: 10,
+  searchRemaining: 10,
+  searchResetTime: null,
 };
 
 export function getStoredToken(): string {
@@ -43,6 +49,75 @@ export function getCurrentRateLimit(): RateLimitInfo {
   return currentRateLimit;
 }
 
+/**
+ * Checks if the authenticated user has starred a repository on GitHub.
+ * Returns true if starred (204 No Content), false otherwise.
+ */
+export async function checkIsRepoStarred(fullName: string): Promise<boolean> {
+  const token = getStoredToken();
+  if (!token) return false;
+
+  try {
+    const res = await fetch(`https://api.github.com/user/starred/${fullName}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
+      },
+    });
+    return res.status === 204;
+  } catch (e) {
+    console.warn(`Failed to check starred status for ${fullName}:`, e);
+    return false;
+  }
+}
+
+/**
+ * Stars a repository on GitHub for the authenticated user.
+ * Returns true if successful (204 No Content).
+ */
+export async function starRepository(fullName: string): Promise<boolean> {
+  const token = getStoredToken();
+  if (!token) return false;
+
+  try {
+    const res = await fetch(`https://api.github.com/user/starred/${fullName}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Length': '0',
+      },
+    });
+    return res.status === 204;
+  } catch (e) {
+    console.error(`Failed to star repository ${fullName}:`, e);
+    return false;
+  }
+}
+
+/**
+ * Unstars a repository on GitHub for the authenticated user.
+ * Returns true if successful (204 No Content).
+ */
+export async function unstarRepository(fullName: string): Promise<boolean> {
+  const token = getStoredToken();
+  if (!token) return false;
+
+  try {
+    const res = await fetch(`https://api.github.com/user/starred/${fullName}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
+      },
+    });
+    return res.status === 204;
+  } catch (e) {
+    console.error(`Failed to unstar repository ${fullName}:`, e);
+    return false;
+  }
+}
+
 type RateLimitListener = (info: RateLimitInfo) => void;
 let onRateLimitChange: RateLimitListener | null = null;
 
@@ -51,16 +126,34 @@ export function setRateLimitListener(listener: RateLimitListener): void {
 }
 
 function updateRateLimitFromHeaders(headers: Headers): void {
+  const resource = headers.get('x-ratelimit-resource');
   const limit = headers.get('x-ratelimit-limit');
   const remaining = headers.get('x-ratelimit-remaining');
   const reset = headers.get('x-ratelimit-reset');
 
   if (limit && remaining) {
-    currentRateLimit = {
-      limit: parseInt(limit, 10),
-      remaining: parseInt(remaining, 10),
-      resetTime: reset ? new Date(parseInt(reset, 10) * 1000) : null,
-    };
+    const parsedLimit = parseInt(limit, 10);
+    const parsedRemaining = parseInt(remaining, 10);
+    const parsedReset = reset ? new Date(parseInt(reset, 10) * 1000) : null;
+
+    if (resource === 'search' || parsedLimit <= 30) {
+      // GitHub Search API rate limit pool (30 req/min authenticated, 10 req/min unauthenticated)
+      currentRateLimit = {
+        ...currentRateLimit,
+        searchLimit: parsedLimit,
+        searchRemaining: parsedRemaining,
+        searchResetTime: parsedReset,
+      };
+    } else {
+      // GitHub Core API rate limit pool (5,000 req/hr authenticated, 60 req/hr unauthenticated)
+      currentRateLimit = {
+        ...currentRateLimit,
+        limit: parsedLimit,
+        remaining: parsedRemaining,
+        resetTime: parsedReset,
+      };
+    }
+
     if (onRateLimitChange) {
       onRateLimitChange(currentRateLimit);
     }
@@ -85,11 +178,15 @@ export async function checkLiveRateLimit(): Promise<RateLimitInfo> {
     if (res.ok) {
       const data = await res.json();
       const core = data?.resources?.core || data?.rate;
+      const search = data?.resources?.search;
       if (core) {
         currentRateLimit = {
           limit: core.limit ?? (token ? 5000 : 60),
           remaining: core.remaining ?? 60,
           resetTime: core.reset ? new Date(core.reset * 1000) : null,
+          searchLimit: search?.limit ?? (token ? 30 : 10),
+          searchRemaining: search?.remaining ?? (token ? 30 : 10),
+          searchResetTime: search?.reset ? new Date(search.reset * 1000) : null,
         };
         if (onRateLimitChange) {
           onRateLimitChange(currentRateLimit);

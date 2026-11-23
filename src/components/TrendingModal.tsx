@@ -22,6 +22,10 @@ interface TrendingModalProps {
   onSelectRepo: (repo: Repository) => void;
   isBookmarked: (id: number | string) => boolean;
   onToggleBookmark: (repo: Repository) => void;
+  isStarred?: (fullName: string) => boolean;
+  getStarCount?: (repo: Repository) => number;
+  hasToken?: boolean;
+  onToggleStar?: (repo: Repository) => void;
 }
 
 type Period = 'daily' | 'weekly' | 'monthly';
@@ -32,6 +36,10 @@ export const TrendingModal: React.FC<TrendingModalProps> = ({
   onSelectRepo,
   isBookmarked,
   onToggleBookmark,
+  isStarred,
+  getStarCount,
+  hasToken = false,
+  onToggleStar,
 }) => {
   const [period, setPeriod] = useState<Period>('daily');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
@@ -238,10 +246,26 @@ export const TrendingModal: React.FC<TrendingModalProps> = ({
                           </span>
                         )}
 
-                        <span className="flex items-center gap-1">
-                          <Star className="w-3.5 h-3.5 text-amber-500 fill-current" />
-                          <span>{formatNumber(repo.stargazers_count)}</span>
-                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleStar?.(repo);
+                          }}
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-xs border transition-all ${
+                            isStarred?.(repo.full_name)
+                              ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                              : 'text-txt-muted hover:text-amber-500 hover:border-amber-500/50 border-themeline bg-surface'
+                          }`}
+                          title={
+                            hasToken
+                              ? (isStarred?.(repo.full_name) ? 'Starred on GitHub! (Click to Unstar)' : 'Star this repository on GitHub')
+                              : 'Click to star on GitHub (connect token in header)'
+                          }
+                        >
+                          <Star className={`w-3.5 h-3.5 ${isStarred?.(repo.full_name) ? 'text-white fill-current animate-pulse' : 'text-amber-500 fill-current'}`} />
+                          <span>{formatNumber(getStarCount ? getStarCount(repo) : repo.stargazers_count)}</span>
+                        </button>
 
                         <span className="flex items-center gap-1">
                           <GitFork className="w-3.5 h-3.5" />

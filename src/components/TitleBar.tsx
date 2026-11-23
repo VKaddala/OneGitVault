@@ -441,7 +441,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                 ? 'bg-action-soft text-action border-action-border'
                 : 'bg-surface hover:bg-surface-hover text-txt-primary border-themeline hover:border-action-border hover:text-action shadow-sm'
             }`}
-            title={`API Quota: ${rateLimit.remaining} / ${rateLimit.limit} req/hr. Click to manage GitHub Token`}
+            title={`GitHub API Quota: ${rateLimit.remaining} / ${rateLimit.limit} req/hr (Core API)${
+              rateLimit.searchRemaining !== undefined ? ` • ${rateLimit.searchRemaining} / ${rateLimit.searchLimit || 30} req/min (Search API)` : ''
+            }. Click to manage GitHub Token`}
           >
             {isOfflineFallback ? (
               <>
@@ -453,6 +455,14 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-action animate-pulse flex-shrink-0" />
                 <span className="text-[11px] font-bold">{rateLimit.remaining}</span>
                 <span className="hidden xl:inline text-[10px] text-txt-muted font-normal">calls</span>
+                {rateLimit.searchRemaining !== undefined && (
+                  <span
+                    className="hidden 2xl:inline text-[9px] font-mono text-txt-muted bg-surface-active px-1 py-0.5 rounded border border-themeline"
+                    title={`Search quota: ${rateLimit.searchRemaining}/${rateLimit.searchLimit || 30} queries/min remaining`}
+                  >
+                    search:{rateLimit.searchRemaining}
+                  </span>
+                )}
               </>
             )}
             <Key className="w-3 h-3 text-txt-muted ml-0.5 hidden sm:inline" />

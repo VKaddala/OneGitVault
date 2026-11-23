@@ -18,6 +18,10 @@ interface RepoDetailPanelProps {
   onToggleBookmark: (repo: Repository) => void;
   onBack?: () => void;
   backLabel?: string;
+  isStarred?: boolean;
+  starCount?: number;
+  hasToken?: boolean;
+  onToggleStar?: (repo: Repository) => void;
 }
 
 type ReadmeState = 'idle' | 'loading' | 'success' | 'error' | 'not_found';
@@ -67,6 +71,10 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
   onToggleBookmark,
   onBack,
   backLabel,
+  isStarred = false,
+  starCount,
+  hasToken = false,
+  onToggleStar,
 }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('readme');
   const [readmeContent, setReadmeContent] = useState<string>('');
@@ -324,10 +332,22 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
           {/* Quick Meta Row */}
           <div className="flex items-center justify-between gap-4 flex-wrap text-xs font-mono">
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="flex items-center gap-1 font-bold text-star bg-star-bg border border-star-border px-2.5 py-1 rounded-lg">
-                <Star className="w-3.5 h-3.5 fill-current text-star" />
-                {repo.stargazers_count.toLocaleString()} stars
-              </span>
+              <button
+                onClick={() => onToggleStar?.(repo)}
+                className={`flex items-center gap-1.5 font-bold px-3 py-1 rounded-lg border shadow-sm transition-all hover:scale-105 active:scale-95 ${
+                  isStarred
+                    ? 'bg-amber-500 text-white border-amber-600 shadow-amber-500/20'
+                    : 'text-star bg-star-bg border-star-border hover:border-star'
+                }`}
+                title={
+                  hasToken
+                    ? (isStarred ? 'Starred on GitHub! (Click to Unstar)' : 'Star this repository on GitHub')
+                    : 'Click to star on GitHub (connect token in header)'
+                }
+              >
+                <Star className={`w-3.5 h-3.5 flex-shrink-0 ${isStarred ? 'fill-current text-white animate-pulse' : 'fill-current text-star'}`} />
+                <span>{(starCount !== undefined ? starCount : repo.stargazers_count).toLocaleString()} {isStarred ? 'Starred' : 'stars'}</span>
+              </button>
               <span className="flex items-center gap-1 text-txt-muted bg-surface px-2.5 py-1 rounded-lg border border-themeline">
                 <GitFork className="w-3.5 h-3.5" />
                 {repo.forks_count.toLocaleString()} forks

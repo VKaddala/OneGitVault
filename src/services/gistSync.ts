@@ -10,7 +10,9 @@ const GIST_DESCRIPTION = 'OneGitVault Bookmarks — synced automatically';
 
 interface GistFile {
   filename: string;
-  content: string;
+  content?: string;
+  raw_url?: string;
+  size?: number;
 }
 
 interface GistResponse {
@@ -36,7 +38,14 @@ async function findBookmarkGist(token: string): Promise<GistResponse | null> {
   if (!res.ok) return null;
 
   const gists: GistResponse[] = await res.json();
-  return gists.find(g => g.description === GIST_DESCRIPTION) ?? null;
+  return (
+    gists.find(
+      (g) =>
+        (g.files && g.files[GIST_FILENAME]) ||
+        g.description === GIST_DESCRIPTION ||
+        (g.description && g.description.includes('OneGitVault'))
+    ) ?? null
+  );
 }
 
 /** Create a new private gist with the bookmarks */
@@ -69,6 +78,7 @@ async function updateBookmarkGist(
     method: 'PATCH',
     headers: gistHeaders(token),
     body: JSON.stringify({
+      description: GIST_DESCRIPTION,
       files: {
         [GIST_FILENAME]: { content: JSON.stringify(bookmarks, null, 2) },
       },
@@ -104,6 +114,7 @@ export async function pushBookmarksToGist(
 
 /**
  * Pull bookmarks from GitHub Gist.
+ * Fetches the full gist details by ID or raw URL, handles pagination / truncation properly.
  * Returns the parsed bookmark array, or null if none found / on error.
  */
 export async function pullBookmarksFromGist(
@@ -113,10 +124,31 @@ export async function pullBookmarksFromGist(
     const gist = await findBookmarkGist(token);
     if (!gist) return null;
 
-    const file = gist.files[GIST_FILENAME];
-    if (!file?.content) return null;
+    // 1. Fetch full gist by ID (GitHub's GET /gists list endpoint omits file contents)
+    const fullRes = await fetch(`https://api.github.com/gists/${gist.id}`, {
+      headers: gistHeaders(token),
+    });
+    if (fullRes.ok) {
+      const fullGist: GistResponse = await fullRes.json();
+      const file = fullGist.files?.[GIST_FILENAME];
+      if (file?.content) {
+        return JSON.parse(file.content) as Repository[];
+      }
+    }
 
-    return JSON.parse(file.content) as Repository[];
+    // 2. Direct raw URL fallback
+    const rawUrl = gist.files?.[GIST_FILENAME]?.raw_url;
+    if (rawUrl) {
+      const rawRes = await fetch(rawUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (rawRes.ok) {
+        const rawText = await rawRes.text();
+        return JSON.parse(rawText) as Repository[];
+      }
+    }
+
+    return null;
   } catch (e) {
     console.error('Gist pull failed', e);
     return null;

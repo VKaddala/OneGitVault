@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { TitleBar } from './components/TitleBar';
-import { CategoryNav } from './components/CategoryNav';
 import { FilterBar } from './components/FilterBar';
 import { ProjectCard } from './components/ProjectCard';
 import { TokenModal } from './components/TokenModal';
@@ -296,14 +295,7 @@ export const App: React.FC = () => {
         isCheckingUpdates={isCheckingUpdates}
       />
 
-      {/* Technology Category Navigation Bar (Fixed below titlebar) */}
-      <CategoryNav
-        categories={CATEGORIES}
-        selectedCategory={selectedCategory}
-        onSelectCategory={setSelectedCategory}
-      />
-
-      {/* Scrollable Content Container: Scrollbar starts AFTER the two sections above */}
+      {/* Scrollable Content Container */}
       <div
         ref={mainScrollRef}
         onScroll={handleScroll}
@@ -312,8 +304,11 @@ export const App: React.FC = () => {
         {/* Main Content Area */}
         <main className="flex-1 max-w-[2400px] w-full mx-auto px-3 sm:px-5 lg:px-6 pb-16">
 
-        {/* Global Filter & Sorting Control Toolbar */}
+        {/* Global Filter & Sorting Control Toolbar with Integrated Category Filter */}
         <FilterBar
+          categories={CATEGORIES}
+          selectedCategory={selectedCategory}
+          onSelectCategory={setSelectedCategory}
           totalResults={totalCount}
           sortBy={sortBy}
           onSortChange={setSortBy}

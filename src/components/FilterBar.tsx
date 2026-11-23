@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { 
   ArrowUpDown, 
@@ -7,11 +7,24 @@ import {
   List, 
   RotateCcw,
   Bookmark,
-  Star
+  Star,
+  Sparkles,
+  Brain,
+  Globe,
+  Cloud,
+  Wrench,
+  Database,
+  Smartphone,
+  Shield,
+  Package,
+  Video
 } from 'lucide-react';
-import { SortOption, ViewMode } from '../types';
+import { SortOption, ViewMode, Category, CategoryId } from '../types';
 
 interface FilterBarProps {
+  categories: Category[];
+  selectedCategory: CategoryId;
+  onSelectCategory: (id: CategoryId) => void;
   totalResults: number;
   sortBy: SortOption;
   onSortChange: (sort: SortOption) => void;
@@ -29,6 +42,9 @@ interface FilterBarProps {
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
+  categories,
+  selectedCategory,
+  onSelectCategory,
   totalResults,
   sortBy,
   onSortChange,
@@ -57,6 +73,27 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   const [customInput, setCustomInput] = useState(minStars > 0 && isCustom ? minStars.toString() : '');
   const customTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
+
+  const selectedCategoryObj = useMemo(() => {
+    return categories.find((c) => c.id === selectedCategory) || categories[0];
+  }, [categories, selectedCategory]);
+
+  const getCategoryIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'Brain': return <Brain className="w-3.5 h-3.5" />;
+      case 'Globe': return <Globe className="w-3.5 h-3.5" />;
+      case 'Cloud': return <Cloud className="w-3.5 h-3.5" />;
+      case 'Wrench': return <Wrench className="w-3.5 h-3.5" />;
+      case 'Database': return <Database className="w-3.5 h-3.5" />;
+      case 'Smartphone': return <Smartphone className="w-3.5 h-3.5" />;
+      case 'Shield': return <Shield className="w-3.5 h-3.5" />;
+      case 'Package': return <Package className="w-3.5 h-3.5" />;
+      case 'Video': return <Video className="w-3.5 h-3.5" />;
+      case 'Sparkles':
+      default:
+        return <Sparkles className="w-3.5 h-3.5" />;
+    }
+  };
 
   const updatePopoverPos = useCallback(() => {
     if (customTriggerRef.current) {
@@ -99,39 +136,63 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       updatePopoverPos();
     };
 
+    const handleWindowScroll = () => {
+      updatePopoverPos();
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
     window.addEventListener('resize', handleWindowResize);
-    window.addEventListener('scroll', updatePopoverPos, true);
+    window.addEventListener('scroll', handleWindowScroll, true);
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('resize', handleWindowResize);
-      window.removeEventListener('scroll', updatePopoverPos, true);
+      window.removeEventListener('scroll', handleWindowScroll, true);
     };
   }, [isCustomOpen, updatePopoverPos]);
 
-  const formatStarsLabel = (stars: number) => {
-    if (stars >= 1000000) return `${(stars / 1000000).toFixed(stars % 1000000 === 0 ? 0 : 1)}M+ ★`;
-    if (stars >= 1000) return `${(stars / 1000).toFixed(stars % 1000 === 0 ? 0 : 1)}k+ ★`;
-    return `${stars.toLocaleString()}+ ★`;
+  const handleApplyCustom = (val?: number) => {
+    const stars = val !== undefined ? val : parseInt(customInput, 10);
+    if (!isNaN(stars) && stars >= 0) {
+      onMinStarsChange(stars);
+      setIsCustomOpen(false);
+    }
   };
 
-  const handleApplyCustom = (val?: number) => {
-    const num = val !== undefined ? val : parseInt(customInput.replace(/[^0-9]/g, ''), 10);
-    const target = isNaN(num) || num < 0 ? 0 : num;
-    onMinStarsChange(target);
-    setIsCustomOpen(false);
+  const formatStarsLabel = (count: number) => {
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M+ ★`;
+    if (count >= 1000) return `${Math.floor(count / 1000)}k+ ★`;
+    return `${count}+ ★`;
   };
 
   return (
-    <div className="pt-2.5 pb-1.5 relative z-30">
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-surface border border-themeline rounded-xl px-3 py-1.5 backdrop-blur-sm transition-colors duration-200 shadow-sm relative z-30">
+    <div className="w-full bg-surface border border-themeline rounded-2xl p-2.5 sm:p-3 my-3 sm:my-4 shadow-sm transition-colors duration-200">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         
         {/* Left Side: Summary & Filters */}
         <div className="flex flex-wrap items-center gap-2">
           
           <div className="text-xs font-mono text-txt-muted whitespace-nowrap mr-1">
             <span className="text-action font-bold">{totalResults.toLocaleString()}</span> repos
+          </div>
+
+          {/* Category Dropdown Filter */}
+          <div className="flex items-center gap-1.5 bg-surface-active hover:bg-surface border border-themeline hover:border-action-border rounded-lg px-2.5 py-1 text-xs text-txt-primary shadow-sm transition-all group">
+            <span className="text-action flex-shrink-0">
+              {getCategoryIcon(selectedCategoryObj?.icon || 'Sparkles')}
+            </span>
+            <span className="text-txt-muted font-mono text-[11px] hidden sm:inline">Category:</span>
+            <select
+              value={selectedCategory}
+              onChange={(e) => onSelectCategory(e.target.value as CategoryId)}
+              className="bg-transparent text-txt-primary font-semibold focus:outline-none cursor-pointer text-xs pr-1"
+            >
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id} className="bg-surface text-txt-primary py-1">
+                  {cat.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Sort By Dropdown */}
@@ -202,7 +263,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <span>{isCustom ? formatStarsLabel(minStars) : 'Custom...'}</span>
             </button>
 
-            {/* Custom Star Count Popover Rendered Via Portal to Never Go Behind Anything */}
+            {/* Custom Star Count Popover Rendered Via Portal */}
             {isCustomOpen && popoverPos && ReactDOM.createPortal(
               <div 
                 id="custom-stars-portal"

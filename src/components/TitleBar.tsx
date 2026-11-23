@@ -18,7 +18,8 @@ import {
   Moon,
   Palette,
   Check,
-  Flame
+  Flame,
+  Loader2
 } from 'lucide-react';
 import { OneGitVaultLogo } from './OneGitVaultLogo';
 import { GithubIcon } from './GithubIcon';
@@ -70,6 +71,48 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   const searchFlyoutRef = useRef<HTMLDivElement | null>(null);
 
   const isElectron = Boolean(window.electronAPI?.isElectron);
+
+  // Silent updater state
+  const [isSilentUpdating, setIsSilentUpdating] = useState(false);
+  const [silentProgress, setSilentProgress] = useState<number | null>(null);
+  const [silentStatusText, setSilentStatusText] = useState<string>('');
+
+  const handleSilentInstall = async () => {
+    if (!updateInfo?.downloadUrl) {
+      onOpenUpdateModal();
+      return;
+    }
+    if (!window.electronAPI?.installUpdateSilently) {
+      onOpenUpdateModal();
+      return;
+    }
+
+    setIsSilentUpdating(true);
+    setSilentStatusText('Downloading update silently...');
+    setSilentProgress(0);
+
+    let unsubscribe: (() => void) | undefined;
+    if (window.electronAPI.onUpdateDownloadProgress) {
+      unsubscribe = window.electronAPI.onUpdateDownloadProgress((prog) => {
+        setSilentProgress(prog.percent);
+        setSilentStatusText(`Downloading update... ${prog.percent}%`);
+      });
+    }
+
+    try {
+      await window.electronAPI.installUpdateSilently(updateInfo.downloadUrl);
+      setSilentStatusText('Applying update and restarting...');
+    } catch (err: any) {
+      console.error('Silent update error:', err);
+      setIsSilentUpdating(false);
+      setSilentStatusText(`Update error: ${err.message || 'Failed'}`);
+      setTimeout(() => {
+        onOpenUpdateModal();
+      }, 1500);
+    } finally {
+      if (unsubscribe) unsubscribe();
+    }
+  };
 
   // Sync internal search input with external searchQuery
   useEffect(() => {
@@ -320,11 +363,11 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                     <h3 className="font-display font-bold text-sm text-txt-primary tracking-tight">
                       OneGit<span className="text-action">Vault</span>
                     </h3>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-active border border-themeline text-txt-muted font-semibold">
+                    <span className="text-[10px] font-sans font-semibold px-1.5 py-0.5 rounded bg-surface-active border border-themeline text-txt-muted">
                       v{CURRENT_APP_VERSION}
                     </span>
                   </div>
-                  <p className="text-[11px] font-mono text-txt-secondary mt-0.5">
+                  <p className="text-[11px] font-sans text-txt-secondary mt-0.5">
                     Open-Source Repository Explorer
                   </p>
                 </div>
@@ -334,7 +377,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                 Stream, explore, and bookmark GitHub open-source repositories with real-time rate monitoring.
               </p>
 
-              <div className="flex items-center justify-between text-[11px] font-mono text-txt-muted mt-3 pt-2.5 border-t border-themeline/60">
+              <div className="flex items-center justify-between text-[11px] font-sans text-txt-muted mt-3 pt-2.5 border-t border-themeline/60">
                 <span>Author: <span className="text-txt-primary font-medium">VKaddala</span></span>
                 <button
                   onClick={() => openExternal('https://github.com/VKaddala/OneGitVault')}
@@ -348,26 +391,49 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               <div className="mt-3.5 pt-3 border-t border-themeline">
                 {updateInfo?.hasUpdate ? (
                   <div className="p-2.5 rounded-lg bg-action-soft border border-action-border">
-                    <div className="flex items-center gap-1.5 text-action text-xs font-bold font-display">
+                    <div className="flex items-center gap-1.5 text-action text-xs font-bold font-sans">
                       <Sparkles className="w-3.5 h-3.5 fill-current" />
                       <span>New Version v{updateInfo.latestVersion} Available!</span>
                     </div>
-                    <button
-                      onClick={() => {
-                        setIsAboutOpen(false);
-                        onOpenUpdateModal();
-                      }}
-                      className="w-full mt-2 py-1.5 px-3 rounded-lg bg-action hover:bg-action-hover text-txt-inverse text-xs font-mono font-bold transition-all shadow-sm flex items-center justify-center gap-1.5"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>View Release & Install</span>
-                    </button>
+
+                    {isSilentUpdating ? (
+                      <div className="mt-2 text-xs font-sans text-action space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span className="font-medium">{silentStatusText}</span>
+                        </div>
+                        {silentProgress !== null && (
+                          <div className="w-full bg-surface-active rounded-full h-1.5 overflow-hidden border border-themeline">
+                            <div className="bg-action h-full transition-all duration-150" style={{ width: `${silentProgress}%` }} />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-1.5 mt-2">
+                        <button
+                          onClick={handleSilentInstall}
+                          className="w-full py-1.5 px-3 rounded-lg bg-action hover:bg-action-hover text-txt-inverse text-xs font-sans font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 fill-current" />
+                          <span>Update Silently & Restart</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsAboutOpen(false);
+                            onOpenUpdateModal();
+                          }}
+                          className="text-[11px] font-sans text-txt-muted hover:text-txt-primary text-center transition-colors"
+                        >
+                          View Release Notes
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <button
                     onClick={() => onCheckUpdates()}
                     disabled={isCheckingUpdates}
-                    className="w-full flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg bg-surface-active hover:bg-surface-hover border border-themeline text-xs font-mono text-txt-primary hover:text-action transition-all disabled:opacity-50 shadow-sm"
+                    className="w-full flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg bg-surface-active hover:bg-surface-hover border border-themeline text-xs font-sans font-medium text-txt-primary hover:text-action transition-all disabled:opacity-50 shadow-sm"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isCheckingUpdates ? 'animate-spin text-action' : 'text-action'}`} />
                     <span>{isCheckingUpdates ? 'Checking GitHub...' : 'Check for updates'}</span>

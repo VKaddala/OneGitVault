@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   X, 
   Sparkles, 
@@ -52,6 +52,10 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const [isSilentUpdating, setIsSilentUpdating] = useState(false);
+  const [silentProgress, setSilentProgress] = useState<number | null>(null);
+  const [silentStatusText, setSilentStatusText] = useState<string>('');
+
   const renderedNotes = useMemo(() => {
     if (!updateInfo?.releaseBody) return '';
     try {
@@ -80,6 +84,43 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
       window.electronAPI.openExternal(updateInfo.releaseUrl);
     } else {
       window.open(updateInfo.releaseUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleSilentInstall = async () => {
+    if (!updateInfo?.downloadUrl) {
+      handleDownload();
+      return;
+    }
+    if (!window.electronAPI?.installUpdateSilently) {
+      handleDownload();
+      return;
+    }
+
+    setIsSilentUpdating(true);
+    setSilentStatusText('Downloading update silently...');
+    setSilentProgress(0);
+
+    let unsubscribe: (() => void) | undefined;
+    if (window.electronAPI.onUpdateDownloadProgress) {
+      unsubscribe = window.electronAPI.onUpdateDownloadProgress((prog) => {
+        setSilentProgress(prog.percent);
+        setSilentStatusText(`Downloading update... ${prog.percent}%`);
+      });
+    }
+
+    try {
+      await window.electronAPI.installUpdateSilently(updateInfo.downloadUrl);
+      setSilentStatusText('Applying update and restarting OneGitVault...');
+    } catch (err: any) {
+      console.error('Silent update error:', err);
+      setIsSilentUpdating(false);
+      setSilentStatusText(`Update error: ${err.message || 'Failed'}`);
+      setTimeout(() => {
+        handleDownload();
+      }, 1500);
+    } finally {
+      if (unsubscribe) unsubscribe();
     }
   };
 
@@ -116,7 +157,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                     ? `Update Available: v${updateInfo.latestVersion}`
                     : "You're on the Latest Version"}
               </h3>
-              <p className="text-xs font-mono text-txt-muted">
+              <p className="text-xs font-sans text-txt-muted">
                 {updateInfo 
                   ? `Current: v${updateInfo.currentVersion} ${updateInfo.hasUpdate ? `• Latest: v${updateInfo.latestVersion}` : '• Up to date'}`
                   : 'Connecting to GitHub Releases...'}
@@ -138,7 +179,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
           {isChecking ? (
             <div className="py-12 flex flex-col items-center justify-center gap-3 text-txt-muted">
               <Loader2 className="w-8 h-8 text-action animate-spin" />
-              <p className="text-xs font-mono">Querying GitHub API for latest release assets...</p>
+              <p className="text-xs font-sans font-medium">Querying GitHub API for latest release assets...</p>
             </div>
           ) : updateInfo?.hasUpdate ? (
             <>
@@ -149,7 +190,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                     {updateInfo.releaseName}
                   </h4>
                   {updateInfo.publishedAt && (
-                    <div className="flex items-center gap-1.5 text-[11px] font-mono text-txt-muted mt-1">
+                    <div className="flex items-center gap-1.5 text-[11px] font-sans text-txt-muted mt-1">
                       <Clock className="w-3.5 h-3.5 text-action" />
                       <span>Published on {formatDate(updateInfo.publishedAt)}</span>
                     </div>
@@ -157,16 +198,40 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                 </div>
 
                 {updateInfo.assetName && (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface text-xs font-mono border border-themeline text-txt-secondary flex-shrink-0 self-start sm:self-auto">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface text-xs font-sans font-medium border border-themeline text-txt-secondary flex-shrink-0 self-start sm:self-auto">
                     <Package className="w-3.5 h-3.5 text-action" />
                     <span>{formatBytes(updateInfo.assetSize)}</span>
                   </span>
                 )}
               </div>
 
+              {/* Silent Update Progress Bar (if active) */}
+              {isSilentUpdating && (
+                <div className="p-4 rounded-xl bg-action-soft border border-action-border text-action space-y-2 animate-fadeIn">
+                  <div className="flex items-center justify-between text-xs font-sans font-bold">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{silentStatusText}</span>
+                    </div>
+                    {silentProgress !== null && <span>{silentProgress}%</span>}
+                  </div>
+                  {silentProgress !== null && (
+                    <div className="w-full bg-surface-active rounded-full h-2 overflow-hidden border border-action-border">
+                      <div 
+                        className="bg-action h-full transition-all duration-200" 
+                        style={{ width: `${silentProgress}%` }} 
+                      />
+                    </div>
+                  )}
+                  <p className="text-[11px] font-sans text-txt-muted">
+                    The installer will seamlessly upgrade OneGitVault and restart the application automatically.
+                  </p>
+                </div>
+              )}
+
               {/* Release Notes */}
               <div>
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-txt-muted block mb-2">
+                <span className="text-xs font-sans font-bold uppercase tracking-wider text-txt-muted block mb-2">
                   Changelog & Release Notes:
                 </span>
                 <div 
@@ -184,14 +249,14 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                 <h4 className="font-display text-base font-bold text-txt-primary">
                   OneGitVault is Up to Date
                 </h4>
-                <p className="text-xs font-mono text-txt-muted mt-1 max-w-xs">
-                  You are running version v{updateInfo?.currentVersion || '1.0.4'}. No newer release was found on GitHub.
+                <p className="text-xs font-sans text-txt-muted mt-1 max-w-xs">
+                  You are running version v{updateInfo?.currentVersion || '2.1.0'}. No newer release was found on GitHub.
                 </p>
               </div>
 
               <button
                 onClick={onCheckAgain}
-                className="mt-2 flex items-center gap-2 text-xs font-mono px-3.5 py-1.5 rounded-xl bg-surface hover:bg-surface-hover text-txt-primary border border-themeline transition-colors shadow-sm"
+                className="mt-2 flex items-center gap-2 text-xs font-sans font-medium px-3.5 py-1.5 rounded-xl bg-surface hover:bg-surface-hover text-txt-primary border border-themeline transition-colors shadow-sm"
               >
                 <RefreshCw className="w-3.5 h-3.5 text-action" />
                 <span>Check Again</span>
@@ -204,7 +269,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
         <div className="flex items-center justify-between p-4 border-t border-themeline bg-surface-active flex-shrink-0 gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-mono text-txt-secondary hover:text-txt-primary hover:bg-surface transition-colors"
+            disabled={isSilentUpdating}
+            className="px-4 py-2 rounded-xl text-xs font-sans text-txt-secondary hover:text-txt-primary hover:bg-surface transition-colors disabled:opacity-50"
           >
             {updateInfo?.hasUpdate ? 'Later' : 'Close'}
           </button>
@@ -212,7 +278,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleOpenReleasePage}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono bg-surface hover:bg-surface-hover text-txt-primary border border-themeline transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-sans bg-surface hover:bg-surface-hover text-txt-primary border border-themeline transition-all"
               title="Open GitHub Releases page"
             >
               <span>GitHub Release</span>
@@ -221,11 +287,21 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 
             {updateInfo?.hasUpdate && (
               <button
-                onClick={handleDownload}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-semibold bg-action text-txt-inverse border border-action hover:opacity-90 shadow-sm transition-all"
+                onClick={handleSilentInstall}
+                disabled={isSilentUpdating}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-sans font-semibold bg-action text-txt-inverse border border-action hover:opacity-90 shadow-sm transition-all active:scale-95 disabled:opacity-50"
               >
-                <Download className="w-4 h-4" />
-                <span>Download v{updateInfo.latestVersion} Installer</span>
+                {isSilentUpdating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Updating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 fill-current" />
+                    <span>Update Silently & Restart</span>
+                  </>
+                )}
               </button>
             )}
           </div>

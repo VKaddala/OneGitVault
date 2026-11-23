@@ -84,6 +84,12 @@ export interface FilterState {
   onlyBookmarked: boolean;
 }
 
+export interface UpdateProgress {
+  percent: number;
+  receivedBytes: number;
+  totalBytes: number;
+}
+
 export interface ElectronAPI {
   platform: string;
   isElectron: boolean;
@@ -93,6 +99,8 @@ export interface ElectronAPI {
   isMaximized: () => Promise<boolean>;
   onMaximizedChange: (callback: (isMaximized: boolean) => void) => () => void;
   openExternal: (url: string) => void;
+  installUpdateSilently?: (downloadUrl: string) => Promise<boolean>;
+  onUpdateDownloadProgress?: (callback: (progress: UpdateProgress) => void) => () => void;
 }
 
 declare global {

@@ -1,5 +1,9 @@
 const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const https = require('https');
+const http = require('http');
+const { spawn } = require('child_process');
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 let mainWindow = null;
@@ -94,6 +98,88 @@ ipcMain.on('open-external', (_event, url) => {
   if (url && (url.startsWith('http:') || url.startsWith('https:'))) {
     shell.openExternal(url);
   }
+});
+
+// Helper to download update installer stream following redirects
+function downloadFile(url, destPath, onProgress) {
+  return new Promise((resolve, reject) => {
+    function get(currentUrl) {
+      const client = currentUrl.startsWith('https:') ? https : http;
+      client.get(currentUrl, {
+        headers: {
+          'User-Agent': 'OneGitVault-AutoUpdater',
+          'Accept': 'application/octet-stream'
+        }
+      }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          return get(res.headers.location);
+        }
+        if (res.statusCode !== 200) {
+          return reject(new Error(`Download failed with status ${res.statusCode}`));
+        }
+
+        const totalBytes = parseInt(res.headers['content-length'] || '0', 10);
+        let receivedBytes = 0;
+        const fileStream = fs.createWriteStream(destPath);
+
+        res.on('data', (chunk) => {
+          receivedBytes += chunk.length;
+          if (totalBytes > 0 && onProgress) {
+            const percent = Math.min(100, Math.round((receivedBytes / totalBytes) * 100));
+            onProgress({ percent, receivedBytes, totalBytes });
+          }
+        });
+
+        res.pipe(fileStream);
+
+        fileStream.on('finish', () => {
+          fileStream.close(() => resolve(destPath));
+        });
+
+        fileStream.on('error', (err) => {
+          fs.unlink(destPath, () => {});
+          reject(err);
+        });
+      }).on('error', reject);
+    }
+
+    get(url);
+  });
+}
+
+// ── Silent Update Download & Background Execution ──
+ipcMain.handle('install-update-silently', async (_event, downloadUrl) => {
+  if (!downloadUrl) throw new Error('Missing download URL for update');
+
+  const tempInstaller = path.join(app.getPath('temp'), 'OneGitVault-Setup-Update.exe');
+
+  await downloadFile(downloadUrl, tempInstaller, (progress) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-download-progress', progress);
+    }
+  });
+
+  // Spawn Inno Setup with silent upgrade flags
+  // /VERYSILENT: runs without wizard window
+  // /SUPPRESSMSGBOXES: suppresses any confirmation boxes
+  // /FORCECLOSEAPPLICATIONS: cleanly terminates running OneGitVault instance
+  const child = spawn(tempInstaller, [
+    '/VERYSILENT',
+    '/SUPPRESSMSGBOXES',
+    '/FORCECLOSEAPPLICATIONS'
+  ], {
+    detached: true,
+    stdio: 'ignore'
+  });
+
+  child.unref();
+
+  // Give child process half a second to launch then exit current app cleanly
+  setTimeout(() => {
+    app.exit(0);
+  }, 600);
+
+  return true;
 });
 
 app.whenReady().then(() => {

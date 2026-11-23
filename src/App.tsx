@@ -47,7 +47,9 @@ export const App: React.FC = () => {
     isLoadingMore,
     isRefreshing,
     isOfflineFallback,
+    searchCooldownSec,
     loadMore,
+    retryLoadMore,
     refresh,
   } = useRepositories();
 
@@ -454,8 +456,28 @@ export const App: React.FC = () => {
               </div>
             )}
 
+            {/* Search API Rate Limit (30/min) Cooldown banner */}
+            {searchCooldownSec > 0 && (
+              <div className="flex flex-col items-center justify-center gap-2 text-center bg-surface border border-themeline rounded-2xl p-5 my-2 shadow-sm max-w-lg mx-auto">
+                <div className="flex items-center gap-2 text-amber-500 font-mono text-xs font-semibold">
+                  <Clock className="w-4 h-4 animate-spin" />
+                  <span>GitHub Search API Pacing Cooldown</span>
+                </div>
+                <p className="text-xs text-txt-muted">
+                  GitHub limits Search queries to 30 requests/minute. Core API quota remains high ({rateLimit.remaining} calls).
+                  Streaming auto-resumes in <span className="font-bold text-action font-mono">{searchCooldownSec}s</span>.
+                </p>
+                <button
+                  onClick={retryLoadMore}
+                  className="mt-1 px-4 py-1.5 text-xs font-mono font-semibold bg-action text-txt-inverse rounded-xl shadow-sm hover:opacity-90 transition-all"
+                >
+                  Resume Stream Now
+                </button>
+              </div>
+            )}
+
             {/* Manual Load More button */}
-            {!isLoadingMore && hasMore && (
+            {!isLoadingMore && hasMore && searchCooldownSec === 0 && (
               <button
                 onClick={loadMore}
                 className="group flex items-center gap-2 px-6 py-2.5 rounded-xl bg-surface hover:bg-surface-hover text-txt-primary border border-themeline hover:border-action-border font-mono text-xs shadow-sm transition-all active:scale-95"
@@ -468,7 +490,7 @@ export const App: React.FC = () => {
             )}
 
             {/* End of list reached */}
-            {!hasMore && (
+            {!hasMore && searchCooldownSec === 0 && (
               <div className="text-center py-6 text-xs font-mono text-txt-muted">
                 <span>✦ End of available search stream for this query.</span>
               </div>

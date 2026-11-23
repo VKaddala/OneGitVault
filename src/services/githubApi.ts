@@ -205,6 +205,8 @@ export interface FetchResult {
   totalCount: number;
   hasMore: boolean;
   page: number;
+  isRateLimited?: boolean;
+  rateLimitResetSec?: number;
 }
 
 /**
@@ -333,7 +335,7 @@ export async function fetchRepositories(
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout for fast fallback
+    const timeoutId = setTimeout(() => controller.abort(), 9000); // 9s timeout for GitHub Search API
 
     const res = await fetch(url, { headers, signal: controller.signal });
     clearTimeout(timeoutId);
@@ -342,7 +344,31 @@ export async function fetchRepositories(
     updateRateLimitFromHeaders(res.headers);
 
     if (!res.ok) {
-      console.warn(`GitHub API search failed (${res.status} ${res.statusText}) for query "${query}". Using curated fallback.`);
+      console.warn(`GitHub API search failed (${res.status} ${res.statusText}) for query "${query}".`);
+
+      const isRateLimited = res.status === 403 || res.status === 429;
+      // If page > 1 and rate limited (e.g. 30 search reqs/min reached): NEVER kill stream or fallback to empty array
+      if (page > 1 && isRateLimited) {
+        const retryAfter = res.headers.get('retry-after');
+        const resetHeader = res.headers.get('x-ratelimit-reset');
+        let waitSec = 30;
+        if (retryAfter) {
+          waitSec = parseInt(retryAfter, 10);
+        } else if (resetHeader) {
+          const resetTime = parseInt(resetHeader, 10) * 1000;
+          waitSec = Math.max(5, Math.ceil((resetTime - Date.now()) / 1000));
+        }
+        return {
+          repositories: [],
+          isOfflineFallback: false,
+          totalCount: 0,
+          hasMore: true, // Keep stream open!
+          page,
+          isRateLimited: true,
+          rateLimitResetSec: waitSec,
+        };
+      }
+
       return getFallbackResults(category, searchQuery, sortBy, page, perPage, language, minStars);
     }
 
@@ -404,7 +430,18 @@ export async function fetchRepositories(
       page,
     };
   } catch (error) {
-    console.warn('Network or API request failed, using curated fallback', error);
+    console.warn('Network or API request failed:', error);
+    if (page > 1) {
+      return {
+        repositories: [],
+        isOfflineFallback: false,
+        totalCount: 0,
+        hasMore: true,
+        page,
+        isRateLimited: true,
+        rateLimitResetSec: 15,
+      };
+    }
     return getFallbackResults(category, searchQuery, sortBy, page, perPage, language, minStars);
   }
 }

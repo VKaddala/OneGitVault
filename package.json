@@ -2,6 +2,8 @@
   "name": "onegitvault",
   "productName": "OneGitVault",
   "version": "2.1.1",
+  "author": "VKaddala",
+  "publisher": "VKaddala",
   "description": "Unified Open-Source Observatory — Stream, discover and bookmark open-source GitHub repositories",
   "main": "electron/main.cjs",
   "type": "module",
@@ -42,7 +44,10 @@
   "build": {
     "appId": "com.vkaddala.onegitvault",
     "productName": "OneGitVault",
-    "copyright": "Copyright © 2024 VKaddala",
+    "publisherName": [
+      "VKaddala"
+    ],
+    "copyright": "Copyright © 2026 VKaddala",
     "directories": {
       "output": "release/installer"
     },

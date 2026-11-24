@@ -108,9 +108,6 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="font-display font-bold text-lg sm:text-xl tracking-tight text-txt-primary group-hover:text-action transition-colors">
                   OneGit<span className="text-action">Vault</span>
                 </span>
-                <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded bg-action-soft text-action border border-action-border font-semibold">
-                  Desktop
-                </span>
               </div>
               <p className="text-[11px] font-mono text-txt-muted hidden sm:block tracking-wide">
                 Open-Source Repository Explorer

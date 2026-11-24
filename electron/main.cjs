@@ -123,8 +123,15 @@ ipcMain.on('open-external', (_event, url) => {
 // Helper to download update installer stream following redirects
 function downloadFile(url, destPath, onProgress) {
   return new Promise((resolve, reject) => {
+    // Clean up any stale partial download first
+    if (fs.existsSync(destPath)) {
+      try { fs.unlinkSync(destPath); } catch (_) {}
+    }
+
     function get(currentUrl) {
-      const client = currentUrl.startsWith('https:') ? https : http;
+      const parsedUrl = new URL(currentUrl);
+      const client = parsedUrl.protocol === 'https:' ? https : http;
+
       client.get(currentUrl, {
         headers: {
           'User-Agent': 'OneGitVault-AutoUpdater',
@@ -132,9 +139,12 @@ function downloadFile(url, destPath, onProgress) {
         }
       }, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          return get(res.headers.location);
+          res.resume(); // Free socket
+          const redirectUrl = new URL(res.headers.location, currentUrl).toString();
+          return get(redirectUrl);
         }
         if (res.statusCode !== 200) {
+          res.resume();
           return reject(new Error(`Download failed with status ${res.statusCode}`));
         }
 
@@ -153,7 +163,18 @@ function downloadFile(url, destPath, onProgress) {
         res.pipe(fileStream);
 
         fileStream.on('finish', () => {
-          fileStream.close(() => resolve(destPath));
+          fileStream.close(() => {
+            try {
+              const stats = fs.statSync(destPath);
+              if (stats.size < 5000000) {
+                fs.unlinkSync(destPath);
+                return reject(new Error(`Downloaded installer too small (${stats.size} bytes), download incomplete.`));
+              }
+              resolve(destPath);
+            } catch (statErr) {
+              reject(statErr);
+            }
+          });
         });
 
         fileStream.on('error', (err) => {
@@ -179,25 +200,30 @@ ipcMain.handle('install-update-silently', async (_event, downloadUrl) => {
     }
   });
 
-  // Spawn Inno Setup with silent upgrade flags
+  // Launch Inno Setup detached via Windows cmd start to prevent child process termination on exit
   // /VERYSILENT: runs without wizard window
   // /SUPPRESSMSGBOXES: suppresses any confirmation boxes
-  // /FORCECLOSEAPPLICATIONS: cleanly terminates running OneGitVault instance
-  const child = spawn(tempInstaller, [
+  // /FORCECLOSEAPPLICATIONS: cleanly closes running OneGitVault instance before replacing files
+  const child = spawn('cmd.exe', [
+    '/c',
+    'start',
+    '""',
+    tempInstaller,
     '/VERYSILENT',
     '/SUPPRESSMSGBOXES',
     '/FORCECLOSEAPPLICATIONS'
   ], {
     detached: true,
-    stdio: 'ignore'
+    stdio: 'ignore',
+    windowsHide: true,
   });
 
   child.unref();
 
-  // Give child process half a second to launch then exit current app cleanly
+  // Allow child process 800ms to start up before cleanly terminating running Electron instance
   setTimeout(() => {
     app.exit(0);
-  }, 600);
+  }, 800);
 
   return true;
 });

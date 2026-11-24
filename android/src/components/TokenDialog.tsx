@@ -45,7 +45,7 @@ export const TokenDialog: React.FC<TokenDialogProps> = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [liveRateLimit, setLiveRateLimit] = useState<RateLimitInfo>(getCurrentRateLimit());
-  const [now, setNow] = useState(Date.now());
+  const now = Date.now();
 
   useEffect(() => {
     if (open) {
@@ -62,13 +62,12 @@ export const TokenDialog: React.FC<TokenDialogProps> = ({
       };
 
       fetchLive();
-      const pollInterval = setInterval(fetchLive, 2500);
-      const tickInterval = setInterval(() => setNow(Date.now()), 1000);
+      // Gentle polling (every 10s) to keep quota updated without interrupting typing
+      const pollInterval = setInterval(fetchLive, 10000);
 
       return () => {
         mounted = false;
         clearInterval(pollInterval);
-        clearInterval(tickInterval);
       };
     }
   }, [open]);
@@ -303,11 +302,11 @@ export const TokenDialog: React.FC<TokenDialogProps> = ({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
             <InfoOutlinedIcon sx={{ fontSize: 14, color: theme.palette.primary.main }} />
             <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.72rem', color: 'text.primary' }}>
-              Recommended Permissions:
+              Required Token Type & Permissions:
             </Typography>
           </Box>
           <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.68rem', display: 'block', lineHeight: 1.4 }}>
-            Create a Fine-grained or Classic token with <code style={{ color: theme.palette.primary.main }}>public_repo</code> and <code style={{ color: theme.palette.primary.main }}>gist</code> (for cloud vault backups).
+            Create a <strong>Classic Personal Access Token (ghp_)</strong> with <code style={{ color: theme.palette.primary.main }}>public_repo</code> and <code style={{ color: theme.palette.primary.main }}>gist</code> scopes. <em>Note: GitHub Fine-grained tokens (github_pat_) do not support Gist sync.</em>
           </Typography>
           <Button
             href="https://github.com/settings/tokens/new?description=OneGitVault&scopes=public_repo,gist"
@@ -323,7 +322,7 @@ export const TokenDialog: React.FC<TokenDialogProps> = ({
               textTransform: 'none'
             }}
           >
-            Generate token on GitHub
+            Generate Classic token on GitHub (ghp_)
           </Button>
         </Box>
 
@@ -338,7 +337,7 @@ export const TokenDialog: React.FC<TokenDialogProps> = ({
             type="password"
             value={tokenInput}
             onChange={(e) => setTokenInput(e.target.value)}
-            placeholder="ghp_xxxxxxxxxxxx or github_pat_xxxx"
+            placeholder="ghp_xxxxxxxxxxxx"
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: '14px',
@@ -347,6 +346,21 @@ export const TokenDialog: React.FC<TokenDialogProps> = ({
               }
             }}
           />
+          {tokenInput.trim().startsWith('github_pat_') && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: '#f59e0b',
+                fontWeight: 700,
+                fontSize: '0.68rem',
+                display: 'block',
+                mt: 0.75,
+                lineHeight: 1.3
+              }}
+            >
+              ⚠️ GitHub Fine-grained tokens do not support Gists. To sync bookmarks, please use a Classic Token (starts with ghp_).
+            </Typography>
+          )}
         </Box>
 
         {savedSuccess && (

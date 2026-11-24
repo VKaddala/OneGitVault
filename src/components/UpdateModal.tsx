@@ -296,10 +296,15 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span>Updating...</span>
                   </>
-                ) : (
+                ) : window.electronAPI?.installUpdateSilently ? (
                   <>
                     <Sparkles className="w-4 h-4 fill-current" />
                     <span>Update Silently & Restart</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    <span>Download v{updateInfo.latestVersion} Installer</span>
                   </>
                 )}
               </button>

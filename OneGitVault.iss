@@ -43,6 +43,10 @@ UninstallDisplayName={#AppName}
 UninstallDisplayIcon={app}\app.ico
 ChangesAssociations=yes
 ShowLanguageDialog=no
+VersionInfoCompany={#AppPublisher}
+VersionInfoDescription={#AppName} - Open-Source Observatory
+VersionInfoVersion={#AppVersion}
+VersionInfoCopyright=Copyright (C) 2026 {#AppPublisher}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -79,8 +83,10 @@ Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\app.ico"; Tasks: desktopicon
 
 [Run]
-; Launch the app after install or silent update
-Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall runascurrentuser
+; Normal interactive wizard: postinstall checkbox (skip if silent)
+Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent runascurrentuser
+; Silent background auto-update: automatically launches the updated app when running in silent mode
+Filename: "{app}\{#AppExeName}"; Flags: nowait runascurrentuser; Check: WizardSilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"

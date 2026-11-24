@@ -513,8 +513,8 @@ export const App: React.FC = () => {
       </div>
 
       {/* Persistent Small Footer (Always visible at the bottom of the window, edge-to-edge aligned) */}
-      <footer className="w-full flex-shrink-0 border-t border-themeline bg-header py-1 px-3.5 text-[11px] font-mono text-txt-muted z-30 transition-colors duration-200 select-none">
-        <div className="w-full flex items-center justify-between gap-3">
+      <footer className="w-full flex-shrink-0 border-t border-themeline bg-header py-1 px-1.5 sm:px-2 text-[11px] font-mono text-txt-muted z-30 transition-colors duration-200 select-none">
+        <div className="w-full flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <OneGitVaultLogo className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="font-display font-bold text-txt-primary">OneGitVault</span>

@@ -8,6 +8,13 @@ import { Repository } from '../types';
 const GIST_FILENAME = 'onegitvault-bookmarks.json';
 const GIST_DESCRIPTION = 'OneGitVault Bookmarks — synced automatically';
 
+export interface GistSyncResult {
+  success: boolean;
+  url?: string;
+  error?: string;
+  status?: number;
+}
+
 interface GistFile {
   filename: string;
   content?: string;
@@ -22,18 +29,53 @@ interface GistResponse {
   html_url: string;
 }
 
-function sanitizeToken(token: string): string {
+export function sanitizeToken(token: string): string {
   if (!token) return '';
-  return token.trim().replace(/^(Bearer|token)\s+/i, '');
+  return token.trim().replace(/^(Bearer|token)\s+/i, '').replace(/["']/g, '');
 }
 
-function gistHeaders(token: string): HeadersInit {
+/**
+ * Builds authorization headers supporting both Classic PATs (token prefix)
+ * and OAuth / fine-grained tokens (Bearer prefix)
+ */
+function buildGistHeaders(token: string, useBearerPrefix: boolean = false): HeadersInit {
   const clean = sanitizeToken(token);
+  // GitHub classic PATs (ghp_) use 'token ghp_...' natively, OAuth uses 'Bearer ...'
+  const prefix = useBearerPrefix ? 'Bearer' : (clean.startsWith('ghp_') ? 'token' : 'Bearer');
   return {
     Accept: 'application/vnd.github.v3+json',
-    Authorization: `Bearer ${clean}`,
+    Authorization: `${prefix} ${clean}`,
     'Content-Type': 'application/json',
   };
+}
+
+/**
+ * Executes a fetch request with automatic auth scheme fallback (token <-> Bearer)
+ */
+async function fetchGistWithFallback(
+  url: string,
+  options: RequestInit,
+  token: string
+): Promise<Response> {
+  const clean = sanitizeToken(token);
+  const primaryHeaders = {
+    ...options.headers,
+    ...buildGistHeaders(clean, false),
+  };
+
+  let res = await fetch(url, { ...options, headers: primaryHeaders });
+
+  // If 401 Unauthorized, retry once with the alternative auth prefix
+  if (res.status === 401) {
+    const secondaryHeaders = {
+      ...options.headers,
+      ...buildGistHeaders(clean, true),
+    };
+    const retryRes = await fetch(url, { ...options, headers: secondaryHeaders });
+    if (retryRes.ok) return retryRes;
+  }
+
+  return res;
 }
 
 /** Find the OneGitVault bookmark gist among the user's gists */
@@ -41,9 +83,10 @@ export async function findBookmarkGist(token: string): Promise<GistResponse | nu
   const clean = sanitizeToken(token);
   if (!clean) return null;
   try {
-    const res = await fetch('https://api.github.com/gists?per_page=100', {
-      headers: gistHeaders(clean),
-    });
+    const res = await fetchGistWithFallback('https://api.github.com/gists?per_page=100', {
+      method: 'GET',
+    }, clean);
+
     if (!res.ok) {
       console.warn(`findBookmarkGist failed: HTTP ${res.status}`);
       return null;
@@ -68,29 +111,35 @@ export async function findBookmarkGist(token: string): Promise<GistResponse | nu
 export async function createBookmarkGist(
   token: string,
   bookmarks: Repository[]
-): Promise<GistResponse | null> {
+): Promise<{ gist: GistResponse | null; error?: string; status?: number }> {
   const clean = sanitizeToken(token);
-  if (!clean) return null;
+  if (!clean) return { gist: null, error: 'Token is missing' };
   try {
-    const res = await fetch('https://api.github.com/gists', {
-      method: 'POST',
-      headers: gistHeaders(clean),
-      body: JSON.stringify({
-        description: GIST_DESCRIPTION,
-        public: false,
-        files: {
-          [GIST_FILENAME]: { content: JSON.stringify(bookmarks, null, 2) },
-        },
-      }),
+    const payload = JSON.stringify({
+      description: GIST_DESCRIPTION,
+      public: false,
+      files: {
+        [GIST_FILENAME]: { content: JSON.stringify(bookmarks, null, 2) },
+      },
     });
+
+    const res = await fetchGistWithFallback('https://api.github.com/gists', {
+      method: 'POST',
+      body: payload,
+    }, clean);
+
     if (!res.ok) {
-      console.warn(`createBookmarkGist failed: HTTP ${res.status}`);
-      return null;
+      const errJson = await res.json().catch(() => ({}));
+      const message = errJson.message || `HTTP ${res.status}`;
+      console.warn(`createBookmarkGist failed: ${message}`);
+      return { gist: null, error: message, status: res.status };
     }
-    return res.json();
-  } catch (e) {
+
+    const gist: GistResponse = await res.json();
+    return { gist, status: res.status };
+  } catch (e: any) {
     console.warn('Failed to create bookmark gist:', e);
-    return null;
+    return { gist: null, error: e.message || 'Network error' };
   }
 }
 
@@ -99,59 +148,118 @@ export async function updateBookmarkGist(
   token: string,
   gistId: string,
   bookmarks: Repository[]
-): Promise<boolean> {
+): Promise<{ ok: boolean; error?: string; status?: number }> {
   const clean = sanitizeToken(token);
-  if (!clean || !gistId) return false;
+  if (!clean || !gistId) return { ok: false, error: 'Missing token or gist ID' };
   try {
-    const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-      method: 'PATCH',
-      headers: gistHeaders(clean),
-      body: JSON.stringify({
-        description: GIST_DESCRIPTION,
-        files: {
-          [GIST_FILENAME]: { content: JSON.stringify(bookmarks, null, 2) },
-        },
-      }),
+    const payload = JSON.stringify({
+      description: GIST_DESCRIPTION,
+      files: {
+        [GIST_FILENAME]: { content: JSON.stringify(bookmarks, null, 2) },
+      },
     });
+
+    const res = await fetchGistWithFallback(`https://api.github.com/gists/${gistId}`, {
+      method: 'PATCH',
+      body: payload,
+    }, clean);
+
     if (!res.ok) {
-      console.warn(`updateBookmarkGist failed: HTTP ${res.status}`);
+      const errJson = await res.json().catch(() => ({}));
+      const message = errJson.message || `HTTP ${res.status}`;
+      console.warn(`updateBookmarkGist failed: ${message}`);
+      return { ok: false, error: message, status: res.status };
     }
-    return res.ok;
-  } catch (e) {
+    return { ok: true, status: res.status };
+  } catch (e: any) {
     console.warn('Failed to update bookmark gist:', e);
-    return false;
+    return { ok: false, error: e.message || 'Network error' };
   }
 }
 
 /**
  * Push local bookmarks to GitHub Gist.
+ * Validates token compatibility (detects Fine-grained vs Classic PAT).
  * Creates the gist if it doesn't exist yet, otherwise updates it.
- * Returns the gist URL on success, null on failure.
+ * Returns a GistSyncResult with URL on success, or detailed error description on failure.
  */
 export async function pushBookmarksToGist(
   token: string,
   bookmarks: Repository[]
-): Promise<string | null> {
+): Promise<GistSyncResult> {
   const clean = sanitizeToken(token);
-  if (!clean) return null;
+  if (!clean) {
+    return {
+      success: false,
+      error: 'No GitHub token configured. Please add your Personal Access Token in Settings.',
+    };
+  }
+
+  // GitHub Fine-grained PATs (starting with github_pat_) DO NOT support the Gists API
+  if (clean.startsWith('github_pat_')) {
+    return {
+      success: false,
+      error:
+        'Fine-grained tokens (github_pat_) do not support GitHub Gists API. Please create a Classic Token (ghp_) with the "gist" scope selected.',
+    };
+  }
+
   try {
     let gist = await findBookmarkGist(clean);
 
     if (!gist) {
-      gist = await createBookmarkGist(clean, bookmarks);
-      return gist?.html_url ?? null;
+      const createRes = await createBookmarkGist(clean, bookmarks);
+      if (createRes.gist) {
+        return {
+          success: true,
+          url: createRes.gist.html_url,
+          status: createRes.status,
+        };
+      }
+
+      let errorMsg = createRes.error || 'Failed to create cloud Gist';
+      if (createRes.status === 404) {
+        errorMsg = 'GitHub 404: Token lacks "gist" scope. Please ensure "gist" is checked in your GitHub Token settings.';
+      } else if (createRes.status === 401) {
+        errorMsg = 'GitHub 401: Invalid or expired token. Please verify your token.';
+      } else if (createRes.status === 403) {
+        errorMsg = 'GitHub 403: API permission denied or rate limited. Ensure token has "gist" scope.';
+      }
+      return { success: false, error: errorMsg, status: createRes.status };
     }
 
-    const ok = await updateBookmarkGist(clean, gist.id, bookmarks);
-    if (!ok) {
-      // Fallback: If PATCH failed (e.g., deleted or permission mismatch), create a new Gist
-      gist = await createBookmarkGist(clean, bookmarks);
-      return gist?.html_url ?? null;
+    const updateRes = await updateBookmarkGist(clean, gist.id, bookmarks);
+    if (!updateRes.ok) {
+      // Fallback: If PATCH failed (e.g. permission mismatch), attempt to create a fresh Gist
+      const createFallback = await createBookmarkGist(clean, bookmarks);
+      if (createFallback.gist) {
+        return {
+          success: true,
+          url: createFallback.gist.html_url,
+          status: createFallback.status,
+        };
+      }
+
+      let errorMsg = updateRes.error || 'Failed to update cloud Gist';
+      if (updateRes.status === 404) {
+        errorMsg = 'GitHub 404: Token lacks "gist" scope. Ensure "gist" is checked in your GitHub Token settings.';
+      } else if (updateRes.status === 401) {
+        errorMsg = 'GitHub 401: Invalid or expired token. Please verify your token.';
+      }
+      return { success: false, error: errorMsg, status: updateRes.status };
     }
-    return gist.html_url;
-  } catch (e) {
-    console.warn('Gist push failed:', e);
-    return null;
+
+    return {
+      success: true,
+      url: gist.html_url,
+      status: updateRes.status,
+    };
+  } catch (e: any) {
+    console.warn('Gist push exception:', e);
+    return {
+      success: false,
+      error: e.message || 'Network error occurred during backup',
+    };
   }
 }
 
@@ -170,9 +278,10 @@ export async function pullBookmarksFromGist(
     if (!gist) return null;
 
     // 1. Fetch full gist by ID (GitHub's GET /gists list endpoint omits file contents)
-    const fullRes = await fetch(`https://api.github.com/gists/${gist.id}`, {
-      headers: gistHeaders(clean),
-    });
+    const fullRes = await fetchGistWithFallback(`https://api.github.com/gists/${gist.id}`, {
+      method: 'GET',
+    }, clean);
+
     if (fullRes.ok) {
       const fullGist: GistResponse = await fullRes.json();
       const targetFile =
@@ -186,9 +295,9 @@ export async function pullBookmarksFromGist(
 
       // If truncated or content empty, fetch via raw_url
       if (targetFile?.raw_url) {
-        const rawRes = await fetch(targetFile.raw_url, {
-          headers: { Authorization: `Bearer ${clean}` },
-        });
+        const rawRes = await fetchGistWithFallback(targetFile.raw_url, {
+          method: 'GET',
+        }, clean);
         if (rawRes.ok) {
           const rawText = await rawRes.text();
           return JSON.parse(rawText) as Repository[];
@@ -200,9 +309,9 @@ export async function pullBookmarksFromGist(
     const targetFile = gist.files?.[GIST_FILENAME] || gist.files?.['onegitvault-android-bookmarks.json'];
     const rawUrl = targetFile?.raw_url;
     if (rawUrl) {
-      const rawRes = await fetch(rawUrl, {
-        headers: { Authorization: `Bearer ${clean}` },
-      });
+      const rawRes = await fetchGistWithFallback(rawUrl, {
+        method: 'GET',
+      }, clean);
       if (rawRes.ok) {
         const rawText = await rawRes.text();
         return JSON.parse(rawText) as Repository[];
@@ -227,11 +336,12 @@ export async function fetchUserStarredRepositories(
   const clean = sanitizeToken(token);
   if (!clean) return [];
   try {
-    const res = await fetch(
+    const res = await fetchGistWithFallback(
       `https://api.github.com/user/starred?per_page=${perPage}&page=${page}&sort=created&direction=desc`,
       {
-        headers: gistHeaders(clean),
-      }
+        method: 'GET',
+      },
+      clean
     );
     if (!res.ok) {
       console.warn(`Failed to fetch user starred repositories: HTTP ${res.status}`);

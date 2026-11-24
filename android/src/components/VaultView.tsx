@@ -81,14 +81,15 @@ export const VaultView: React.FC<VaultViewProps> = ({
 
   // 1. Manual Gist Pull (Restore from Cloud)
   const handleManualPull = async () => {
-    if (!token) {
+    const activeToken = getStoredToken();
+    if (!activeToken) {
       if (onOpenTokenDialog) onOpenTokenDialog();
       return;
     }
     setIsGistSyncing(true);
     setGistSyncStatus('Pulling from Gist...');
     try {
-      const gistBookmarks = await pullBookmarksFromGist(token);
+      const gistBookmarks = await pullBookmarksFromGist(activeToken);
       if (gistBookmarks && Array.isArray(gistBookmarks)) {
         saveBookmarks(gistBookmarks);
         onVaultUpdated();
@@ -96,7 +97,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
         setGistSyncStatus(msg);
         if (onShareMessage) onShareMessage(msg);
       } else {
-        const msg = 'No backup found or pull failed';
+        const msg = 'No backup found or pull failed (ensure token has "gist" scope)';
         setGistSyncStatus(msg);
         if (onShareMessage) onShareMessage(msg);
       }
@@ -110,7 +111,8 @@ export const VaultView: React.FC<VaultViewProps> = ({
 
   // 2. Manual Gist Push (Backup to Cloud)
   const handleManualPush = async () => {
-    if (!token) {
+    const activeToken = getStoredToken();
+    if (!activeToken) {
       if (onOpenTokenDialog) onOpenTokenDialog();
       return;
     }
@@ -123,19 +125,20 @@ export const VaultView: React.FC<VaultViewProps> = ({
     setIsGistSyncing(true);
     setGistSyncStatus('Backing up to Gist...');
     try {
-      const url = await pushBookmarksToGist(token, currentBookmarks);
-      if (url) {
+      const result = await pushBookmarksToGist(activeToken, currentBookmarks);
+      if (result.success && result.url) {
         const msg = `Backed up ${currentBookmarks.length} bookmarks to cloud Gist!`;
         setGistSyncStatus(msg);
         if (onShareMessage) onShareMessage(msg);
       } else {
-        const msg = 'Failed to push to Gist';
+        const msg = result.error || 'Failed to push to Gist';
         setGistSyncStatus(msg);
         if (onShareMessage) onShareMessage(msg);
       }
     } catch (err: any) {
-      setGistSyncStatus('Gist push failed');
-      if (onShareMessage) onShareMessage('Gist push network error');
+      const msg = err.message ? `Gist push error: ${err.message}` : 'Gist push failed';
+      setGistSyncStatus(msg);
+      if (onShareMessage) onShareMessage(msg);
     } finally {
       setIsGistSyncing(false);
     }
@@ -282,7 +285,23 @@ export const VaultView: React.FC<VaultViewProps> = ({
                 </Button>
 
                 {gistSyncStatus && (
-                  <Typography variant="caption" sx={{ fontSize: '0.68rem', fontWeight: 600, color: 'text.secondary', ml: 0.5 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: '0.68rem',
+                      fontWeight: 600,
+                      color:
+                        gistSyncStatus.startsWith('Backed up') || gistSyncStatus.startsWith('Restored')
+                          ? '#10b981'
+                          : gistSyncStatus.includes('Backing') || gistSyncStatus.includes('Pulling')
+                          ? 'text.secondary'
+                          : '#ef4444',
+                      ml: 0.5,
+                      display: 'block',
+                      maxWidth: '100%',
+                      wordBreak: 'break-word',
+                    }}
+                  >
                     {gistSyncStatus}
                   </Typography>
                 )}

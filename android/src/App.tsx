@@ -47,6 +47,7 @@ import { SearchFlyout } from './components/SearchFlyout';
 import { BottomNav } from './components/BottomNav';
 import { UpdateDialog } from './components/UpdateDialog';
 import { checkForAndroidUpdates, AndroidUpdateInfo } from './services/updateService';
+import { OneGitVaultLogo } from './components/OneGitVaultLogo';
 
 export const App: React.FC = () => {
   // Theme Management
@@ -139,6 +140,22 @@ export const App: React.FC = () => {
 
   // Navigation: 'apks' | 'trending' | 'vault' | 'explore'
   const [currentTab, setCurrentTab] = useState<string>('apks');
+  const [hasVisitedVault, setHasVisitedVault] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('onegitvault_vault_visited') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (currentTab === 'vault') {
+      setHasVisitedVault(true);
+      try {
+        localStorage.setItem('onegitvault_vault_visited', 'true');
+      } catch {}
+    }
+  }, [currentTab]);
 
   // Search State
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -155,16 +172,27 @@ export const App: React.FC = () => {
   // Rate Limiting State
   const [rateLimit, setRateLimit] = useState<RateLimitInfo>(getCurrentRateLimit());
 
-  // Repositories & Infinite Scroll State
-  const [repos, setRepos] = useState<Repository[]>(CURATED_ANDROID_APKS);
-  const [totalCount, setTotalCount] = useState<number>(CURATED_ANDROID_APKS.length);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [page, setPage] = useState<number>(1);
-  const [hasMore, setHasMore] = useState<boolean>(true);
-  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
-  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  // Repositories & Infinite Scroll State for APKs
+  const [apkRepos, setApkRepos] = useState<Repository[]>(CURATED_ANDROID_APKS);
+  const [apkTotalCount, setApkTotalCount] = useState<number>(CURATED_ANDROID_APKS.length);
+  const [apkLoading, setApkLoading] = useState<boolean>(false);
+  const [apkPage, setApkPage] = useState<number>(1);
+  const [apkHasMore, setApkHasMore] = useState<boolean>(true);
+  const [apkIsLoadingMore, setApkIsLoadingMore] = useState<boolean>(false);
+  const [apkLoadMoreError, setApkLoadMoreError] = useState<string | null>(null);
+  const apkLoadingMoreRef = useRef<boolean>(false);
+
+  // Repositories & Infinite Scroll State for Explore
+  const [exploreRepos, setExploreRepos] = useState<Repository[]>([]);
+  const [exploreTotalCount, setExploreTotalCount] = useState<number>(0);
+  const [exploreLoading, setExploreLoading] = useState<boolean>(false);
+  const [explorePage, setExplorePage] = useState<number>(1);
+  const [exploreHasMore, setExploreHasMore] = useState<boolean>(true);
+  const [exploreIsLoadingMore, setExploreIsLoadingMore] = useState<boolean>(false);
+  const [exploreLoadMoreError, setExploreLoadMoreError] = useState<string | null>(null);
+  const exploreLoadingMoreRef = useRef<boolean>(false);
+  const exploreLoadedOnceRef = useRef<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const loadingMoreRef = useRef<boolean>(false);
 
   const [activeRepo, setActiveRepo] = useState<Repository | null>(null);
   const [detailOpen, setDetailOpen] = useState<boolean>(false);
@@ -286,86 +314,162 @@ export const App: React.FC = () => {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Load repositories data
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setPage(1);
-    setLoadMoreError(null);
-
-    const isApk = currentTab === 'apks';
-    const activeCategory = isApk ? selectedApkCategory : selectedExploreCategory;
+  // Load APK repositories data
+  const loadApkData = useCallback(async () => {
+    setApkLoading(true);
+    setApkPage(1);
+    setApkLoadMoreError(null);
 
     try {
       const data = await fetchRepositories(
-        activeCategory,
+        selectedApkCategory,
         debouncedSearchQuery,
         sortOption,
         minStars,
         1,
         30,
-        isApk
+        true
       );
-      setRepos(data.repositories);
-      setTotalCount(data.totalCount);
-      setHasMore(data.hasMore);
+      setApkRepos(data.repositories);
+      setApkTotalCount(data.totalCount);
+      setApkHasMore(data.hasMore);
       if (data.error && data.repositories.length === 0) {
-        setLoadMoreError(data.error);
+        setApkLoadMoreError(data.error);
       }
     } catch (err) {
-      console.warn('Failed to load repositories:', err);
-      setLoadMoreError('Network error loading repositories.');
+      console.warn('Failed to load APK repositories:', err);
+      setApkLoadMoreError('Network error loading APKs.');
     } finally {
-      setLoading(false);
+      setApkLoading(false);
     }
-  }, [currentTab, selectedApkCategory, selectedExploreCategory, debouncedSearchQuery, sortOption, minStars]);
+  }, [selectedApkCategory, debouncedSearchQuery, sortOption, minStars]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // Infinite Scroll: fetch next page when near bottom
-  const loadMore = useCallback(async () => {
-    if (loadingMoreRef.current || !hasMore || loading) return;
-    loadingMoreRef.current = true;
-    setIsLoadingMore(true);
+  // Load Explore repositories data
+  const loadExploreData = useCallback(async () => {
+    setExploreLoading(true);
+    setExplorePage(1);
+    setExploreLoadMoreError(null);
+    exploreLoadedOnceRef.current = true;
 
     try {
-      const nextPage = page + 1;
-      const isApk = currentTab === 'apks';
-      const activeCat = isApk ? selectedApkCategory : selectedExploreCategory;
       const data = await fetchRepositories(
-        activeCat,
+        selectedExploreCategory,
+        debouncedSearchQuery,
+        sortOption,
+        minStars,
+        1,
+        30,
+        false
+      );
+      setExploreRepos(data.repositories);
+      setExploreTotalCount(data.totalCount);
+      setExploreHasMore(data.hasMore);
+      if (data.error && data.repositories.length === 0) {
+        setExploreLoadMoreError(data.error);
+      }
+    } catch (err) {
+      console.warn('Failed to load explore repositories:', err);
+      setExploreLoadMoreError('Network error loading repositories.');
+    } finally {
+      setExploreLoading(false);
+    }
+  }, [selectedExploreCategory, debouncedSearchQuery, sortOption, minStars]);
+
+  // Fetch APKs whenever APK filters change
+  useEffect(() => {
+    loadApkData();
+  }, [loadApkData]);
+
+  // Fetch Explore whenever Explore filters change (only if explore was visited)
+  useEffect(() => {
+    if (exploreLoadedOnceRef.current) {
+      loadExploreData();
+    }
+  }, [loadExploreData]);
+
+  // Infinite Scroll for APKs
+  const loadMoreApk = useCallback(async () => {
+    if (apkLoadingMoreRef.current || !apkHasMore || apkLoading) return;
+    apkLoadingMoreRef.current = true;
+    setApkIsLoadingMore(true);
+
+    try {
+      const nextPage = apkPage + 1;
+      const data = await fetchRepositories(
+        selectedApkCategory,
         debouncedSearchQuery,
         sortOption,
         minStars,
         nextPage,
         30,
-        isApk
+        true
       );
       if (data.error) {
-        setLoadMoreError(data.error);
+        setApkLoadMoreError(data.error);
         return;
       }
-      setLoadMoreError(null);
+      setApkLoadMoreError(null);
       if (data.repositories.length > 0) {
-        setRepos((prev) => {
+        setApkRepos((prev) => {
           const ids = new Set(prev.map((r) => r.id));
           const newItems = data.repositories.filter((r) => !ids.has(r.id));
           return [...prev, ...newItems];
         });
-        setPage(nextPage);
-        setHasMore(data.hasMore);
+        setApkPage(nextPage);
+        setApkHasMore(data.hasMore);
       } else {
-        setHasMore(false);
+        setApkHasMore(false);
       }
     } catch (err) {
-      console.warn('Load more failed:', err);
-      setLoadMoreError('Network connection error. Tap to retry.');
+      console.warn('Load more APKs failed:', err);
+      setApkLoadMoreError('Network connection error. Tap to retry.');
     } finally {
-      setIsLoadingMore(false);
-      loadingMoreRef.current = false;
+      setApkIsLoadingMore(false);
+      apkLoadingMoreRef.current = false;
     }
-  }, [page, hasMore, loading, currentTab, selectedApkCategory, selectedExploreCategory, debouncedSearchQuery, sortOption, minStars]);
+  }, [apkPage, apkHasMore, apkLoading, selectedApkCategory, debouncedSearchQuery, sortOption, minStars]);
+
+  // Infinite Scroll for Explore
+  const loadMoreExplore = useCallback(async () => {
+    if (exploreLoadingMoreRef.current || !exploreHasMore || exploreLoading) return;
+    exploreLoadingMoreRef.current = true;
+    setExploreIsLoadingMore(true);
+
+    try {
+      const nextPage = explorePage + 1;
+      const data = await fetchRepositories(
+        selectedExploreCategory,
+        debouncedSearchQuery,
+        sortOption,
+        minStars,
+        nextPage,
+        30,
+        false
+      );
+      if (data.error) {
+        setExploreLoadMoreError(data.error);
+        return;
+      }
+      setExploreLoadMoreError(null);
+      if (data.repositories.length > 0) {
+        setExploreRepos((prev) => {
+          const ids = new Set(prev.map((r) => r.id));
+          const newItems = data.repositories.filter((r) => !ids.has(r.id));
+          return [...prev, ...newItems];
+        });
+        setExplorePage(nextPage);
+        setExploreHasMore(data.hasMore);
+      } else {
+        setExploreHasMore(false);
+      }
+    } catch (err) {
+      console.warn('Load more explore failed:', err);
+      setExploreLoadMoreError('Network connection error. Tap to retry.');
+    } finally {
+      setExploreIsLoadingMore(false);
+      exploreLoadingMoreRef.current = false;
+    }
+  }, [explorePage, exploreHasMore, exploreLoading, selectedExploreCategory, debouncedSearchQuery, sortOption, minStars]);
 
   // Throttled scroll listener via requestAnimationFrame for 60/120fps smooth scrolling with 0 CPU waste
   useEffect(() => {
@@ -378,7 +482,11 @@ export const App: React.FC = () => {
           const scrollPos = window.innerHeight + scrollY;
           const threshold = document.documentElement.scrollHeight - 600;
           if (scrollPos >= threshold) {
-            loadMore();
+            if (currentTab === 'apks') {
+              loadMoreApk();
+            } else if (currentTab === 'explore') {
+              loadMoreExplore();
+            }
           }
           ticking = false;
         });
@@ -387,7 +495,7 @@ export const App: React.FC = () => {
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [loadMore]);
+  }, [currentTab, loadMoreApk, loadMoreExplore]);
 
   const handleOpenDetail = (repo: Repository) => {
     setActiveRepo(repo);
@@ -396,7 +504,7 @@ export const App: React.FC = () => {
 
   const handleCopyClone = (cloneUrl: string) => {
     navigator.clipboard.writeText(`git clone ${cloneUrl}`);
-    const found = repos.find((r) => r.clone_url === cloneUrl);
+    const found = apkRepos.find((r) => r.clone_url === cloneUrl) || exploreRepos.find((r) => r.clone_url === cloneUrl);
     if (found) setCopiedId(found.id);
     setSnackbarMessage(`Copied: git clone ${cloneUrl}`);
     setSnackbarOpen(true);
@@ -408,6 +516,12 @@ export const App: React.FC = () => {
     setVaultVersion((v) => v + 1);
     setSnackbarMessage(added ? `Saved ${repo.name} to Vault` : `Removed ${repo.name} from Vault`);
     setSnackbarOpen(true);
+    if (added && currentTab !== 'vault') {
+      setHasVisitedVault(false);
+      try {
+        localStorage.removeItem('onegitvault_vault_visited');
+      } catch {}
+    }
 
     // Auto-push updated bookmarks to private Gist when PAT token is available
     const token = getStoredToken();
@@ -488,7 +602,7 @@ export const App: React.FC = () => {
     setCurrentTab('explore');
 
     // 3. Prepend selected repo to Explore repository list so it is immediately visible
-    setRepos((prev) => {
+    setExploreRepos((prev) => {
       const filtered = prev.filter((r) => r.id !== repo.id);
       return [repo, ...filtered];
     });
@@ -507,8 +621,11 @@ export const App: React.FC = () => {
       } else if (currentTab === 'vault') {
         setVaultVersion((v) => v + 1);
         await checkLiveRateLimit();
+      } else if (currentTab === 'apks') {
+        await loadApkData();
+        await checkLiveRateLimit();
       } else {
-        await loadData();
+        await loadExploreData();
         await checkLiveRateLimit();
       }
       setSnackbarMessage('Refreshed feed & quotas');
@@ -523,7 +640,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const vaultCount = getBookmarks().length;
+  const vaultCount = (hasVisitedVault || currentTab === 'vault') ? 0 : getBookmarks().length;
   const isBottomNavVisible = !isSearchActive && !isKeyboardOpen;
 
   return (
@@ -541,7 +658,7 @@ export const App: React.FC = () => {
         {/* Permanently Fixed Top App Bar with Integrated Search & View Density Toggle */}
         <TopAppBar
           onRefresh={handleTitleBarRefresh}
-          isRefreshing={isRefreshing || loading}
+          isRefreshing={isRefreshing || apkLoading || exploreLoading}
           onOpenTokenDialog={() => setTokenDialogOpen(true)}
           currentThemeId={themeId}
           availableThemes={themeRegistry.getAll()}
@@ -567,151 +684,145 @@ export const App: React.FC = () => {
         />
 
         {/* Tab 1: APKs (Exclusively Android Apps & APK Releases) */}
-        {currentTab === 'apks' && (
-          <Box>
-            {/* Single Compact Filters Row strictly for Android & APKs with clean vertical spacing */}
-            <Box sx={{ mb: 1 }}>
-              <CompactFilterBar
-                selectedCategoryId={selectedApkCategory}
-                onSelectCategory={(id) => setSelectedApkCategory(id)}
-                sortOption={sortOption}
-                onSelectSort={(sort) => setSortOption(sort)}
-                minStars={minStars}
-                onSelectMinStars={(stars) => setMinStars(stars)}
-                totalCount={totalCount}
-                categories={APK_CATEGORIES}
-              />
-            </Box>
+        <Box sx={{ display: currentTab === 'apks' ? 'block' : 'none' }}>
+          {/* Single Compact Filters Row strictly for Android & APKs with clean vertical spacing */}
+          <Box sx={{ mb: 1 }}>
+            <CompactFilterBar
+              selectedCategoryId={selectedApkCategory}
+              onSelectCategory={(id) => setSelectedApkCategory(id)}
+              sortOption={sortOption}
+              onSelectSort={(sort) => setSortOption(sort)}
+              minStars={minStars}
+              onSelectMinStars={(stars) => setMinStars(stars)}
+              totalCount={apkTotalCount}
+              categories={APK_CATEGORIES}
+            />
+          </Box>
 
-            {/* Repositories Cards Grid for APKs */}
-            <Container maxWidth="xl" sx={{ px: { xs: 1.5, sm: 2 }, mt: 0.5 }}>
-              {loading && repos.length === 0 ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 12, gap: 2 }}>
-                  <Box
-                    component="img"
-                    src="./favicon.png"
-                    alt="OneGitVault Logo"
-                    sx={{
-                      width: 58,
-                      height: 58,
-                      borderRadius: '14px',
-                      animation: 'ogvAppPulse 1.6s ease-in-out infinite',
-                      '@keyframes ogvAppPulse': {
-                        '0%, 100%': { transform: 'scale(1)', opacity: 0.95 },
-                        '50%': { transform: 'scale(1.08)', opacity: 0.7 }
-                      }
-                    }}
-                  />
-                  <CircularProgress size={24} color="primary" />
+          {/* Repositories Cards Grid for APKs */}
+          <Container maxWidth="xl" sx={{ px: { xs: 1.5, sm: 2 }, mt: 0.5 }}>
+            {apkLoading && apkRepos.length === 0 ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 12, gap: 2 }}>
+                <Box
+                  sx={{
+                    animation: 'ogvAppPulse 1.6s ease-in-out infinite',
+                    '@keyframes ogvAppPulse': {
+                      '0%, 100%': { transform: 'scale(1)', opacity: 0.95 },
+                      '50%': { transform: 'scale(1.08)', opacity: 0.7 }
+                    }
+                  }}
+                >
+                  <OneGitVaultLogo size={58} />
                 </Box>
-              ) : repos.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 10, color: 'text.secondary' }}>
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>No Android APKs found.</Typography>
-                  <Typography variant="body2">Try adjusting your search keywords or filter criteria.</Typography>
-                </Box>
-              ) : (
-                <Grid container spacing={isCompactView ? 1 : 1.5}>
-                  {repos.map((repo) => (
-                    <Grid item xs={12} sm={isCompactView ? 12 : 6} md={isCompactView ? 6 : 4} key={repo.id}>
-                      <RepoCard
-                        repo={repo}
-                        isBookmarked={isBookmarked(repo.id)}
-                        onToggleBookmark={handleToggleBookmark}
-                        onOpenDetail={handleOpenDetail}
-                        onCopyClone={handleCopyClone}
-                        copiedId={copiedId}
-                        isCompact={isCompactView}
-                        isStarred={starredRepos.has(repo.full_name)}
-                        onToggleStar={handleToggleStar}
-                        onShareMessage={handleShareMessage}
-                      />
-                    </Grid>
-                  ))}
-                  {isLoadingMore && (
-                    <Grid item xs={12}>
-                      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2.5, gap: 1 }}>
-                        <CircularProgress size={18} color="primary" />
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-                          Streaming more APK releases...
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  )}
-                  {loadMoreError && (
-                    <Grid item xs={12}>
-                      <Box
+                <CircularProgress size={24} color="primary" />
+              </Box>
+            ) : apkRepos.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 10, color: 'text.secondary' }}>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>No Android APKs found.</Typography>
+                <Typography variant="body2">Try adjusting your search keywords or filter criteria.</Typography>
+              </Box>
+            ) : (
+              <Grid container spacing={isCompactView ? 1 : 1.5}>
+                {apkRepos.map((repo) => (
+                  <Grid item xs={12} sm={isCompactView ? 12 : 6} md={isCompactView ? 6 : 4} key={repo.id}>
+                    <RepoCard
+                      repo={repo}
+                      isBookmarked={isBookmarked(repo.id)}
+                      onToggleBookmark={handleToggleBookmark}
+                      onOpenDetail={handleOpenDetail}
+                      onCopyClone={handleCopyClone}
+                      copiedId={copiedId}
+                      isCompact={isCompactView}
+                      isStarred={starredRepos.has(repo.full_name)}
+                      onToggleStar={handleToggleStar}
+                      onShareMessage={handleShareMessage}
+                    />
+                  </Grid>
+                ))}
+                {apkIsLoadingMore && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2.5, gap: 1 }}>
+                      <CircularProgress size={18} color="primary" />
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                        Streaming more APK releases...
+                      </Typography>
+                    </Box>
+                  </Grid>
+                )}
+                {apkLoadMoreError && (
+                  <Grid item xs={12}>
+                    <Box
+                      sx={{
+                        p: 1.5,
+                        mx: 'auto',
+                        maxWidth: 420,
+                        borderRadius: 2,
+                        bgcolor: alpha(muiTheme.palette.error.main, 0.08),
+                        border: `1px solid ${alpha(muiTheme.palette.error.main, 0.2)}`,
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 1
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ color: muiTheme.palette.error.main, fontWeight: 700 }}>
+                        {apkLoadMoreError}
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="error"
+                        onClick={() => {
+                          setApkLoadMoreError(null);
+                          loadMoreApk();
+                        }}
+                        sx={{ textTransform: 'none', fontSize: '0.72rem', py: 0.2, px: 1.5, borderRadius: 2 }}
+                      >
+                        Tap to Retry
+                      </Button>
+                    </Box>
+                  </Grid>
+                )}
+                {apkHasMore && !apkIsLoadingMore && !apkLoadMoreError && apkRepos.length > 0 && (
+                  <Grid item xs={12}>
+                    <Box sx={{ textAlign: 'center', py: 1.5 }}>
+                      <Button
+                        variant="text"
+                        size="small"
+                        onClick={() => loadMoreApk()}
                         sx={{
-                          p: 1.5,
-                          mx: 'auto',
-                          maxWidth: 420,
-                          borderRadius: 2,
-                          bgcolor: alpha(muiTheme.palette.error.main, 0.08),
-                          border: `1px solid ${alpha(muiTheme.palette.error.main, 0.2)}`,
-                          textAlign: 'center',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 1
+                          textTransform: 'none',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          color: 'text.secondary',
+                          bgcolor: alpha(muiTheme.palette.action.hover, 0.06),
+                          px: 2,
+                          py: 0.5,
+                          borderRadius: '20px'
                         }}
                       >
-                        <Typography variant="caption" sx={{ color: muiTheme.palette.error.main, fontWeight: 700 }}>
-                          {loadMoreError}
-                        </Typography>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="error"
-                          onClick={() => {
-                            setLoadMoreError(null);
-                            loadMore();
-                          }}
-                          sx={{ textTransform: 'none', fontSize: '0.72rem', py: 0.2, px: 1.5, borderRadius: 2 }}
-                        >
-                          Tap to Retry
-                        </Button>
-                      </Box>
-                    </Grid>
-                  )}
-                  {hasMore && !isLoadingMore && !loadMoreError && repos.length > 0 && (
-                    <Grid item xs={12}>
-                      <Box sx={{ textAlign: 'center', py: 1.5 }}>
-                        <Button
-                          variant="text"
-                          size="small"
-                          onClick={() => loadMore()}
-                          sx={{
-                            textTransform: 'none',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            color: 'text.secondary',
-                            bgcolor: alpha(muiTheme.palette.action.hover, 0.06),
-                            px: 2,
-                            py: 0.5,
-                            borderRadius: '20px'
-                          }}
-                        >
-                          Scroll or tap to load more
-                        </Button>
-                      </Box>
-                    </Grid>
-                  )}
-                  {!hasMore && repos.length > 0 && !loadMoreError && (
-                    <Grid item xs={12}>
-                      <Box sx={{ textAlign: 'center', py: 2 }}>
-                        <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                          You have reached the end ({repos.length} apps loaded)
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  )}
-                </Grid>
-              )}
-            </Container>
-          </Box>
-        )}
+                        Scroll or tap to load more
+                      </Button>
+                    </Box>
+                  </Grid>
+                )}
+                {!apkHasMore && apkRepos.length > 0 && !apkLoadMoreError && (
+                  <Grid item xs={12}>
+                    <Box sx={{ textAlign: 'center', py: 2 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                        You have reached the end ({apkRepos.length} apps loaded)
+                      </Typography>
+                    </Box>
+                  </Grid>
+                )}
+              </Grid>
+            )}
+          </Container>
+        </Box>
 
         {/* Tab 2: Trending Explorer */}
-        {currentTab === 'trending' && (
+        <Box sx={{ display: currentTab === 'trending' ? 'block' : 'none' }}>
           <TrendingView
             refreshTrigger={trendingRefreshKey}
             onOpenDetail={handleOpenDetail}
@@ -721,10 +832,10 @@ export const App: React.FC = () => {
             copiedId={copiedId}
             isCompact={isCompactView}
           />
-        )}
+        </Box>
 
         {/* Tab 3: Vault Bookmarks & GitHub Starred Repositories */}
-        {currentTab === 'vault' && (
+        <Box sx={{ display: currentTab === 'vault' ? 'block' : 'none' }}>
           <VaultView
             key={vaultVersion}
             onOpenDetail={handleOpenDetail}
@@ -742,188 +853,182 @@ export const App: React.FC = () => {
             onOpenTokenDialog={() => setTokenDialogOpen(true)}
             onShareMessage={handleShareMessage}
           />
-        )}
+        </Box>
 
         {/* Tab 4: Explore All Technology Sectors (Global Open Source Observatory) */}
-        {currentTab === 'explore' && (
-          <Box>
-            {/* Filter Bar with All Global Project Sectors with clean vertical spacing */}
-            <Box sx={{ mb: 1 }}>
-              <CompactFilterBar
-                selectedCategoryId={selectedExploreCategory}
-                onSelectCategory={(id) => setSelectedExploreCategory(id)}
-                sortOption={sortOption}
-                onSelectSort={(sort) => setSortOption(sort)}
-                minStars={minStars}
-                onSelectMinStars={(stars) => setMinStars(stars)}
-                totalCount={totalCount}
-                categories={EXPLORE_CATEGORIES}
-              />
-            </Box>
+        <Box sx={{ display: currentTab === 'explore' ? 'block' : 'none' }}>
+          {/* Filter Bar with All Global Project Sectors with clean vertical spacing */}
+          <Box sx={{ mb: 1 }}>
+            <CompactFilterBar
+              selectedCategoryId={selectedExploreCategory}
+              onSelectCategory={(id) => setSelectedExploreCategory(id)}
+              sortOption={sortOption}
+              onSelectSort={(sort) => setSortOption(sort)}
+              minStars={minStars}
+              onSelectMinStars={(stars) => setMinStars(stars)}
+              totalCount={exploreTotalCount}
+              categories={EXPLORE_CATEGORIES}
+            />
+          </Box>
 
-            {/* Global Search Status Banner in Explore */}
-            {debouncedSearchQuery.trim() && (
-              <Box
+          {/* Global Search Status Banner in Explore */}
+          {debouncedSearchQuery.trim() && (
+            <Box
+              sx={{
+                mx: { xs: 1.5, sm: 2 },
+                mb: 1.5,
+                p: 1,
+                px: 1.5,
+                borderRadius: '14px',
+                bgcolor: alpha(muiTheme.palette.primary.main, 0.1),
+                border: `1px solid ${alpha(muiTheme.palette.primary.main, 0.25)}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.75rem' }}>
+                Global Search: <strong>"{debouncedSearchQuery}"</strong> ({exploreTotalCount.toLocaleString()} repos)
+              </Typography>
+              <Button
+                size="small"
+                onClick={() => setSearchQuery('')}
                 sx={{
-                  mx: { xs: 1.5, sm: 2 },
-                  mb: 1.5,
-                  p: 1,
-                  px: 1.5,
-                  borderRadius: '14px',
-                  bgcolor: alpha(muiTheme.palette.primary.main, 0.1),
-                  border: `1px solid ${alpha(muiTheme.palette.primary.main, 0.25)}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  textTransform: 'none',
+                  py: 0.2,
+                  px: 1,
+                  minWidth: 'auto',
+                  color: muiTheme.palette.primary.main
                 }}
               >
-                <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.75rem' }}>
-                  Global Search: <strong>"{debouncedSearchQuery}"</strong> ({totalCount.toLocaleString()} repos)
-                </Typography>
-                <Button
-                  size="small"
-                  onClick={() => setSearchQuery('')}
+                Clear
+              </Button>
+            </Box>
+          )}
+
+          {/* Repositories Cards Grid for Global Explore */}
+          <Container maxWidth="xl" sx={{ px: { xs: 1.5, sm: 2 }, mt: 0.5 }}>
+            {exploreLoading && exploreRepos.length === 0 ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 12, gap: 2 }}>
+                <Box
                   sx={{
-                    fontSize: '0.7rem',
-                    fontWeight: 800,
-                    textTransform: 'none',
-                    py: 0.2,
-                    px: 1,
-                    minWidth: 'auto',
-                    color: muiTheme.palette.primary.main
+                    animation: 'ogvAppPulse 1.6s ease-in-out infinite',
+                    '@keyframes ogvAppPulse': {
+                      '0%, 100%': { transform: 'scale(1)', opacity: 0.95 },
+                      '50%': { transform: 'scale(1.08)', opacity: 0.7 }
+                    }
                   }}
                 >
-                  Clear
-                </Button>
+                  <OneGitVaultLogo size={58} />
+                </Box>
+                <CircularProgress size={24} color="primary" />
               </Box>
-            )}
-
-            {/* Repositories Cards Grid for Global Explore */}
-            <Container maxWidth="xl" sx={{ px: { xs: 1.5, sm: 2 }, mt: 0.5 }}>
-              {loading && repos.length === 0 ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 12, gap: 2 }}>
-                  <Box
-                    component="img"
-                    src="./favicon.png"
-                    alt="OneGitVault Logo"
-                    sx={{
-                      width: 58,
-                      height: 58,
-                      borderRadius: '14px',
-                      animation: 'ogvAppPulse 1.6s ease-in-out infinite',
-                      '@keyframes ogvAppPulse': {
-                        '0%, 100%': { transform: 'scale(1)', opacity: 0.95 },
-                        '50%': { transform: 'scale(1.08)', opacity: 0.7 }
-                      }
-                    }}
-                  />
-                  <CircularProgress size={24} color="primary" />
-                </Box>
-              ) : repos.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 10, color: 'text.secondary' }}>
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>No repositories found.</Typography>
-                  <Typography variant="body2">Try adjusting your search keywords or filter criteria.</Typography>
-                </Box>
-              ) : (
-                <Grid container spacing={isCompactView ? 1 : 1.5}>
-                  {repos.map((repo) => (
-                    <Grid item xs={12} sm={isCompactView ? 12 : 6} md={isCompactView ? 6 : 4} key={repo.id}>
-                      <RepoCard
-                        repo={repo}
-                        isBookmarked={isBookmarked(repo.id)}
-                        onToggleBookmark={handleToggleBookmark}
-                        onOpenDetail={handleOpenDetail}
-                        onCopyClone={handleCopyClone}
-                        copiedId={copiedId}
-                        isCompact={isCompactView}
-                        isStarred={starredRepos.has(repo.full_name)}
-                        onToggleStar={handleToggleStar}
-                        onShareMessage={handleShareMessage}
-                      />
-                    </Grid>
-                  ))}
-                  {isLoadingMore && (
-                    <Grid item xs={12}>
-                      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2.5, gap: 1 }}>
-                        <CircularProgress size={18} color="primary" />
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-                          Streaming more repositories...
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  )}
-                  {loadMoreError && (
-                    <Grid item xs={12}>
-                      <Box
+            ) : exploreRepos.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 10, color: 'text.secondary' }}>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>No repositories found.</Typography>
+                <Typography variant="body2">Try adjusting your search keywords or filter criteria.</Typography>
+              </Box>
+            ) : (
+              <Grid container spacing={isCompactView ? 1 : 1.5}>
+                {exploreRepos.map((repo) => (
+                  <Grid item xs={12} sm={isCompactView ? 12 : 6} md={isCompactView ? 6 : 4} key={repo.id}>
+                    <RepoCard
+                      repo={repo}
+                      isBookmarked={isBookmarked(repo.id)}
+                      onToggleBookmark={handleToggleBookmark}
+                      onOpenDetail={handleOpenDetail}
+                      onCopyClone={handleCopyClone}
+                      copiedId={copiedId}
+                      isCompact={isCompactView}
+                      isStarred={starredRepos.has(repo.full_name)}
+                      onToggleStar={handleToggleStar}
+                      onShareMessage={handleShareMessage}
+                    />
+                  </Grid>
+                ))}
+                {exploreIsLoadingMore && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2.5, gap: 1 }}>
+                      <CircularProgress size={18} color="primary" />
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                        Streaming more repositories...
+                      </Typography>
+                    </Box>
+                  </Grid>
+                )}
+                {exploreLoadMoreError && (
+                  <Grid item xs={12}>
+                    <Box
+                      sx={{
+                        p: 1.5,
+                        mx: 'auto',
+                        maxWidth: 420,
+                        borderRadius: 2,
+                        bgcolor: alpha(muiTheme.palette.error.main, 0.08),
+                        border: `1px solid ${alpha(muiTheme.palette.error.main, 0.2)}`,
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 1
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ color: muiTheme.palette.error.main, fontWeight: 700 }}>
+                        {exploreLoadMoreError}
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="error"
+                        onClick={() => {
+                          setExploreLoadMoreError(null);
+                          loadMoreExplore();
+                        }}
+                        sx={{ textTransform: 'none', fontSize: '0.72rem', py: 0.2, px: 1.5, borderRadius: 2 }}
+                      >
+                        Tap to Retry
+                      </Button>
+                    </Box>
+                  </Grid>
+                )}
+                {exploreHasMore && !exploreIsLoadingMore && !exploreLoadMoreError && exploreRepos.length > 0 && (
+                  <Grid item xs={12}>
+                    <Box sx={{ textAlign: 'center', py: 1.5 }}>
+                      <Button
+                        variant="text"
+                        size="small"
+                        onClick={() => loadMoreExplore()}
                         sx={{
-                          p: 1.5,
-                          mx: 'auto',
-                          maxWidth: 420,
-                          borderRadius: 2,
-                          bgcolor: alpha(muiTheme.palette.error.main, 0.08),
-                          border: `1px solid ${alpha(muiTheme.palette.error.main, 0.2)}`,
-                          textAlign: 'center',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 1
+                          textTransform: 'none',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          color: 'text.secondary',
+                          bgcolor: alpha(muiTheme.palette.action.hover, 0.06),
+                          px: 2,
+                          py: 0.5,
+                          borderRadius: '20px'
                         }}
                       >
-                        <Typography variant="caption" sx={{ color: muiTheme.palette.error.main, fontWeight: 700 }}>
-                          {loadMoreError}
-                        </Typography>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="error"
-                          onClick={() => {
-                            setLoadMoreError(null);
-                            loadMore();
-                          }}
-                          sx={{ textTransform: 'none', fontSize: '0.72rem', py: 0.2, px: 1.5, borderRadius: 2 }}
-                        >
-                          Tap to Retry
-                        </Button>
-                      </Box>
-                    </Grid>
-                  )}
-                  {hasMore && !isLoadingMore && !loadMoreError && repos.length > 0 && (
-                    <Grid item xs={12}>
-                      <Box sx={{ textAlign: 'center', py: 1.5 }}>
-                        <Button
-                          variant="text"
-                          size="small"
-                          onClick={() => loadMore()}
-                          sx={{
-                            textTransform: 'none',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            color: 'text.secondary',
-                            bgcolor: alpha(muiTheme.palette.action.hover, 0.06),
-                            px: 2,
-                            py: 0.5,
-                            borderRadius: '20px'
-                          }}
-                        >
-                          Scroll or tap to load more
-                        </Button>
-                      </Box>
-                    </Grid>
-                  )}
-                  {!hasMore && repos.length > 0 && !loadMoreError && (
-                    <Grid item xs={12}>
-                      <Box sx={{ textAlign: 'center', py: 2 }}>
-                        <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                          You have reached the end ({repos.length} repositories loaded)
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  )}
-                </Grid>
-              )}
-            </Container>
-          </Box>
-        )}
+                        Scroll or tap to load more
+                      </Button>
+                    </Box>
+                  </Grid>
+                )}
+                {!exploreHasMore && exploreRepos.length > 0 && !exploreLoadMoreError && (
+                  <Grid item xs={12}>
+                    <Box sx={{ textAlign: 'center', py: 2 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                        You have reached the end ({exploreRepos.length} repositories loaded)
+                      </Typography>
+                    </Box>
+                  </Grid>
+                )}
+              </Grid>
+            )}
+          </Container>
+        </Box>
 
         {/* Floating Action Button (Scroll to Top) — only visible after scrolling down > 300px */}
         {isBottomNavVisible && showScrollTop && (
@@ -977,7 +1082,8 @@ export const App: React.FC = () => {
           open={tokenDialogOpen}
           onClose={() => setTokenDialogOpen(false)}
           onTokenSaved={() => {
-            loadData();
+            if (currentTab === 'apks') loadApkData();
+            else if (currentTab === 'explore') loadExploreData();
             checkLiveRateLimit();
             const token = getStoredToken();
             if (token) {
@@ -1018,8 +1124,14 @@ export const App: React.FC = () => {
         <BottomNav
           currentTab={currentTab}
           onTabChange={(tab) => {
-            setCurrentTab(tab);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (tab === currentTab) {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+              setCurrentTab(tab);
+              if (tab === 'explore' && !exploreLoadedOnceRef.current) {
+                loadExploreData();
+              }
+            }
           }}
           vaultCount={vaultCount}
           visible={isBottomNavVisible}

@@ -69,7 +69,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         px: 1.2,
         py: 0,
         zIndex: 1200,
-        userSelect: 'none'
+        userSelect: 'none',
+        touchAction: 'manipulation'
       }}
     >
       {TABS.map((tab) => {
@@ -87,7 +88,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               px: { xs: 1.35, sm: 1.7 },
               borderRadius: '20px',
               cursor: 'pointer',
-              transition: 'all 0.18s cubic-bezier(0.2, 0, 0, 1)',
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              transition: 'all 0.15s cubic-bezier(0.2, 0, 0, 1)',
               bgcolor: isSelected
                 ? (theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.26) : alpha(theme.palette.primary.main, 0.14))
                 : 'transparent',
@@ -97,7 +100,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               color: isSelected ? theme.palette.primary.main : theme.palette.text.secondary,
               transform: isSelected ? 'scale(1.03)' : 'scale(1)',
               '&:active': {
-                transform: 'scale(0.96)'
+                transform: 'scale(0.95)'
               }
             }}
           >

@@ -32,15 +32,40 @@ const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'
 const VERSION = pkg.version;
 const ANDROID_VERSION = '1.1.0';
 const TAG_NAME = `v${VERSION}`;
-const RELEASE_NAME = `v${VERSION} (Desktop) / v${ANDROID_VERSION} (Android) — Translation Engine & Vault Alert Redesign`;
+const RELEASE_NAME = `v${VERSION} (Desktop) / v${ANDROID_VERSION} (Android) — Batch Vault Unbookmarking, Badge Clearing & Performance Fixes`;
 
 const RELEASE_BODY = `## 🚀 What's New in Desktop v${VERSION} & Android v${ANDROID_VERSION}
+
+### 🗃️ Android Vault Batch Unbookmarking & Multi-Select
+- **Multi-Select Mode**: Added "Select" toggle in the Vault view. Tap multiple bookmarks to select/deselect individually or tap **"Select All" / "Deselect All"**.
+- **1-Tap Batch Removal**: Remove all selected bookmarks at once with the prominent **"Unbookmark (N)"** action, automatically updating local storage and synchronizing with your private GitHub Gist in the cloud.
+- **Smart Badge Clearing**: Visiting the Vault tab immediately clears the notification count badge on the bottom navigation bar.
+
+---
+
+### ⚡ Ultra-Fluid Bottom Navigation & Instant Switching
+- **Zero-Latency Tab Transitions**: Decoupled APKs, Trending, Vault, and Explore into persistently mounted views, eliminating full-tree remounts and redundant API refetching when switching tabs.
+- **Removed Tap Delays**: Enabled \`touch-action: manipulation\` to eliminate mobile 300ms tap latency.
+- **Targeted Scroll**: Tapping between different tabs preserves your exact scroll position; only tapping the already-active tab scrolls smoothly to the top.
+
+---
+
+### 📖 README Viewer Link Navigation Fixes
+- **Internal Heading Anchors**: Clicking table of contents links (e.g. \`#installation\`, \`#usage\`) now smoothly scrolls directly to the corresponding section within the modal.
+- **Relative Repo Links**: Document links (e.g. \`docs/guide.md\`, \`./LICENSE\`) automatically resolve to GitHub web URLs in the device browser.
+- **Heading ID Retention**: DOMPurify sanitization preserves \`id\` and \`name\` attributes on markdown headers.
+
+---
+
+### ✨ Crisp High-Resolution Launch Branding
+- **Pixelation Elimination**: Replaced low-res raster favicon in the app splash loader with an infinite-resolution inline vector SVG logo with smooth pulsing animations, ensuring crisp visuals on high-DPI displays.
+
+---
 
 ### 🌐 Desktop Ultra-Fast Translation Support (Google Anycast Edge CDN)
 - **On-Demand Translation**: Ported Android's edge CDN translation engine directly into Desktop (\`src/services/translateService.ts\`).
 - **Markdown Documentation**: Instant translation of non-English README documentation in \`RepoDetailPanel\` with parallel paragraph chunking (~2,000 chars) via \`Promise.all()\`.
-- **Card-Level Descriptions**: Direct inline translation toggles on \`ProjectCard\` (both Grid & List views) and detail modals for repos in Chinese, Japanese, Russian, Korean, German, and more.
-- **Dual-Layer Caching**: In-memory Map + SessionStorage provides 0ms instant switching between original text and translated English.
+- **Card-Level Descriptions**: Direct inline translation toggles on \`ProjectCard\` (both Grid & List views) and detail modals.
 - **Markdown & Code Protection**: Fenced code blocks (\`\`\`...\`\`\`), inline code snippets (\`...\`), and badges are preserved untouched during translation.
 
 ---
@@ -48,7 +73,6 @@ const RELEASE_BODY = `## 🚀 What's New in Desktop v${VERSION} & Android v${AND
 ### 🛡️ Android Vault Alert Banner & Error Layout Redesign
 - **Full-Width Diagnostic Alert**: Resolved issue where long GitHub error messages (such as missing \`gist\` scope) overflowed horizontally and squeezed the action icons.
 - **Responsive Stacking**: Action buttons ("Pull from Gist", "Push to Gist") now maintain their dedicated top row, while status messages render below in a responsive Material-UI \`Alert\` banner.
-- **Severity-Aware Feedback**: Distinct styling, icons, and colors for Success (green), In-Progress (blue), and Error diagnostics (red) with one-click dismiss buttons.
 
 ---
 
@@ -61,7 +85,7 @@ const RELEASE_BODY = `## 🚀 What's New in Desktop v${VERSION} & Android v${AND
 | Platform | Binary | Version | Size | Verification |
 |---|---|---|---|---|
 | **Windows Desktop** | **\`OneGitVault-Setup-${VERSION}.exe\`** | v${VERSION} | ~98 MB | Inno Setup x64 Installer (Interactive & Silent \`/VERYSILENT\` restart) |
-| **Android** | **\`OneGitVault-Android-${ANDROID_VERSION}.apk\`** | v${ANDROID_VERSION} | ~3.3 MB | Release APK (v2 signature scheme verified) |
+| **Android** | **\`OneGitVault-Android-${ANDROID_VERSION}.apk\`** | v${ANDROID_VERSION} | ~3.5 MB | Release APK (v2 signature scheme verified) |
 
 *Built with Electron 33, Capacitor 8, React 18, TypeScript, and Vite.*
 `;
@@ -125,8 +149,27 @@ async function createRelease() {
       }
     });
     if (getRes.statusCode === 200) {
-      const release = JSON.parse(getRes.body);
+      let release = JSON.parse(getRes.body);
       console.log(`Found existing release: ${release.html_url} (ID: ${release.id})`);
+
+      // Update title and body of existing release
+      const patchRes = await request({
+        hostname: 'api.github.com',
+        path: `/repos/${REPO_OWNER}/${REPO_NAME}/releases/${release.id}`,
+        method: 'PATCH',
+        headers: {
+          'User-Agent': 'OneGitVault-Release-Bot',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        }
+      }, payload);
+
+      if (patchRes.statusCode >= 200 && patchRes.statusCode < 300) {
+        release = JSON.parse(patchRes.body);
+        console.log(`✅ Release details updated successfully!`);
+      }
       return release;
     }
     throw new Error(`Failed to create or get release: ${res.body}`);

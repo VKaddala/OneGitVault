@@ -90,7 +90,9 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
         setRawReadme(raw);
         try {
           const parsed = marked.parse(raw);
-          const sanitized = DOMPurify.sanitize(typeof parsed === 'string' ? parsed : '');
+          const sanitized = DOMPurify.sanitize(typeof parsed === 'string' ? parsed : '', {
+            ADD_ATTR: ['id', 'name', 'target', 'rel']
+          });
           setOriginalHtml(sanitized);
         } catch {
           setOriginalHtml('<p>Error rendering README.</p>');
@@ -121,13 +123,70 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
     try {
       const translatedMd = await translateMarkdownToEnglish(rawReadme);
       const parsed = marked.parse(translatedMd);
-      const sanitized = DOMPurify.sanitize(typeof parsed === 'string' ? parsed : '');
+      const sanitized = DOMPurify.sanitize(typeof parsed === 'string' ? parsed : '', {
+        ADD_ATTR: ['id', 'name', 'target', 'rel']
+      });
       setTranslatedHtml(sanitized);
       setIsTranslated(true);
     } catch (e) {
       console.warn('Translation failed:', e);
     } finally {
       setIsTranslating(false);
+    }
+  };
+
+  const handleReadmeLinkClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const anchor = target.closest('a');
+    if (!anchor) return;
+
+    const href = anchor.getAttribute('href');
+    if (!href) return;
+
+    // 1. Internal hash navigation links (e.g. #installation, #features, #table-of-contents)
+    if (href.startsWith('#')) {
+      e.preventDefault();
+      const rawId = decodeURIComponent(href.slice(1)).toLowerCase().trim();
+      if (!rawId) return;
+
+      let el: Element | null = document.getElementById(rawId) ||
+                               document.getElementById(`user-content-${rawId}`) ||
+                               document.querySelector(`[name="${rawId}"]`) ||
+                               document.querySelector(`[name="user-content-${rawId}"]`);
+
+      if (!el) {
+        // Fallback: search headings (h1, h2, h3, h4, h5, h6) inside the dialog
+        const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        for (let i = 0; i < headings.length; i++) {
+          const h = headings[i];
+          const text = h.textContent?.trim().toLowerCase() || '';
+          const slug = text.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+          if (slug === rawId || text === rawId || slug.includes(rawId) || rawId.includes(slug)) {
+            el = h;
+            break;
+          }
+        }
+      }
+
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
+    }
+
+    // 2. Relative file/doc links inside the repository (e.g. docs/install.md, ./LICENSE)
+    if (repo && !href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('mailto:')) {
+      e.preventDefault();
+      const cleanPath = href.replace(/^\.?\//, '');
+      const fullUrl = `https://github.com/${repo.full_name}/blob/main/${cleanPath}`;
+      window.open(fullUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    // 3. Absolute HTTP / HTTPS URLs
+    if (href.startsWith('http://') || href.startsWith('https://')) {
+      e.preventDefault();
+      window.open(href, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -355,6 +414,7 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
               </Box>
             ) : (
               <Box
+                onClick={handleReadmeLinkClick}
                 dangerouslySetInnerHTML={{ __html: isTranslated ? (translatedHtml || originalHtml) : originalHtml }}
                 sx={{
                   color: 'text.primary',

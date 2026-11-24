@@ -19,6 +19,10 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
+import ChecklistIcon from '@mui/icons-material/Checklist';
+import CloseIcon from '@mui/icons-material/Close';
+import SelectAllIcon from '@mui/icons-material/SelectAll';
 import { Repository } from '../types';
 import { RepoCard } from './RepoCard';
 import { getBookmarks, saveBookmarks } from '../services/bookmarkStore';
@@ -71,9 +75,56 @@ export const VaultView: React.FC<VaultViewProps> = ({
   const [subSection, setSubSection] = useState<VaultSubSection>('gist');
 
   // Bookmarks (Gist / Local)
-  const bookmarks = getBookmarks();
+  const [bookmarks, setBookmarks] = useState<Repository[]>(getBookmarks);
   const [isGistSyncing, setIsGistSyncing] = useState<boolean>(false);
   const [gistSyncStatus, setGistSyncStatus] = useState<string>('');
+
+  // Batch Select & Unbookmark State
+  const [isSelectMode, setIsSelectMode] = useState<boolean>(false);
+  const [selectedRepoIds, setSelectedRepoIds] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    setBookmarks(getBookmarks());
+  }, [subSection]);
+
+  const handleToggleSelect = (repoId: number) => {
+    setSelectedRepoIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(repoId)) next.delete(repoId);
+      else next.add(repoId);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedRepoIds.size === bookmarks.length) {
+      setSelectedRepoIds(new Set());
+    } else {
+      setSelectedRepoIds(new Set(bookmarks.map((r) => r.id)));
+    }
+  };
+
+  const handleBatchUnbookmark = () => {
+    if (selectedRepoIds.size === 0) return;
+    const count = selectedRepoIds.size;
+    const remaining = bookmarks.filter((r) => !selectedRepoIds.has(r.id));
+    saveBookmarks(remaining);
+    setBookmarks(remaining);
+    setSelectedRepoIds(new Set());
+    setIsSelectMode(false);
+    onVaultUpdated();
+
+    const activeToken = getStoredToken();
+    if (activeToken) {
+      pushBookmarksToGist(activeToken, remaining)
+        .then(() => setGistSyncStatus(`Removed ${count} bookmarks & synced with Gist`))
+        .catch(() => {});
+    }
+
+    if (onShareMessage) {
+      onShareMessage(`Removed ${count} bookmarks from Vault`);
+    }
+  };
 
   // Local fallback state for starred repos if not passed from parent
   const [localStarredList, setLocalStarredList] = useState<Repository[]>([]);
@@ -285,6 +336,29 @@ export const VaultView: React.FC<VaultViewProps> = ({
                   >
                     Push to Gist
                   </Button>
+
+                  {bookmarks.length > 0 && (
+                    <Button
+                      size="small"
+                      variant={isSelectMode ? 'contained' : 'outlined'}
+                      color={isSelectMode ? 'primary' : 'inherit'}
+                      onClick={() => {
+                        setIsSelectMode(!isSelectMode);
+                        setSelectedRepoIds(new Set());
+                      }}
+                      startIcon={<ChecklistIcon sx={{ fontSize: 15 }} />}
+                      sx={{
+                        height: 30,
+                        borderRadius: '10px',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        px: 1.3
+                      }}
+                    >
+                      {isSelectMode ? 'Cancel' : 'Select'}
+                    </Button>
+                  )}
                 </Box>
 
                 {gistSyncStatus && (
@@ -327,21 +401,45 @@ export const VaultView: React.FC<VaultViewProps> = ({
                 )}
               </>
             ) : (
-              <Chip
-                icon={<VpnKeyIcon sx={{ fontSize: 12 }} />}
-                label="Connect Token for Gist Sync"
-                size="small"
-                onClick={onOpenTokenDialog}
-                sx={{
-                  height: 28,
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  bgcolor: alpha(theme.palette.primary.main, 0.12),
-                  color: theme.palette.primary.main,
-                  border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`
-                }}
-              />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                <Chip
+                  icon={<VpnKeyIcon sx={{ fontSize: 12 }} />}
+                  label="Connect Token for Gist Sync"
+                  size="small"
+                  onClick={onOpenTokenDialog}
+                  sx={{
+                    height: 28,
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    bgcolor: alpha(theme.palette.primary.main, 0.12),
+                    color: theme.palette.primary.main,
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`
+                  }}
+                />
+                {bookmarks.length > 0 && (
+                  <Button
+                    size="small"
+                    variant={isSelectMode ? 'contained' : 'outlined'}
+                    color={isSelectMode ? 'primary' : 'inherit'}
+                    onClick={() => {
+                      setIsSelectMode(!isSelectMode);
+                      setSelectedRepoIds(new Set());
+                    }}
+                    startIcon={<ChecklistIcon sx={{ fontSize: 15 }} />}
+                    sx={{
+                      height: 28,
+                      borderRadius: '10px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      textTransform: 'none',
+                      px: 1.3
+                    }}
+                  >
+                    {isSelectMode ? 'Cancel' : 'Select'}
+                  </Button>
+                )}
+              </Box>
             )}
           </Box>
         ) : (
@@ -440,24 +538,94 @@ export const VaultView: React.FC<VaultViewProps> = ({
               )}
             </Box>
           ) : (
-            <Grid container spacing={isCompact ? 1.5 : 2}>
-              {bookmarks.map((repo) => (
-                <Grid item xs={12} sm={6} md={4} key={repo.id}>
-                  <RepoCard
-                    repo={repo}
-                    onOpenDetail={onOpenDetail}
-                    isBookmarked={true}
-                    onToggleBookmark={onToggleBookmark}
-                    onCopyClone={onCopyClone}
-                    copiedId={copiedId}
-                    isCompact={isCompact}
-                    isStarred={starredRepos.has(repo.full_name)}
-                    onToggleStar={onToggleStar}
-                    onShareMessage={onShareMessage}
-                  />
-                </Grid>
-              ))}
-            </Grid>
+            <>
+              {isSelectMode && (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    p: 1.25,
+                    px: 2,
+                    mb: 2,
+                    borderRadius: '16px',
+                    bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.16 : 0.08),
+                    border: `1.5px solid ${alpha(theme.palette.primary.main, 0.35)}`,
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                    flexWrap: 'wrap',
+                    gap: 1
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 800, fontSize: '0.82rem' }}>
+                      {selectedRepoIds.size} of {bookmarks.length} selected
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="text"
+                      startIcon={<SelectAllIcon sx={{ fontSize: 14 }} />}
+                      onClick={handleSelectAll}
+                      sx={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'none', py: 0.2, px: 1 }}
+                    >
+                      {selectedRepoIds.size === bookmarks.length ? 'Deselect All' : 'Select All'}
+                    </Button>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="error"
+                      disabled={selectedRepoIds.size === 0}
+                      startIcon={<DeleteSweepIcon sx={{ fontSize: 16 }} />}
+                      onClick={handleBatchUnbookmark}
+                      sx={{
+                        borderRadius: '10px',
+                        textTransform: 'none',
+                        fontWeight: 800,
+                        fontSize: '0.74rem',
+                        px: 1.5,
+                        py: 0.4
+                      }}
+                    >
+                      Unbookmark ({selectedRepoIds.size})
+                    </Button>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setIsSelectMode(false);
+                        setSelectedRepoIds(new Set());
+                      }}
+                      sx={{ p: 0.4 }}
+                    >
+                      <CloseIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Box>
+                </Box>
+              )}
+
+              <Grid container spacing={isCompact ? 1.5 : 2}>
+                {bookmarks.map((repo) => (
+                  <Grid item xs={12} sm={6} md={4} key={repo.id}>
+                    <RepoCard
+                      repo={repo}
+                      onOpenDetail={onOpenDetail}
+                      isBookmarked={true}
+                      onToggleBookmark={onToggleBookmark}
+                      onCopyClone={onCopyClone}
+                      copiedId={copiedId}
+                      isCompact={isCompact}
+                      isStarred={starredRepos.has(repo.full_name)}
+                      onToggleStar={onToggleStar}
+                      onShareMessage={onShareMessage}
+                      isSelectMode={isSelectMode}
+                      isSelected={selectedRepoIds.has(repo.id)}
+                      onToggleSelect={handleToggleSelect}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+            </>
           )}
         </>
       )}

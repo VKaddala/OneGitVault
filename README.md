@@ -100,11 +100,14 @@ Alongside the Windows desktop app, **OneGitVault for Android** brings the full o
 ### 📱 12. OneGitVault for Android (Mobile Companion)
 - **Edge-to-Edge Native Shell**: Complete under-the-bars immersion with transparent status and navigation bars.
 - **Hardware-Accelerated Status Bar Theme Bridge**: Native `AndroidThemeBridge` dynamically synchronizes system icon luminance (`WindowInsetsControllerCompat`) on AMOLED dark and light themes without lag or battery drain.
-- **Dual Vault Architecture**: Easily switch between your locally saved Vault Bookmarks (with automatic private GitHub Gist sync) and your GitHub Starred repositories.
+- **Dual Vault Architecture & Batch Operations**: Easily switch between your locally saved Vault Bookmarks (with automatic private GitHub Gist sync) and your GitHub Starred repositories. Supports multi-selection mode to select multiple or all bookmarks and batch unbookmark them in a single tap.
+- **Smart Notification Badge Clearing**: Vault badge count automatically clears as soon as you visit the Vault tab, keeping your bottom navigation clean and distraction-free.
+- **Zero-Latency Tab Navigation**: Decoupled view rendering with zero-re-fetch caching across APKs, Trending, Vault, and Explore, completely eliminating tab-switching lag.
 - **Translucent Search Flyout**: WhatsApp and Instagram-style frosted glass search drawer featuring instant category pills, live repository streaming, and persistent search history.
 - **On-Demand README Translation**: Instant English translation of foreign documentation while safeguarding markdown syntax, code blocks, images, and badges.
+- **Internal Heading & Link Navigation**: Seamlessly navigate inside repository READMEs with smooth scrolling to heading anchors (`#overview`, `#installation`) and automatic resolution of relative documentation files.
 - **Native Android Share Sheet**: One-click sharing directly to native Android messaging and developer apps via `ACTION_SEND`.
-- **Ultra-Smooth 120Hz Scrolling**: Zero-lag list virtualization and frame-throttled scroll listeners designed for low memory and minimal battery consumption.
+- **Ultra-Smooth 120Hz Scrolling & Vector Branding**: Zero-lag list virtualization, frame-throttled scroll listeners, and crisp infinite-resolution vector launch icons on all screen densities.
 
 ---
 

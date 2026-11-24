@@ -50,7 +50,30 @@
   <body>
     <div id="root">
       <div id="app-launch-loader" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000000;z-index:99999;">
-        <img src="./favicon.png" alt="OneGitVault" style="width:76px;height:76px;border-radius:18px;animation:ogvPulse 1.6s ease-in-out infinite;" />
+        <svg width="84" height="84" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;filter:drop-shadow(0 10px 30px rgba(56,189,248,0.3));animation:ogvPulse 1.6s ease-in-out infinite;">
+          <defs>
+            <linearGradient id="ogv-splash-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#0f172a" />
+              <stop offset="100%" stop-color="#020617" />
+            </linearGradient>
+            <linearGradient id="ogv-splash-border" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#38bdf8" />
+              <stop offset="50%" stop-color="#818cf8" />
+              <stop offset="100%" stop-color="#f59e0b" />
+            </linearGradient>
+          </defs>
+          <rect x="3" y="3" width="94" height="94" rx="24" fill="url(#ogv-splash-bg)" stroke="url(#ogv-splash-border)" stroke-width="3" />
+          <polygon points="50,14 68,24 68,46 50,56 32,46 32,24" fill="#090d16" stroke="#f59e0b" stroke-width="2.5" stroke-linejoin="round" />
+          <polygon points="50,28 52,33 57,34 53,37 54,42 50,39 46,42 47,37 43,34 48,33" fill="#fbbf24" />
+          <polygon points="30,48 48,58 48,80 30,90 12,80 12,58" fill="#090d16" stroke="#38bdf8" stroke-width="2.5" stroke-linejoin="round" />
+          <text x="30" y="73" font-family="Consolas, monospace" font-size="13" font-weight="900" fill="#38bdf8" text-anchor="middle">&lt;/&gt;</text>
+          <polygon points="70,48 88,58 88,80 70,90 52,80 52,58" fill="#090d16" stroke="#a855f7" stroke-width="2.5" stroke-linejoin="round" />
+          <circle cx="70" cy="63" r="3.2" fill="#a855f7" />
+          <circle cx="63" cy="76" r="2.6" fill="#c084fc" />
+          <circle cx="77" cy="76" r="2.6" fill="#c084fc" />
+          <path d="M 70 65 L 70 69 M 70 69 L 63 74 M 70 69 L 77 74" stroke="#c084fc" stroke-width="2.2" stroke-linecap="round" />
+          <circle cx="50" cy="56" r="4.5" fill="#ffffff" stroke="#38bdf8" stroke-width="1.5" />
+        </svg>
       </div>
       <style>
         @keyframes ogvPulse {

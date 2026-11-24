@@ -22,6 +22,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CheckIcon from '@mui/icons-material/Check';
 import ShareIcon from '@mui/icons-material/Share';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { Repository } from '../types';
 import { shareProject } from '../services/shareHelper';
 import { downloadApkFile } from '../services/downloadHelper';
@@ -37,6 +39,9 @@ interface RepoCardProps {
   isStarred?: boolean;
   onToggleStar?: (repo: Repository) => void;
   onShareMessage?: (msg: string) => void;
+  isSelectMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (repoId: number) => void;
 }
 
 export const RepoCard: React.FC<RepoCardProps> = ({
@@ -49,7 +54,10 @@ export const RepoCard: React.FC<RepoCardProps> = ({
   isCompact = false,
   isStarred = false,
   onToggleStar,
-  onShareMessage
+  onShareMessage,
+  isSelectMode = false,
+  isSelected = false,
+  onToggleSelect
 }) => {
   const theme = useTheme();
   const isCopied = copiedId === repo.id;
@@ -94,23 +102,58 @@ export const RepoCard: React.FC<RepoCardProps> = ({
 
   return (
     <Card
-      onClick={() => onOpenDetail(repo)}
+      onClick={() => {
+        if (isSelectMode && onToggleSelect) {
+          onToggleSelect(repo.id);
+        } else {
+          onOpenDetail(repo);
+        }
+      }}
       sx={{
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
         overflow: 'hidden',
-        bgcolor: 'background.paper',
+        bgcolor: isSelected
+          ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.16 : 0.08)
+          : 'background.paper',
         borderRadius: isCompact ? '12px' : '16px',
-        border: `1px solid ${theme.palette.divider}`,
-        boxShadow: theme.palette.mode === 'dark' ? '0 3px 14px rgba(0, 0, 0, 0.55)' : '0 1px 8px rgba(0, 0, 0, 0.04)',
-        transition: 'transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease',
+        border: isSelected
+          ? `2px solid ${theme.palette.primary.main}`
+          : `1px solid ${theme.palette.divider}`,
+        boxShadow: isSelected
+          ? `0 0 12px ${alpha(theme.palette.primary.main, 0.35)}`
+          : (theme.palette.mode === 'dark' ? '0 3px 14px rgba(0, 0, 0, 0.55)' : '0 1px 8px rgba(0, 0, 0, 0.04)'),
+        transition: 'transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease',
         '&:active': {
           transform: 'scale(0.99)'
         }
       }}
     >
+      {isSelectMode && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'background.paper',
+            borderRadius: '50%',
+            p: 0.2,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.25)'
+          }}
+        >
+          {isSelected ? (
+            <CheckCircleIcon sx={{ color: 'primary.main', fontSize: 22 }} />
+          ) : (
+            <RadioButtonUncheckedIcon sx={{ color: 'text.disabled', fontSize: 22 }} />
+          )}
+        </Box>
+      )}
       <CardContent sx={{ p: isCompact ? 1.25 : 1.75, pb: `${isCompact ? 1.25 : 1.75}px !important` }}>
         {/* Header Row: Left Avatar & Titles | Right: APK Badge, Share, Copy, Open, Bookmark */}
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1, mb: isCompact ? 0.5 : 0.85 }}>

@@ -8,6 +8,7 @@ import {
   TextField,
   CircularProgress,
   IconButton,
+  Tooltip,
   useTheme,
   alpha,
   Alert
@@ -224,261 +225,268 @@ export const VaultView: React.FC<VaultViewProps> = ({
   }, [activeStarredItems, starredSearch]);
 
   return (
-    <Box sx={{ pb: 6 }}>
-      {/* ── Top Bar with Dual Selections & Actions ── */}
+    <Box sx={{ pb: 6, pt: { xs: 1.5, sm: 2 }, px: { xs: 1.5, sm: 2 }, maxWidth: 1280, mx: 'auto' }}>
+      {/* ── Single-Line Vault Toolbar ── */}
       <Box
         sx={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          mb: 2,
-          flexWrap: 'wrap',
-          gap: 1.2
+          justifyContent: 'center',
+          gap: 0.75,
+          width: '100%',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+          pb: 0.5,
+          mb: 1.5
         }}
       >
-        {/* Two Selections: Gist Bookmarks vs GitHub Starred */}
+        {/* Filter 1: Bookmarks vs Starred Segmented Pill */}
         <Box
           sx={{
             display: 'inline-flex',
             alignItems: 'center',
-            p: 0.4,
+            p: 0.3,
             borderRadius: '16px',
-            bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
+            bgcolor: alpha(theme.palette.text.primary, 0.05),
             border: `1px solid ${theme.palette.divider}`,
-            gap: 0.5
+            gap: 0.3,
+            flexShrink: 0
           }}
         >
-          {/* Option 1: Gist Bookmarks */}
           <Button
             size="small"
             onClick={() => setSubSection('gist')}
-            startIcon={<BookmarksIcon sx={{ fontSize: 16 }} />}
+            startIcon={<BookmarksIcon sx={{ fontSize: 14 }} />}
             sx={{
-              height: 32,
-              px: 1.5,
+              height: 28,
+              px: 1.2,
               borderRadius: '12px',
-              fontSize: '0.78rem',
+              fontSize: '0.74rem',
               fontWeight: subSection === 'gist' ? 800 : 600,
               textTransform: 'none',
               bgcolor: subSection === 'gist' ? theme.palette.primary.main : 'transparent',
               color: subSection === 'gist' ? theme.palette.primary.contrastText : 'text.secondary',
-              boxShadow: subSection === 'gist' ? '0 2px 8px rgba(0,0,0,0.18)' : 'none',
+              boxShadow: subSection === 'gist' ? '0 1px 6px rgba(0,0,0,0.18)' : 'none',
+              minWidth: 0,
+              whiteSpace: 'nowrap',
               '&:hover': {
                 bgcolor: subSection === 'gist' ? theme.palette.primary.dark : alpha(theme.palette.text.primary, 0.05)
               }
             }}
           >
-            Vault Bookmarks ({bookmarks.length})
+            Bookmarks ({bookmarks.length})
           </Button>
 
-          {/* Option 2: GitHub Starred */}
           <Button
             size="small"
             onClick={() => setSubSection('starred')}
-            startIcon={<StarIcon sx={{ fontSize: 16, color: subSection === 'starred' ? '#fbbf24' : 'inherit' }} />}
+            startIcon={<StarIcon sx={{ fontSize: 14, color: subSection === 'starred' ? '#fbbf24' : 'inherit' }} />}
             sx={{
-              height: 32,
-              px: 1.5,
+              height: 28,
+              px: 1.2,
               borderRadius: '12px',
-              fontSize: '0.78rem',
+              fontSize: '0.74rem',
               fontWeight: subSection === 'starred' ? 800 : 600,
               textTransform: 'none',
               bgcolor: subSection === 'starred' ? theme.palette.primary.main : 'transparent',
               color: subSection === 'starred' ? theme.palette.primary.contrastText : 'text.secondary',
-              boxShadow: subSection === 'starred' ? '0 2px 8px rgba(0,0,0,0.18)' : 'none',
+              boxShadow: subSection === 'starred' ? '0 1px 6px rgba(0,0,0,0.18)' : 'none',
+              minWidth: 0,
+              whiteSpace: 'nowrap',
               '&:hover': {
                 bgcolor: subSection === 'starred' ? theme.palette.primary.dark : alpha(theme.palette.text.primary, 0.05)
               }
             }}
           >
-            GitHub Starred ({activeStarredItems.length})
+            Starred ({activeStarredItems.length})
           </Button>
         </Box>
 
-        {/* Action Controls for Active SubSection */}
-        {subSection === 'gist' ? (
-          <Box sx={{ display: 'flex', flexDirection: 'column', width: { xs: '100%', sm: 'auto' }, gap: 1 }}>
-            {token ? (
-              <>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    disabled={isGistSyncing}
-                    onClick={handleManualPull}
-                    startIcon={isGistSyncing ? <CircularProgress size={12} /> : <CloudDownloadIcon sx={{ fontSize: 15 }} />}
-                    sx={{
-                      height: 30,
-                      borderRadius: '10px',
-                      fontSize: '0.74rem',
-                      fontWeight: 700,
-                      textTransform: 'none',
-                      px: 1.3
-                    }}
-                  >
-                    Pull from Gist
-                  </Button>
-
-                  <Button
-                    size="small"
-                    variant="contained"
-                    disabled={isGistSyncing || bookmarks.length === 0}
-                    onClick={handleManualPush}
-                    startIcon={isGistSyncing ? <CircularProgress size={12} color="inherit" /> : <CloudUploadIcon sx={{ fontSize: 15 }} />}
-                    sx={{
-                      height: 30,
-                      borderRadius: '10px',
-                      fontSize: '0.74rem',
-                      fontWeight: 700,
-                      textTransform: 'none',
-                      px: 1.3
-                    }}
-                  >
-                    Push to Gist
-                  </Button>
-
-                  {bookmarks.length > 0 && (
-                    <Button
-                      size="small"
-                      variant={isSelectMode ? 'contained' : 'outlined'}
-                      color={isSelectMode ? 'primary' : 'inherit'}
-                      onClick={() => {
-                        setIsSelectMode(!isSelectMode);
-                        setSelectedRepoIds(new Set());
-                      }}
-                      startIcon={<ChecklistIcon sx={{ fontSize: 15 }} />}
-                      sx={{
-                        height: 30,
-                        borderRadius: '10px',
-                        fontSize: '0.74rem',
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        px: 1.3
-                      }}
-                    >
-                      {isSelectMode ? 'Cancel' : 'Select'}
-                    </Button>
-                  )}
-                </Box>
-
-                {gistSyncStatus && (
-                  <Alert
-                    severity={
-                      gistSyncStatus.startsWith('Backed up') || gistSyncStatus.startsWith('Restored')
-                        ? 'success'
-                        : gistSyncStatus.includes('Backing') || gistSyncStatus.includes('Pulling')
-                        ? 'info'
-                        : 'error'
-                    }
-                    onClose={() => setGistSyncStatus('')}
-                    sx={{
-                      width: '100%',
-                      py: 0.4,
-                      px: 1.25,
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                      borderRadius: '10px',
-                      alignItems: 'center',
-                      '& .MuiAlert-message': {
-                        wordBreak: 'break-word',
-                        overflowWrap: 'anywhere',
-                        lineHeight: 1.35,
-                        py: 0.2
-                      },
-                      '& .MuiAlert-icon': {
-                        fontSize: 18,
-                        mr: 1,
-                        py: 0
-                      },
-                      '& .MuiAlert-action': {
-                        p: 0,
-                        mr: -0.5
-                      }
-                    }}
-                  >
-                    {gistSyncStatus}
-                  </Alert>
-                )}
-              </>
-            ) : (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                <Chip
-                  icon={<VpnKeyIcon sx={{ fontSize: 12 }} />}
-                  label="Connect Token for Gist Sync"
-                  size="small"
-                  onClick={onOpenTokenDialog}
-                  sx={{
-                    height: 28,
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    bgcolor: alpha(theme.palette.primary.main, 0.12),
-                    color: theme.palette.primary.main,
-                    border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`
-                  }}
-                />
-                {bookmarks.length > 0 && (
-                  <Button
-                    size="small"
-                    variant={isSelectMode ? 'contained' : 'outlined'}
-                    color={isSelectMode ? 'primary' : 'inherit'}
-                    onClick={() => {
-                      setIsSelectMode(!isSelectMode);
-                      setSelectedRepoIds(new Set());
-                    }}
-                    startIcon={<ChecklistIcon sx={{ fontSize: 15 }} />}
-                    sx={{
-                      height: 28,
-                      borderRadius: '10px',
-                      fontSize: '0.74rem',
-                      fontWeight: 700,
-                      textTransform: 'none',
-                      px: 1.3
-                    }}
-                  >
-                    {isSelectMode ? 'Cancel' : 'Select'}
-                  </Button>
-                )}
-              </Box>
-            )}
-          </Box>
-        ) : (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {token && onRefreshStarred && (
+        {/* Filter 2: Unified Push & Pull Pill (Icon Only, No Text) */}
+        {subSection === 'gist' && token && (
+          <Box
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              p: 0.2,
+              borderRadius: '14px',
+              bgcolor: alpha(theme.palette.text.primary, 0.05),
+              border: `1px solid ${theme.palette.divider}`,
+              gap: 0.2,
+              flexShrink: 0
+            }}
+          >
+            <Tooltip title="Pull bookmarks from Gist">
               <IconButton
                 size="small"
-                onClick={onRefreshStarred}
-                disabled={loadingStarred}
+                disabled={isGistSyncing}
+                onClick={handleManualPull}
                 sx={{
-                  border: `1px solid ${theme.palette.divider}`,
+                  width: 30,
+                  height: 30,
                   borderRadius: '10px',
-                  p: 0.6
+                  color: 'text.primary',
+                  '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
                 }}
-                title="Refresh Starred List"
               >
-                <RefreshIcon sx={{ fontSize: 16 }} />
+                {isGistSyncing ? <CircularProgress size={13} /> : <CloudDownloadIcon sx={{ fontSize: 16 }} />}
               </IconButton>
-            )}
-
-            {!token && (
-              <Chip
-                icon={<VpnKeyIcon sx={{ fontSize: 12 }} />}
-                label="Connect Token to View Stars"
+            </Tooltip>
+            <Box sx={{ width: '1px', height: 16, bgcolor: theme.palette.divider }} />
+            <Tooltip title="Push bookmarks to Gist">
+              <IconButton
                 size="small"
-                onClick={onOpenTokenDialog}
+                disabled={isGistSyncing || bookmarks.length === 0}
+                onClick={handleManualPush}
                 sx={{
-                  height: 28,
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  bgcolor: alpha(theme.palette.primary.main, 0.12),
-                  color: theme.palette.primary.main
+                  width: 30,
+                  height: 30,
+                  borderRadius: '10px',
+                  color: 'text.primary',
+                  '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
                 }}
-              />
-            )}
+              >
+                {isGistSyncing ? <CircularProgress size={13} color="inherit" /> : <CloudUploadIcon sx={{ fontSize: 16 }} />}
+              </IconButton>
+            </Tooltip>
           </Box>
         )}
+
+        {/* Filter 3: Select Button for Batch Operations (Icon Only, No Text) */}
+        {subSection === 'gist' && bookmarks.length > 0 && (
+          <Tooltip title={isSelectMode ? "Cancel selection" : "Select bookmarks"}>
+            <IconButton
+              size="small"
+              onClick={() => {
+                setIsSelectMode(!isSelectMode);
+                setSelectedRepoIds(new Set());
+              }}
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: '12px',
+                bgcolor: isSelectMode ? theme.palette.primary.main : alpha(theme.palette.text.primary, 0.05),
+                color: isSelectMode ? '#ffffff' : 'text.primary',
+                border: isSelectMode ? `1px solid ${theme.palette.primary.main}` : `1px solid ${theme.palette.divider}`,
+                flexShrink: 0,
+                boxShadow: isSelectMode ? `0 2px 8px ${alpha(theme.palette.primary.main, 0.4)}` : 'none',
+                transition: 'all 0.15s ease',
+                '&:hover': {
+                  bgcolor: isSelectMode ? theme.palette.primary.main : alpha(theme.palette.text.primary, 0.1),
+                  color: isSelectMode ? '#ffffff' : 'text.primary'
+                },
+                '&:focus': {
+                  bgcolor: isSelectMode ? theme.palette.primary.main : alpha(theme.palette.text.primary, 0.1)
+                },
+                '&:active': { transform: 'scale(0.92)' }
+              }}
+            >
+              {isSelectMode ? (
+                <CloseIcon sx={{ fontSize: 16, color: '#ffffff' }} />
+              ) : (
+                <ChecklistIcon sx={{ fontSize: 17, color: 'inherit' }} />
+              )}
+            </IconButton>
+          </Tooltip>
+        )}
+
+        {/* Connect Token Prompt if not authenticated in Gist tab */}
+        {subSection === 'gist' && !token && (
+          <Chip
+            icon={<VpnKeyIcon sx={{ fontSize: 13 }} />}
+            label="Connect Token"
+            size="small"
+            onClick={onOpenTokenDialog}
+            sx={{
+              height: 30,
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              bgcolor: alpha(theme.palette.primary.main, 0.12),
+              color: theme.palette.primary.main,
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`,
+              flexShrink: 0,
+              borderRadius: '14px'
+            }}
+          />
+        )}
+
+        {/* When in Starred Tab: Refresh Button (Icon Only, No Text) */}
+        {subSection === 'starred' && token && onRefreshStarred && (
+          <Tooltip title="Refresh Starred List">
+            <IconButton
+              size="small"
+              onClick={onRefreshStarred}
+              disabled={loadingStarred}
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: '12px',
+                border: `1px solid ${theme.palette.divider}`,
+                color: 'text.secondary',
+                flexShrink: 0
+              }}
+            >
+              {loadingStarred ? <CircularProgress size={13} /> : <RefreshIcon sx={{ fontSize: 16 }} />}
+            </IconButton>
+          </Tooltip>
+        )}
+
+        {/* Connect Token Prompt if in Starred tab without token */}
+        {subSection === 'starred' && !token && (
+          <Chip
+            icon={<VpnKeyIcon sx={{ fontSize: 13 }} />}
+            label="Connect Token"
+            size="small"
+            onClick={onOpenTokenDialog}
+            sx={{
+              height: 30,
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              bgcolor: alpha(theme.palette.primary.main, 0.12),
+              color: theme.palette.primary.main,
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`,
+              flexShrink: 0,
+              borderRadius: '14px'
+            }}
+          />
+        )}
       </Box>
+
+      {/* Sync Status / Error Banner below single-line toolbar */}
+      {gistSyncStatus && subSection === 'gist' && (
+        <Alert
+          severity={
+            gistSyncStatus.startsWith('Backed up') || gistSyncStatus.startsWith('Restored')
+              ? 'success'
+              : gistSyncStatus.includes('Backing') || gistSyncStatus.includes('Pulling')
+              ? 'info'
+              : 'error'
+          }
+          onClose={() => setGistSyncStatus('')}
+          sx={{
+            width: '100%',
+            py: 0.5,
+            px: 1.5,
+            fontSize: '0.74rem',
+            fontWeight: 600,
+            borderRadius: '12px',
+            mb: 1.5,
+            alignItems: 'center',
+            '& .MuiAlert-message': {
+              wordBreak: 'break-word',
+              overflowWrap: 'anywhere',
+              lineHeight: 1.4,
+              py: 0.2
+            }
+          }}
+        >
+          {gistSyncStatus}
+        </Alert>
+      )}
 
       {/* Starred Repos Search Bar (when in Starred tab) */}
       {subSection === 'starred' && activeStarredItems.length > 0 && (

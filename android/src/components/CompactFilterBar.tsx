@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import {
   Box,
-  Button,
+  Chip,
   Menu,
   MenuItem,
-  Typography,
   ListItemIcon,
   ListItemText,
   useTheme,
@@ -20,11 +19,13 @@ import SecurityIcon from '@mui/icons-material/Security';
 import LanguageIcon from '@mui/icons-material/Language';
 import CloudQueueIcon from '@mui/icons-material/CloudQueue';
 import StorageIcon from '@mui/icons-material/Storage';
+import CheckIcon from '@mui/icons-material/Check';
+import CategoryIcon from '@mui/icons-material/Category';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import StarIcon from '@mui/icons-material/Star';
 import CallSplitIcon from '@mui/icons-material/CallSplit';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import CheckIcon from '@mui/icons-material/Check';
+import TuneIcon from '@mui/icons-material/Tune';
 import { CATEGORIES } from '../data/categories';
 import { SortOption, Category } from '../types';
 
@@ -40,26 +41,25 @@ interface CompactFilterBarProps {
 }
 
 const ICONS_MAP: Record<string, React.ReactElement> = {
-  Android: <AndroidIcon sx={{ fontSize: 11 }} />,
-  VideoLibrary: <VideoLibraryIcon sx={{ fontSize: 11 }} />,
-  AutoAwesome: <AutoAwesomeIcon sx={{ fontSize: 11 }} />,
-  Psychology: <PsychologyIcon sx={{ fontSize: 11 }} />,
-  PhoneAndroid: <PhoneAndroidIcon sx={{ fontSize: 11 }} />,
-  Build: <BuildIcon sx={{ fontSize: 11 }} />,
-  Security: <SecurityIcon sx={{ fontSize: 11 }} />,
-  Language: <LanguageIcon sx={{ fontSize: 11 }} />,
-  CloudQueue: <CloudQueueIcon sx={{ fontSize: 11 }} />,
-  Storage: <StorageIcon sx={{ fontSize: 11 }} />,
+  Android: <AndroidIcon sx={{ fontSize: 16 }} />,
+  VideoLibrary: <VideoLibraryIcon sx={{ fontSize: 16 }} />,
+  AutoAwesome: <AutoAwesomeIcon sx={{ fontSize: 16 }} />,
+  Psychology: <PsychologyIcon sx={{ fontSize: 16 }} />,
+  PhoneAndroid: <PhoneAndroidIcon sx={{ fontSize: 16 }} />,
+  Build: <BuildIcon sx={{ fontSize: 16 }} />,
+  Security: <SecurityIcon sx={{ fontSize: 16 }} />,
+  Language: <LanguageIcon sx={{ fontSize: 16 }} />,
+  CloudQueue: <CloudQueueIcon sx={{ fontSize: 16 }} />,
+  Storage: <StorageIcon sx={{ fontSize: 16 }} />,
 };
 
-export const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
+export const CompactFilterBar = React.memo<CompactFilterBarProps>(({
   selectedCategoryId,
   onSelectCategory,
   sortOption,
   onSelectSort,
   minStars,
   onSelectMinStars,
-  totalCount,
   categories
 }) => {
   const theme = useTheme();
@@ -69,14 +69,13 @@ export const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
   const [starsAnchor, setStarsAnchor] = useState<null | HTMLElement>(null);
 
   const categoryList = categories || CATEGORIES;
-  const selectedCategory = categoryList.find(c => c.id === selectedCategoryId) || categoryList[0];
-  const displayCategoryLabel = selectedCategory.id === 'android-apks' ? 'APK' : selectedCategory.label;
+  const selectedCat = categoryList.find(c => c.id === selectedCategoryId) || categoryList[0];
 
   const sortLabels: Record<SortOption, { label: string; icon: React.ReactElement }> = {
-    stars: { label: 'Stars', icon: <StarIcon sx={{ fontSize: 12 }} /> },
-    forks: { label: 'Forks', icon: <CallSplitIcon sx={{ fontSize: 12 }} /> },
-    newest: { label: 'Newest', icon: <AutoAwesomeIcon sx={{ fontSize: 12 }} /> },
-    updated: { label: 'Recent', icon: <AccessTimeIcon sx={{ fontSize: 12 }} /> },
+    stars: { label: 'Most Stars', icon: <StarIcon sx={{ fontSize: 14 }} /> },
+    forks: { label: 'Most Forks', icon: <CallSplitIcon sx={{ fontSize: 14 }} /> },
+    newest: { label: 'Newest', icon: <AutoAwesomeIcon sx={{ fontSize: 14 }} /> },
+    updated: { label: 'Recent', icon: <AccessTimeIcon sx={{ fontSize: 14 }} /> },
   };
 
   const starLabels: Record<number, string> = {
@@ -89,260 +88,330 @@ export const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
   return (
     <Box
       sx={{
-        px: { xs: 1.5, sm: 2 },
-        py: 0.85,
+        position: 'sticky',
+        top: 'calc(max(env(safe-area-inset-top, 0px), var(--status-bar-height, 44px)) + 63px)',
+        zIndex: 1100,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        borderBottom: `1px solid ${theme.palette.divider}`,
-        bgcolor: alpha(theme.palette.background.paper, 0.65),
-        backdropFilter: 'blur(12px)',
-        gap: 0.75,
+        justifyContent: 'center',
+        gap: 1,
         overflowX: 'auto',
-        '&::-webkit-scrollbar': { display: 'none' }
+        px: { xs: 1.5, sm: 2 },
+        py: 0.85,
+        scrollbarWidth: 'none',
+        '&::-webkit-scrollbar': { display: 'none' },
+        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.7)}`,
+        bgcolor: theme.palette.mode === 'dark'
+          ? alpha(theme.palette.background.default, 0.82)
+          : alpha(theme.palette.background.default, 0.88),
+        backdropFilter: 'blur(32px) saturate(200%)',
+        WebkitBackdropFilter: 'blur(32px) saturate(200%)',
+        boxShadow: theme.palette.mode === 'dark'
+          ? '0 4px 16px rgba(0, 0, 0, 0.35)'
+          : `0 2px 10px ${alpha(theme.palette.primary.main, 0.05)}`,
+        userSelect: 'none',
+        WebkitUserSelect: 'none'
       }}
     >
-      {/* Left: Extra Small Filter Dropdown Pills */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
-        {/* Category Dropdown Pill — Ultra-Compact & Refined */}
-        <Button
-          size="small"
-          variant="contained"
-          color="primary"
-          onClick={(e) => setCategoryAnchor(e.currentTarget)}
-          startIcon={ICONS_MAP[selectedCategory.icon] || <AndroidIcon sx={{ fontSize: 11 }} />}
-          endIcon={<KeyboardArrowDownIcon sx={{ fontSize: 11, ml: -0.6 }} />}
-          sx={{
-            height: 21,
-            px: 0.75,
-            py: 0,
-            fontSize: '0.63rem',
-            fontWeight: 800,
-            borderRadius: '10px',
-            textTransform: 'none',
-            whiteSpace: 'nowrap',
-            lineHeight: 1
-          }}
-        >
-          {displayCategoryLabel}
-        </Button>
-
-        {/* Category Menu */}
-        <Menu
-          anchorEl={categoryAnchor}
-          open={Boolean(categoryAnchor)}
-          onClose={() => setCategoryAnchor(null)}
-          sx={{
-            '& .MuiPaper-root': {
-              borderRadius: '14px',
-              minWidth: 220,
-              maxHeight: 380,
-              p: 0.5,
-              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.35)'
-            }
-          }}
-        >
-          <Box sx={{ px: 1.5, py: 0.6, borderBottom: `1px solid ${theme.palette.divider}` }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', fontSize: '0.625rem' }}>
-              Select Sector
-            </Typography>
-          </Box>
-          {categoryList.map((cat) => {
-            const isSelected = cat.id === selectedCategoryId;
-            return (
-              <MenuItem
-                key={cat.id}
-                onClick={() => {
-                  onSelectCategory(cat.id);
-                  setCategoryAnchor(null);
-                }}
-                sx={{
-                  borderRadius: '8px',
-                  my: 0.2,
-                  py: 0.6,
-                  px: 1.25,
-                  bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.12) : 'transparent'
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 24, color: isSelected ? theme.palette.primary.main : 'text.secondary' }}>
-                  {ICONS_MAP[cat.icon]}
-                </ListItemIcon>
-                <ListItemText
-                  primary={cat.label}
-                  primaryTypographyProps={{
-                    fontSize: '0.75rem',
-                    fontWeight: isSelected ? 800 : 500,
-                    color: isSelected ? theme.palette.primary.main : 'text.primary'
-                  }}
-                />
-                {isSelected && (
-                  <CheckIcon sx={{ fontSize: 13, color: theme.palette.primary.main, ml: 1 }} />
-                )}
-              </MenuItem>
-            );
-          })}
-        </Menu>
-
-        {/* Sort Dropdown Pill — Ultra-Compact & Refined */}
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={(e) => setSortAnchor(e.currentTarget)}
-          startIcon={sortLabels[sortOption].icon}
-          endIcon={<KeyboardArrowDownIcon sx={{ fontSize: 11, ml: -0.6 }} />}
-          sx={{
-            height: 21,
-            px: 0.75,
-            py: 0,
-            fontSize: '0.63rem',
-            fontWeight: 700,
-            borderRadius: '10px',
-            textTransform: 'none',
-            color: 'text.primary',
-            borderColor: theme.palette.divider,
-            whiteSpace: 'nowrap',
-            lineHeight: 1
-          }}
-        >
-          {sortLabels[sortOption].label}
-        </Button>
-
-        {/* Sort Menu */}
-        <Menu
-          anchorEl={sortAnchor}
-          open={Boolean(sortAnchor)}
-          onClose={() => setSortAnchor(null)}
-          sx={{
-            '& .MuiPaper-root': {
-              borderRadius: '14px',
-              minWidth: 140,
-              p: 0.5,
-              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.3)'
-            }
-          }}
-        >
-          {(['stars', 'forks', 'newest', 'updated'] as SortOption[]).map((opt) => {
-            const isSelected = opt === sortOption;
-            return (
-              <MenuItem
-                key={opt}
-                onClick={() => {
-                  onSelectSort(opt);
-                  setSortAnchor(null);
-                }}
-                sx={{
-                  borderRadius: '8px',
-                  my: 0.2,
-                  py: 0.6,
-                  px: 1.25,
-                  bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.12) : 'transparent'
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 22, color: isSelected ? theme.palette.primary.main : 'text.secondary' }}>
-                  {sortLabels[opt].icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    opt === 'stars'
-                      ? 'Most Stars'
-                      : opt === 'forks'
-                      ? 'Most Forks'
-                      : opt === 'newest'
-                      ? 'Newest Repos'
-                      : 'Recently Updated'
-                  }
-                  primaryTypographyProps={{
-                    fontSize: '0.75rem',
-                    fontWeight: isSelected ? 800 : 500,
-                    color: isSelected ? theme.palette.primary.main : 'text.primary'
-                  }}
-                />
-              </MenuItem>
-            );
-          })}
-        </Menu>
-
-        {/* Stars Dropdown Pill — Ultra-Compact & Refined */}
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={(e) => setStarsAnchor(e.currentTarget)}
-          endIcon={<KeyboardArrowDownIcon sx={{ fontSize: 11, ml: -0.6 }} />}
-          sx={{
-            height: 21,
-            px: 0.75,
-            py: 0,
-            fontSize: '0.63rem',
-            fontWeight: 700,
-            borderRadius: '10px',
-            textTransform: 'none',
-            color: 'text.primary',
-            borderColor: theme.palette.divider,
-            whiteSpace: 'nowrap',
-            lineHeight: 1
-          }}
-        >
-          {starLabels[minStars] || `${minStars}+ ★`}
-        </Button>
-
-        {/* Stars Menu */}
-        <Menu
-          anchorEl={starsAnchor}
-          open={Boolean(starsAnchor)}
-          onClose={() => setStarsAnchor(null)}
-          sx={{
-            '& .MuiPaper-root': {
-              borderRadius: '14px',
-              minWidth: 130,
-              p: 0.5,
-              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.3)'
-            }
-          }}
-        >
-          {[0, 1000, 10000, 50000].map((count) => {
-            const isSelected = count === minStars;
-            return (
-              <MenuItem
-                key={count}
-                onClick={() => {
-                  onSelectMinStars(count);
-                  setStarsAnchor(null);
-                }}
-                sx={{
-                  borderRadius: '8px',
-                  my: 0.2,
-                  py: 0.6,
-                  px: 1.25,
-                  bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.12) : 'transparent'
-                }}
-              >
-                <ListItemText
-                  primary={starLabels[count]}
-                  primaryTypographyProps={{
-                    fontSize: '0.75rem',
-                    fontWeight: isSelected ? 800 : 500,
-                    color: isSelected ? theme.palette.primary.main : 'text.primary'
-                  }}
-                />
-              </MenuItem>
-            );
-          })}
-        </Menu>
-      </Box>
-
-      {/* Right: Small Repository Count */}
-      <Typography
-        variant="caption"
+      {/* ── 1. Category Combobox Filter (Replaces divided chips) ── */}
+      <Chip
+        icon={ICONS_MAP[selectedCat?.icon] || <CategoryIcon sx={{ fontSize: 15 }} />}
+        label={selectedCat ? selectedCat.label : 'All Categories'}
+        deleteIcon={<KeyboardArrowDownIcon sx={{ fontSize: 15 }} />}
+        onDelete={(e) => setCategoryAnchor(e.currentTarget as HTMLElement)}
+        onClick={(e) => setCategoryAnchor(e.currentTarget)}
+        variant="outlined"
         sx={{
-          color: 'text.secondary',
-          fontSize: '0.675rem',
+          height: 32,
+          borderRadius: '16px',
+          px: 0.6,
+          fontSize: '0.75rem',
           fontWeight: 700,
           whiteSpace: 'nowrap',
-          pl: 1
+          cursor: 'pointer',
+          flexShrink: 0,
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          touchAction: 'manipulation',
+          bgcolor: theme.palette.mode === 'dark'
+            ? 'rgba(56, 189, 248, 0.14)'
+            : 'rgba(37, 99, 235, 0.10)',
+          borderColor: theme.palette.mode === 'dark'
+            ? 'rgba(56, 189, 248, 0.35)'
+            : 'rgba(37, 99, 235, 0.25)',
+          color: theme.palette.mode === 'dark' ? '#38bdf8' : theme.palette.primary.main,
+          boxShadow: theme.palette.mode === 'dark'
+            ? '0 2px 8px rgba(0,0,0,0.25), inset 0 1px 1px rgba(255,255,255,0.1)'
+            : '0 2px 6px rgba(0,0,0,0.05), inset 0 1px 1px rgba(255,255,255,0.6)',
+          '&:hover, &:focus, &:active, &.Mui-focusVisible': {
+            bgcolor: theme.palette.mode === 'dark'
+              ? 'rgba(56, 189, 248, 0.22)'
+              : 'rgba(37, 99, 235, 0.16)',
+            color: theme.palette.mode === 'dark' ? '#38bdf8' : theme.palette.primary.main
+          },
+          '& .MuiChip-deleteIcon': {
+            color: 'inherit',
+            mr: 0.4
+          },
+          '& .MuiChip-icon': {
+            color: 'inherit',
+            fontSize: 16
+          }
+        }}
+      />
+
+      {/* ── 2. Sort Filter Combobox ── */}
+      <Chip
+        icon={sortLabels[sortOption].icon}
+        label={sortLabels[sortOption].label}
+        deleteIcon={<KeyboardArrowDownIcon sx={{ fontSize: 15 }} />}
+        onDelete={(e) => setSortAnchor(e.currentTarget as HTMLElement)}
+        onClick={(e) => setSortAnchor(e.currentTarget)}
+        variant="outlined"
+        sx={{
+          height: 32,
+          borderRadius: '16px',
+          px: 0.6,
+          fontSize: '0.74rem',
+          fontWeight: 700,
+          whiteSpace: 'nowrap',
+          cursor: 'pointer',
+          flexShrink: 0,
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          touchAction: 'manipulation',
+          bgcolor: theme.palette.mode === 'dark'
+            ? 'rgba(255, 255, 255, 0.05)'
+            : 'rgba(0, 0, 0, 0.04)',
+          borderColor: theme.palette.mode === 'dark'
+            ? 'rgba(255, 255, 255, 0.12)'
+            : 'rgba(0, 0, 0, 0.10)',
+          color: 'text.primary',
+          boxShadow: theme.palette.mode === 'dark'
+            ? '0 2px 6px rgba(0,0,0,0.2), inset 0 1px 1px rgba(255,255,255,0.06)'
+            : '0 2px 4px rgba(0,0,0,0.03), inset 0 1px 1px rgba(255,255,255,0.5)',
+          '&:hover, &:focus, &:active, &.Mui-focusVisible': {
+            bgcolor: theme.palette.mode === 'dark'
+              ? 'rgba(255, 255, 255, 0.10)'
+              : 'rgba(0, 0, 0, 0.08)',
+            color: 'text.primary'
+          },
+          '& .MuiChip-deleteIcon': {
+            color: 'text.secondary',
+            mr: 0.4
+          }
+        }}
+      />
+
+      {/* ── 3. Min Stars Filter Combobox ── */}
+      <Chip
+        icon={<TuneIcon sx={{ fontSize: 14 }} />}
+        label={starLabels[minStars] || `${minStars}+ ★`}
+        deleteIcon={<KeyboardArrowDownIcon sx={{ fontSize: 15 }} />}
+        onDelete={(e) => setStarsAnchor(e.currentTarget as HTMLElement)}
+        onClick={(e) => setStarsAnchor(e.currentTarget)}
+        variant="outlined"
+        sx={{
+          height: 32,
+          borderRadius: '16px',
+          px: 0.6,
+          fontSize: '0.74rem',
+          fontWeight: 700,
+          whiteSpace: 'nowrap',
+          cursor: 'pointer',
+          flexShrink: 0,
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          touchAction: 'manipulation',
+          bgcolor: theme.palette.mode === 'dark'
+            ? 'rgba(255, 255, 255, 0.05)'
+            : 'rgba(0, 0, 0, 0.04)',
+          borderColor: theme.palette.mode === 'dark'
+            ? 'rgba(255, 255, 255, 0.12)'
+            : 'rgba(0, 0, 0, 0.10)',
+          color: 'text.primary',
+          boxShadow: theme.palette.mode === 'dark'
+            ? '0 2px 6px rgba(0,0,0,0.2), inset 0 1px 1px rgba(255,255,255,0.06)'
+            : '0 2px 4px rgba(0,0,0,0.03), inset 0 1px 1px rgba(255,255,255,0.5)',
+          '&:hover, &:focus, &:active, &.Mui-focusVisible': {
+            bgcolor: theme.palette.mode === 'dark'
+              ? 'rgba(255, 255, 255, 0.10)'
+              : 'rgba(0, 0, 0, 0.08)',
+            color: 'text.primary'
+          },
+          '& .MuiChip-deleteIcon': {
+            color: 'text.secondary',
+            mr: 0.4
+          }
+        }}
+      />
+
+      {/* ── Category Combobox Dropdown Menu ── */}
+      <Menu
+        anchorEl={categoryAnchor}
+        open={Boolean(categoryAnchor)}
+        onClose={() => setCategoryAnchor(null)}
+        sx={{
+          '& .MuiPaper-root': {
+            borderRadius: '20px',
+            minWidth: 210,
+            maxHeight: 380,
+            bgcolor: alpha(theme.palette.background.paper, 0.94),
+            backdropFilter: 'blur(30px) saturate(190%)',
+            WebkitBackdropFilter: 'blur(30px) saturate(190%)',
+            border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+            boxShadow: '0 16px 40px rgba(0,0,0,0.35)',
+            p: 0.5
+          }
         }}
       >
-        {totalCount > 0 ? `${totalCount.toLocaleString()} repos` : ''}
-      </Typography>
+        {categoryList.map((cat) => {
+          const isSelected = cat.id === selectedCategoryId;
+          return (
+            <MenuItem
+              key={cat.id}
+              selected={isSelected}
+              onClick={() => {
+                try { navigator.vibrate?.(8); } catch {}
+                onSelectCategory(cat.id);
+                setCategoryAnchor(null);
+              }}
+              sx={{
+                borderRadius: '12px',
+                py: 0.75,
+                px: 1.5,
+                my: 0.2,
+                fontSize: '0.8rem',
+                fontWeight: isSelected ? 800 : 600,
+                color: isSelected ? 'primary.main' : 'text.primary',
+                bgcolor: isSelected
+                  ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.2 : 0.1)
+                  : 'transparent'
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 30, color: isSelected ? 'primary.main' : 'text.secondary' }}>
+                {ICONS_MAP[cat.icon] || <CategoryIcon sx={{ fontSize: 16 }} />}
+              </ListItemIcon>
+              <ListItemText
+                primary={cat.label}
+                primaryTypographyProps={{
+                  fontSize: '0.8rem',
+                  fontWeight: isSelected ? 800 : 600,
+                  color: isSelected ? 'primary.main' : 'text.primary'
+                }}
+              />
+              {isSelected && (
+                <CheckIcon sx={{ fontSize: 16, color: 'primary.main', ml: 1 }} />
+              )}
+            </MenuItem>
+          );
+        })}
+      </Menu>
+
+      {/* ── Sort Menu ── */}
+      <Menu
+        anchorEl={sortAnchor}
+        open={Boolean(sortAnchor)}
+        onClose={() => setSortAnchor(null)}
+        sx={{
+          '& .MuiPaper-root': {
+            borderRadius: '20px',
+            minWidth: 165,
+            p: 0.5,
+            bgcolor: alpha(theme.palette.background.paper, 0.94),
+            backdropFilter: 'blur(30px) saturate(190%)',
+            WebkitBackdropFilter: 'blur(30px) saturate(190%)',
+            border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.35)'
+          }
+        }}
+      >
+        {(['stars', 'forks', 'newest', 'updated'] as SortOption[]).map((opt) => {
+          const isSelected = opt === sortOption;
+          return (
+            <MenuItem
+              key={opt}
+              onClick={() => {
+                onSelectSort(opt);
+                setSortAnchor(null);
+              }}
+              sx={{
+                borderRadius: '12px',
+                my: 0.25,
+                py: 0.75,
+                px: 1.5,
+                bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.12) : 'transparent'
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 26, color: isSelected ? theme.palette.primary.main : 'text.secondary' }}>
+                {sortLabels[opt].icon}
+              </ListItemIcon>
+              <ListItemText
+                primary={sortLabels[opt].label}
+                primaryTypographyProps={{
+                  fontSize: '0.78rem',
+                  fontWeight: isSelected ? 800 : 500,
+                  color: isSelected ? theme.palette.primary.main : 'text.primary'
+                }}
+              />
+              {isSelected && (
+                <CheckIcon sx={{ fontSize: 16, color: 'primary.main', ml: 1 }} />
+              )}
+            </MenuItem>
+          );
+        })}
+      </Menu>
+
+      {/* ── Stars Menu ── */}
+      <Menu
+        anchorEl={starsAnchor}
+        open={Boolean(starsAnchor)}
+        onClose={() => setStarsAnchor(null)}
+        sx={{
+          '& .MuiPaper-root': {
+            borderRadius: '20px',
+            minWidth: 155,
+            p: 0.5,
+            bgcolor: alpha(theme.palette.background.paper, 0.94),
+            backdropFilter: 'blur(30px) saturate(190%)',
+            WebkitBackdropFilter: 'blur(30px) saturate(190%)',
+            border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.35)'
+          }
+        }}
+      >
+        {[0, 1000, 10000, 50000].map((count) => {
+          const isSelected = count === minStars;
+          return (
+            <MenuItem
+              key={count}
+              onClick={() => {
+                onSelectMinStars(count);
+                setStarsAnchor(null);
+              }}
+              sx={{
+                borderRadius: '12px',
+                my: 0.25,
+                py: 0.75,
+                px: 1.5,
+                bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.12) : 'transparent'
+              }}
+            >
+              <ListItemText
+                primary={starLabels[count]}
+                primaryTypographyProps={{
+                  fontSize: '0.78rem',
+                  fontWeight: isSelected ? 800 : 500,
+                  color: isSelected ? theme.palette.primary.main : 'text.primary'
+                }}
+              />
+              {isSelected && (
+                <CheckIcon sx={{ fontSize: 16, color: 'primary.main', ml: 1 }} />
+              )}
+            </MenuItem>
+          );
+        })}
+      </Menu>
     </Box>
   );
-};
+});

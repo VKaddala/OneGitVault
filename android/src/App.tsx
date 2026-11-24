@@ -649,7 +649,7 @@ export const App: React.FC = () => {
       <Box
         sx={{
           minHeight: '100vh',
-          pb: 12,
+          pb: 14,
           bgcolor: 'background.default',
           color: 'text.primary',
           overflowX: 'hidden'
@@ -679,7 +679,7 @@ export const App: React.FC = () => {
         {/* Fixed Top App Bar Spacer to prevent content from scrolling under or into status bar */}
         <Box
           sx={{
-            height: 'calc(max(env(safe-area-inset-top, 0px), var(--status-bar-height, 44px)) + 50px)'
+            height: 'calc(max(env(safe-area-inset-top, 0px), var(--status-bar-height, 44px)) + 64px)'
           }}
         />
 

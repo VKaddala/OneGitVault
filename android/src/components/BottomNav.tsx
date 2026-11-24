@@ -33,88 +33,143 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           badgeContent={vaultCount}
           color="primary"
           max={99}
-          sx={{ '& .MuiBadge-badge': { fontSize: '0.62rem', height: 16, minWidth: 16, px: 0.4, fontWeight: 700 } }}
+          sx={{
+            '& .MuiBadge-badge': {
+              fontSize: '0.62rem',
+              height: 17,
+              minWidth: 17,
+              px: 0.45,
+              fontWeight: 800,
+              bgcolor: theme.palette.primary.main,
+              color: theme.palette.primary.contrastText,
+              boxShadow: `0 2px 6px ${alpha(theme.palette.primary.main, 0.45)}`,
+              top: 2,
+              right: -2
+            }
+          }}
         >
           <BookmarksIcon sx={{ fontSize: 20 }} />
         </Badge>
       )
     },
-    { id: 'explore', label: 'Explore', icon: <ExploreIcon sx={{ fontSize: 22 }} /> },
+    { id: 'explore', label: 'Explore', icon: <ExploreIcon sx={{ fontSize: 21 }} /> },
   ];
+
+  const activeIndex = Math.max(0, TABS.findIndex(t => t.id === currentTab));
 
   return (
     <Box
       sx={{
         position: 'fixed',
-        bottom: 'calc(10px + max(env(safe-area-inset-bottom, 0px), var(--nav-bar-height, 10px)))',
+        bottom: 'calc(max(env(safe-area-inset-bottom, 0px), 4px) + 6px)',
         left: '50%',
         transform: 'translateX(-50%)',
-        width: 'fit-content',
-        maxWidth: { xs: 330, sm: 360 },
-        height: 52,
-        borderRadius: '26px',
-        bgcolor: theme.palette.mode === 'dark' ? 'rgba(20, 25, 34, 0.96)' : 'rgba(255, 255, 255, 0.97)',
-        backdropFilter: 'blur(30px) saturate(200%)',
-        WebkitBackdropFilter: 'blur(30px) saturate(200%)',
+        width: 'calc(100% - 32px)',
+        maxWidth: 380,
+        height: 60,
+        borderRadius: '30px',
+        bgcolor: theme.palette.mode === 'dark'
+          ? alpha(theme.palette.background.paper, 0.78)
+          : alpha(theme.palette.background.paper, 0.86),
+        backdropFilter: 'blur(36px) saturate(210%)',
+        WebkitBackdropFilter: 'blur(36px) saturate(210%)',
         border: theme.palette.mode === 'dark'
-          ? '1.5px solid rgba(255, 255, 255, 0.22)'
-          : '1.5px solid rgba(0, 0, 0, 0.12)',
+          ? `1px solid ${alpha(theme.palette.common.white, 0.12)}`
+          : `1px solid ${alpha(theme.palette.common.white, 0.8)}`,
         boxShadow: theme.palette.mode === 'dark'
-          ? '0 16px 40px rgba(0, 0, 0, 0.95), 0 4px 16px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08)'
-          : '0 12px 32px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.08)',
+          ? `0 18px 48px rgba(0, 0, 0, 0.65), 0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}, inset 0 1px 1px rgba(255, 255, 255, 0.16)`
+          : `0 14px 38px rgba(0, 0, 0, 0.08), 0 2px 10px ${alpha(theme.palette.primary.main, 0.12)}, inset 0 1px 1px rgba(255, 255, 255, 0.9)`,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: { xs: 0.5, sm: 0.8 },
-        px: 1.2,
-        py: 0,
+        px: 1,
         zIndex: 1200,
         userSelect: 'none',
         touchAction: 'manipulation'
       }}
     >
+      {/* ── Slidable Selection Pill (Liquid Glass Theme Blend) ── */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 6,
+          left: 8,
+          width: 'calc((100% - 16px) / 4)',
+          height: 32,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          pointerEvents: 'none',
+          transform: `translateX(${activeIndex * 100}%)`,
+          transition: 'transform 0.32s cubic-bezier(0.34, 1.25, 0.64, 1)',
+          zIndex: 1
+        }}
+      >
+        <Box
+          sx={{
+            width: 58,
+            height: 32,
+            borderRadius: '16px',
+            bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.22 : 0.15),
+            border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.42 : 0.28)}`,
+            boxShadow: `0 2px 12px ${alpha(theme.palette.primary.main, 0.24)}, inset 0 1px 1px ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.75)'}`,
+            backdropFilter: 'blur(16px) saturate(200%)',
+            WebkitBackdropFilter: 'blur(16px) saturate(200%)'
+          }}
+        />
+      </Box>
+
       {TABS.map((tab) => {
         const isSelected = currentTab === tab.id;
         return (
           <Box
             key={tab.id}
-            onClick={() => onTabChange(tab.id)}
+            onClick={() => {
+              try { navigator.vibrate?.(10); } catch {}
+              onTabChange(tab.id);
+            }}
             sx={{
+              flex: 1,
+              zIndex: 2,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              py: 0.45,
-              px: { xs: 1.35, sm: 1.7 },
-              borderRadius: '20px',
               cursor: 'pointer',
               touchAction: 'manipulation',
               WebkitTapHighlightColor: 'transparent',
-              transition: 'all 0.15s cubic-bezier(0.2, 0, 0, 1)',
-              bgcolor: isSelected
-                ? (theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.26) : alpha(theme.palette.primary.main, 0.14))
-                : 'transparent',
-              border: isSelected
-                ? (theme.palette.mode === 'dark' ? `1px solid ${alpha(theme.palette.primary.main, 0.45)}` : `1px solid ${alpha(theme.palette.primary.main, 0.25)}`)
-                : '1px solid transparent',
-              color: isSelected ? theme.palette.primary.main : theme.palette.text.secondary,
-              transform: isSelected ? 'scale(1.03)' : 'scale(1)',
+              transition: 'transform 0.15s ease',
               '&:active': {
-                transform: 'scale(0.95)'
+                transform: 'scale(0.92)'
               }
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Box
+              sx={{
+                width: 58,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isSelected
+                  ? theme.palette.primary.main
+                  : (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.88)' : theme.palette.text.secondary),
+                transition: 'color 0.22s ease'
+              }}
+            >
               {tab.icon}
             </Box>
             <Typography
               variant="caption"
               sx={{
-                fontSize: '0.68rem',
+                fontSize: '0.67rem',
                 fontWeight: isSelected ? 800 : 600,
                 lineHeight: 1.15,
-                mt: 0.2,
-                fontFamily: '"Nunito", "Google Sans", sans-serif'
+                mt: '1px',
+                fontFamily: '"Google Sans", "Nunito", sans-serif',
+                color: isSelected
+                  ? theme.palette.primary.main
+                  : (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.72)' : theme.palette.text.secondary),
+                transition: 'color 0.22s ease'
               }}
             >
               {tab.label}

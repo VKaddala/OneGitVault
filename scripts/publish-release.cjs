@@ -32,52 +32,44 @@ const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'
 const VERSION = pkg.version;
 const ANDROID_VERSION = '1.1.0';
 const TAG_NAME = `v${VERSION}`;
-const RELEASE_NAME = `v${VERSION} (Desktop) / v${ANDROID_VERSION} (Android) — Batch Vault Unbookmarking, Badge Clearing & Performance Fixes`;
+const RELEASE_NAME = `v${VERSION} (Desktop) / v${ANDROID_VERSION} (Android) — Native UI Redesign, Floating Liquid Glass Island & Rate Limit Fixes`;
 
 const RELEASE_BODY = `## 🚀 What's New in Desktop v${VERSION} & Android v${ANDROID_VERSION}
+
+### 💎 Android Native UI Redesign & Floating Liquid Glass Action Island
+- **Floating Capsule Action Island**: Transformed repository details bottom action bar into a floating capsule island with Material 3 glassmorphism, matching bottom navigation physics.
+- **Scroll Clearance**: Extended bottom scroll margins so repository content, specs, and topics scroll completely above the floating bottom bar without clipping.
+- **Uncluttered Actions**: Streamlined the bottom bar to focus on Star, Translate, APK, GitHub, and Share actions, with clean un-highlighted state.
+- **Clean README**: Removed redundant top summary card from the README tab for an unobstructed reading experience.
+
+---
+
+### ℹ️ Comprehensive Repository Info Dashboard
+- **6-Metric Health Grid**: Real-time display of Stars, Forks, Watchers, Open Issues, Primary Language, and License without edge bleeding.
+- **Android Package Status**: Dedicated APK distribution card displaying package size, filename, and direct 1-tap download.
+- **Repository Specifications**: Default branch, creation timestamp, last push/commit relative time, and last updated date.
+- **Developer Quick Clone**: Embedded terminal code snippet with one-tap clipboard copy and feedback.
+- **Publisher Profile**: Direct link and avatar preview of repository author/organization.
+
+---
+
+### 🛡️ Rate Limit Resilience & Release Caching
+- **Multi-Tier Release Caching**: Releases are cached in-memory and persistent \`localStorage\` to eliminate empty release states when browsing multiple repositories.
+- **Public Raw CDN Fallback**: README documentation queries \`raw.githubusercontent.com\` first, consuming 0 GitHub API rate limit quota and preserving rate limits for releases.
+- **Android Installer Filtering**: Desktop-only binaries (\`.exe\`, \`.dmg\`, \`.deb\`, \`.zip\`) are marked "Desktop only" and disabled, preventing accidental incompatible downloads.
+- **Empty State Recovery**: Added retry action and rate limit guidance if GitHub API limits are reached.
+
+---
+
+### 🎯 Trending Horizontal Scroll Fix
+- **Negative Overflow Elimination**: Fixed issue in Trending where centered flex alignment pushed the "Today" pill into negative coordinates on mobile screens.
+
+---
 
 ### 🗃️ Android Vault Batch Unbookmarking & Multi-Select
 - **Multi-Select Mode**: Added "Select" toggle in the Vault view. Tap multiple bookmarks to select/deselect individually or tap **"Select All" / "Deselect All"**.
 - **1-Tap Batch Removal**: Remove all selected bookmarks at once with the prominent **"Unbookmark (N)"** action, automatically updating local storage and synchronizing with your private GitHub Gist in the cloud.
 - **Smart Badge Clearing**: Visiting the Vault tab immediately clears the notification count badge on the bottom navigation bar.
-
----
-
-### ⚡ Ultra-Fluid Bottom Navigation & Instant Switching
-- **Zero-Latency Tab Transitions**: Decoupled APKs, Trending, Vault, and Explore into persistently mounted views, eliminating full-tree remounts and redundant API refetching when switching tabs.
-- **Removed Tap Delays**: Enabled \`touch-action: manipulation\` to eliminate mobile 300ms tap latency.
-- **Targeted Scroll**: Tapping between different tabs preserves your exact scroll position; only tapping the already-active tab scrolls smoothly to the top.
-
----
-
-### 📖 README Viewer Link Navigation Fixes
-- **Internal Heading Anchors**: Clicking table of contents links (e.g. \`#installation\`, \`#usage\`) now smoothly scrolls directly to the corresponding section within the modal.
-- **Relative Repo Links**: Document links (e.g. \`docs/guide.md\`, \`./LICENSE\`) automatically resolve to GitHub web URLs in the device browser.
-- **Heading ID Retention**: DOMPurify sanitization preserves \`id\` and \`name\` attributes on markdown headers.
-
----
-
-### ✨ Crisp High-Resolution Launch Branding
-- **Pixelation Elimination**: Replaced low-res raster favicon in the app splash loader with an infinite-resolution inline vector SVG logo with smooth pulsing animations, ensuring crisp visuals on high-DPI displays.
-
----
-
-### 🌐 Desktop Ultra-Fast Translation Support (Google Anycast Edge CDN)
-- **On-Demand Translation**: Ported Android's edge CDN translation engine directly into Desktop (\`src/services/translateService.ts\`).
-- **Markdown Documentation**: Instant translation of non-English README documentation in \`RepoDetailPanel\` with parallel paragraph chunking (~2,000 chars) via \`Promise.all()\`.
-- **Card-Level Descriptions**: Direct inline translation toggles on \`ProjectCard\` (both Grid & List views) and detail modals.
-- **Markdown & Code Protection**: Fenced code blocks (\`\`\`...\`\`\`), inline code snippets (\`...\`), and badges are preserved untouched during translation.
-
----
-
-### 🛡️ Android Vault Alert Banner & Error Layout Redesign
-- **Full-Width Diagnostic Alert**: Resolved issue where long GitHub error messages (such as missing \`gist\` scope) overflowed horizontally and squeezed the action icons.
-- **Responsive Stacking**: Action buttons ("Pull from Gist", "Push to Gist") now maintain their dedicated top row, while status messages render below in a responsive Material-UI \`Alert\` banner.
-
----
-
-### 👤 Publisher Identity (VKaddala)
-- Standardized publisher and author metadata to **VKaddala** across Windows Inno Setup installer metadata, package manifests, and Android application resources.
 
 ---
 

@@ -135,8 +135,8 @@ export const TokenDialog: React.FC<TokenDialogProps> = ({
         },
         '& .MuiDialog-paper': {
           borderRadius: '24px',
-          bgcolor: theme.palette.mode === 'dark' ? '#0d1117 !important' : '#ffffff !important',
-          backgroundColor: theme.palette.mode === 'dark' ? '#0d1117 !important' : '#ffffff !important',
+          bgcolor: `${theme.palette.background.paper} !important`,
+          backgroundColor: `${theme.palette.background.paper} !important`,
           backgroundImage: 'none !important',
           border: `1px solid ${theme.palette.divider}`,
           boxShadow: '0 24px 64px rgba(0, 0, 0, 0.95)',

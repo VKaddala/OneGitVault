@@ -17,15 +17,10 @@ import StarIcon from '@mui/icons-material/Star';
 import CallSplitIcon from '@mui/icons-material/CallSplit';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DownloadIcon from '@mui/icons-material/Download';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import CheckIcon from '@mui/icons-material/Check';
-import ShareIcon from '@mui/icons-material/Share';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { Repository } from '../types';
-import { shareProject } from '../services/shareHelper';
 import { downloadApkFile } from '../services/downloadHelper';
 
 interface RepoCardProps {
@@ -44,23 +39,22 @@ interface RepoCardProps {
   onToggleSelect?: (repoId: number) => void;
 }
 
-export const RepoCard: React.FC<RepoCardProps> = ({
+export const RepoCard = React.memo<RepoCardProps>(({
   repo,
   isBookmarked,
   onToggleBookmark,
   onOpenDetail,
-  onCopyClone,
-  copiedId,
+  onCopyClone: _onCopyClone,
+  copiedId: _copiedId,
   isCompact = false,
   isStarred = false,
   onToggleStar,
-  onShareMessage,
+  onShareMessage: _onShareMessage,
   isSelectMode = false,
   isSelected = false,
   onToggleSelect
 }) => {
   const theme = useTheme();
-  const isCopied = copiedId === repo.id;
 
   const formatCount = (count: number) => {
     if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
@@ -71,33 +65,11 @@ export const RepoCard: React.FC<RepoCardProps> = ({
   const hasApk = repo.has_apks || (repo.topics && (repo.topics.includes('apk') || repo.topics.includes('android-app') || repo.topics.includes('android')));
   const primaryApkAsset = repo.latest_release?.assets?.find(a => a.is_apk || a.name.endsWith('.apk'));
 
-  const handleShare = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const result = await shareProject(
-      repo.name,
-      `${repo.name} — ${repo.description || 'Open source project on GitHub'}`,
-      repo.html_url
-    );
-    if (result === 'copied' && onShareMessage) {
-      onShareMessage(`Copied ${repo.name} link`);
-    }
-  };
-
   const handleStarClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onToggleStar) {
       onToggleStar(repo);
     }
-  };
-
-  const handleOpenExternal = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    window.open(repo.html_url, '_blank');
-  };
-
-  const handleCopyClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onCopyClone(repo.clone_url);
   };
 
   return (
@@ -116,18 +88,19 @@ export const RepoCard: React.FC<RepoCardProps> = ({
         position: 'relative',
         overflow: 'hidden',
         bgcolor: isSelected
-          ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.16 : 0.08)
-          : 'background.paper',
-        borderRadius: isCompact ? '12px' : '16px',
+          ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.09)
+          : (theme.palette.mode === 'dark' ? 'rgba(21, 28, 44, 0.94)' : 'rgba(255, 255, 255, 0.97)'),
+        borderRadius: isCompact ? '16px' : '20px',
         border: isSelected
           ? `2px solid ${theme.palette.primary.main}`
-          : `1px solid ${theme.palette.divider}`,
+          : (theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.07)'),
         boxShadow: isSelected
-          ? `0 0 12px ${alpha(theme.palette.primary.main, 0.35)}`
-          : (theme.palette.mode === 'dark' ? '0 3px 14px rgba(0, 0, 0, 0.55)' : '0 1px 8px rgba(0, 0, 0, 0.04)'),
+          ? `0 0 16px ${alpha(theme.palette.primary.main, 0.45)}`
+          : (theme.palette.mode === 'dark' ? '0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.07)' : '0 2px 12px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.6)'),
         transition: 'transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease',
         '&:active': {
-          transform: 'scale(0.99)'
+          transform: 'scale(0.985)',
+          filter: theme.palette.mode === 'dark' ? 'brightness(1.08)' : 'brightness(0.97)'
         }
       }}
     >
@@ -242,56 +215,30 @@ export const RepoCard: React.FC<RepoCardProps> = ({
               />
             ) : null}
 
-            {/* Native Share Button */}
-            <Tooltip title="Share on other apps">
-              <IconButton
-                size="small"
-                onClick={handleShare}
-                sx={{ color: 'text.secondary', p: isCompact ? 0.3 : 0.4 }}
-              >
-                <ShareIcon sx={{ fontSize: isCompact ? 14 : 16 }} />
-              </IconButton>
-            </Tooltip>
-
-            {/* Copy Git Clone Button */}
-            <Tooltip title={isCopied ? "Copied clone URL!" : "Copy git clone"}>
-              <IconButton
-                size="small"
-                onClick={handleCopyClick}
-                sx={{ color: isCopied ? theme.palette.primary.main : 'text.secondary', p: isCompact ? 0.3 : 0.4 }}
-              >
-                {isCopied ? <CheckIcon sx={{ fontSize: isCompact ? 14 : 16 }} /> : <ContentCopyIcon sx={{ fontSize: isCompact ? 14 : 16 }} />}
-              </IconButton>
-            </Tooltip>
-
-            {/* Open on GitHub External Link */}
-            <Tooltip title="View on GitHub">
-              <IconButton
-                size="small"
-                onClick={handleOpenExternal}
-                sx={{ color: 'text.secondary', p: isCompact ? 0.3 : 0.4 }}
-              >
-                <OpenInNewIcon sx={{ fontSize: isCompact ? 14 : 16 }} />
-              </IconButton>
-            </Tooltip>
-
-            {/* Bookmark Icon */}
+            {/* Sleek Native Material 3 Bookmark Action */}
             <Tooltip title={isBookmarked ? "Remove from Vault" : "Save to Vault"}>
               <IconButton
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleBookmark(repo);
+                  try { navigator.vibrate?.(10); } catch {}
                 }}
                 sx={{
                   color: isBookmarked ? theme.palette.primary.main : 'text.secondary',
-                  p: isCompact ? 0.3 : 0.4
+                  bgcolor: isBookmarked
+                    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.22 : 0.12)
+                    : alpha(theme.palette.text.primary, 0.04),
+                  borderRadius: '50%',
+                  p: isCompact ? 0.5 : 0.65,
+                  transition: 'all 0.15s cubic-bezier(0.2, 0, 0, 1)',
+                  '&:active': { transform: 'scale(0.88)' }
                 }}
               >
                 {isBookmarked ? (
-                  <BookmarkIcon sx={{ fontSize: isCompact ? 16 : 18 }} />
+                  <BookmarkIcon sx={{ fontSize: isCompact ? 17 : 19 }} />
                 ) : (
-                  <BookmarkBorderIcon sx={{ fontSize: isCompact ? 16 : 18 }} />
+                  <BookmarkBorderIcon sx={{ fontSize: isCompact ? 17 : 19 }} />
                 )}
               </IconButton>
             </Tooltip>
@@ -390,4 +337,4 @@ export const RepoCard: React.FC<RepoCardProps> = ({
       </CardContent>
     </Card>
   );
-};
+});

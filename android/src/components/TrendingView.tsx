@@ -78,7 +78,7 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
   };
 
   return (
-    <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+    <Box sx={{ px: { xs: 1.5, sm: 2 }, pt: 1, pb: 12, maxWidth: 1280, mx: 'auto', boxSizing: 'border-box' }}>
       {/* Header Row: Title & Refresh Button */}
       <Box
         sx={{
@@ -132,11 +132,15 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
         sx={{
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'flex-start',
           gap: 1,
           overflowX: 'auto',
           py: 0.6,
           mb: 1.5,
+          width: '100%',
+          boxSizing: 'border-box',
           scrollbarWidth: 'none',
+          WebkitOverflowScrolling: 'touch',
           '&::-webkit-scrollbar': { display: 'none' }
         }}
       >

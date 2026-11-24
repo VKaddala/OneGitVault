@@ -65,7 +65,7 @@ export const FloatingSearchModal: React.FC<FloatingSearchModalProps> = ({
       PaperProps={{
         sx: {
           borderRadius: '24px',
-          bgcolor: isDark ? '#1c2128' : '#ffffff',
+          bgcolor: theme.palette.background.paper,
           backgroundImage: 'none',
           border: `1px solid ${theme.palette.divider}`,
           boxShadow: isDark

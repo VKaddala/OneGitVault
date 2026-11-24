@@ -1,21 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  AppBar,
-  Toolbar,
   Typography,
   Box,
   IconButton,
   Chip,
-  Tooltip,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
+  Avatar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Button,
   LinearProgress,
+  Switch,
+  FormControlLabel,
   useTheme,
   alpha
 } from '@mui/material';
-import PaletteIcon from '@mui/icons-material/Palette';
 import SearchIcon from '@mui/icons-material/Search';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -23,9 +22,13 @@ import CheckIcon from '@mui/icons-material/Check';
 import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
+import CloseIcon from '@mui/icons-material/Close';
+import PaletteIcon from '@mui/icons-material/Palette';
+import SpeedIcon from '@mui/icons-material/Speed';
 import { ThemePlugin } from '../themes/types';
 import { OneGitVaultLogo } from './OneGitVaultLogo';
 import { AndroidUpdateInfo } from '../services/updateService';
+import { fetchAuthenticatedUser, getCachedUser, GitHubUserProfile } from '../services/githubApi';
 
 interface TopAppBarProps {
   searchQuery?: string;
@@ -55,7 +58,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
   onSelectTheme,
   coreRemaining,
   isAuthenticated,
-  isSearchActive,
+  isSearchActive: _isSearchActive,
   onSearchActiveChange,
   isCompactView,
   onToggleCompactView,
@@ -63,59 +66,82 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
   onOpenUpdateDialog
 }) => {
   const theme = useTheme();
-  const [themeMenuAnchor, setThemeMenuAnchor] = useState<null | HTMLElement>(null);
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
+  const [userProfile, setUserProfile] = useState<GitHubUserProfile | null>(getCachedUser());
 
-  const handleOpenThemeMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setThemeMenuAnchor(event.currentTarget);
-  };
-
-  const handleCloseThemeMenu = () => {
-    setThemeMenuAnchor(null);
-  };
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchAuthenticatedUser().then(setUserProfile);
+    } else {
+      setUserProfile(null);
+    }
+  }, [isAuthenticated]);
 
   return (
-    <AppBar
-      position="fixed"
-      elevation={0}
-      sx={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 1200,
-        pt: 'max(env(safe-area-inset-top, 0px), var(--status-bar-height, 44px))',
-        bgcolor: 'background.default',
-        borderBottom: `1px solid ${theme.palette.divider}`,
-        backgroundImage: 'none'
-      }}
-    >
-      <Toolbar
-        variant="dense"
+    <>
+      {/* ── Native Material 3 Top App Bar (Protects System Status Bar & Houses SearchBar) ── */}
+      <Box
         sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1200,
+          bgcolor: theme.palette.mode === 'dark'
+            ? alpha(theme.palette.background.default, 0.82)
+            : alpha(theme.palette.background.default, 0.88),
+          backdropFilter: 'blur(35px) saturate(210%)',
+          WebkitBackdropFilter: 'blur(35px) saturate(210%)',
+          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.7)}`,
+          pt: 'calc(max(env(safe-area-inset-top, 0px), var(--status-bar-height, 44px)) + 6px)',
           px: { xs: 1.5, sm: 2 },
-          py: 0.6,
-          minHeight: 50,
-          alignItems: 'center'
+          pb: 1,
+          boxShadow: theme.palette.mode === 'dark'
+            ? '0 4px 20px rgba(0, 0, 0, 0.5), inset 0 -1px 0 rgba(255, 255, 255, 0.05)'
+            : `0 2px 10px ${alpha(theme.palette.primary.main, 0.06)}`
         }}
       >
-        <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between' }}>
-          {/* Left: Small Logo & Clean OneGitVault Title */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <OneGitVaultLogo size={22} />
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            height: 48,
+            px: 1.5,
+            borderRadius: '24px',
+            bgcolor: theme.palette.mode === 'dark'
+              ? alpha(theme.palette.common.white, 0.06)
+              : alpha(theme.palette.common.white, 0.65),
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+            boxShadow: theme.palette.mode === 'dark'
+              ? '0 4px 16px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.08)'
+              : '0 2px 8px rgba(0, 0, 0, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+            cursor: 'pointer',
+            transition: 'transform 0.15s ease',
+            '&:active': { transform: 'scale(0.995)' }
+          }}
+          onClick={() => onSearchActiveChange(true)}
+        >
+          {/* Left: Search Icon & Placeholder Text */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flex: 1, minWidth: 0 }}>
+            <SearchIcon sx={{ color: theme.palette.text.secondary, fontSize: 22 }} />
             <Typography
-              variant="subtitle2"
+              noWrap
               sx={{
-                fontWeight: 900,
-                fontSize: '0.925rem',
-                letterSpacing: '-0.02em',
-                lineHeight: 1,
-                color: 'text.primary'
+                color: 'text.secondary',
+                fontSize: '0.88rem',
+                fontWeight: 500,
+                fontFamily: '"Google Sans", "Nunito", sans-serif'
               }}
             >
-              OneGitVault
+              Search 400k+ repositories...
             </Typography>
+          </Box>
 
-            {/* Update Available Badge */}
+          {/* Right: Update Badge & Profile / Settings Avatar */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }} onClick={(e) => e.stopPropagation()}>
             {updateInfo?.hasUpdate && (
               <Chip
                 icon={<SystemUpdateAltIcon sx={{ fontSize: '13px !important' }} />}
@@ -124,192 +150,274 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
                 color="primary"
                 onClick={onOpenUpdateDialog}
                 sx={{
-                  height: 20,
-                  fontSize: '0.625rem',
+                  height: 24,
+                  fontSize: '0.66rem',
                   fontWeight: 800,
                   cursor: 'pointer',
-                  borderRadius: '10px',
-                  ml: 0.5,
-                  animation: 'pulse 2s infinite',
-                  bgcolor: theme.palette.primary.main,
-                  color: theme.palette.primary.contrastText,
-                  '& .MuiChip-icon': {
-                    color: 'inherit',
-                  },
+                  borderRadius: '12px',
+                  animation: 'pulse 2s infinite'
                 }}
               />
             )}
-          </Box>
 
-          {/* Right: Search Trigger, Quota Badge, Refresh, Theme Selector */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
-            {/* Search Icon Button: Launches WhatsApp/Instagram-style Translucent Flyout */}
-            <Tooltip title="Search APKs & Repos">
-              <IconButton
-                aria-label="search-button"
-                size="small"
-                onClick={() => onSearchActiveChange(true)}
-                sx={{
-                  p: 0.6,
-                  color: isSearchActive ? theme.palette.primary.main : 'text.primary',
-                  bgcolor: isSearchActive ? alpha(theme.palette.primary.main, 0.12) : 'transparent',
-                  borderRadius: '8px'
-                }}
-              >
-                <SearchIcon sx={{ fontSize: 19 }} />
-              </IconButton>
-            </Tooltip>
-
-            {/* Real-time Quota Badge (Core API remaining) */}
-            <Tooltip title={isAuthenticated ? "Token Active (5,000 req/hr)" : "Add Token (60 req/hr)"}>
-              <Chip
-                icon={<VpnKeyIcon sx={{ fontSize: 11 }} />}
-                label={`${coreRemaining} req`}
-                size="small"
-                onClick={onOpenTokenDialog}
-                color={isAuthenticated ? "primary" : "default"}
-                variant={isAuthenticated ? "filled" : "outlined"}
-                sx={{
-                  height: 22,
-                  fontSize: '0.65rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  borderRadius: '6px',
-                  mx: 0.2,
-                  bgcolor: isAuthenticated ? theme.palette.primary.main : alpha(theme.palette.text.primary, 0.05),
-                  borderColor: theme.palette.divider
-                }}
-              />
-            </Tooltip>
-
-            {/* Refresh Button with Spinner Animation when refreshing */}
-            <Tooltip title="Refresh Feed">
-              <IconButton
-                size="small"
-                onClick={onRefresh}
-                disabled={isRefreshing}
-                sx={{
-                  p: 0.6,
-                  color: isRefreshing ? theme.palette.primary.main : 'text.secondary'
-                }}
-              >
-                <RefreshIcon
-                  sx={{
-                    fontSize: 18,
-                    animation: isRefreshing ? 'spinRefresh 0.8s linear infinite' : 'none',
-                    '@keyframes spinRefresh': {
-                      '0%': { transform: 'rotate(0deg)' },
-                      '100%': { transform: 'rotate(360deg)' }
-                    }
-                  }}
-                />
-              </IconButton>
-            </Tooltip>
-
-            {/* Compact / Comfortable View Density Toggle */}
-            <Tooltip title={isCompactView ? "Comfortable View" : "Compact View"}>
-              <IconButton
-                size="small"
-                onClick={onToggleCompactView}
-                sx={{
-                  p: 0.6,
-                  color: isCompactView ? theme.palette.primary.main : 'text.secondary',
-                  bgcolor: isCompactView ? alpha(theme.palette.primary.main, 0.12) : 'transparent',
-                  borderRadius: '8px'
-                }}
-              >
-                {isCompactView ? <ViewAgendaIcon sx={{ fontSize: 18 }} /> : <TableRowsIcon sx={{ fontSize: 18 }} />}
-              </IconButton>
-            </Tooltip>
-
-            {/* Theme Selector Palette Button */}
-            <Tooltip title="Themes">
-              <IconButton size="small" onClick={handleOpenThemeMenu} sx={{ p: 0.6, color: theme.palette.primary.main }}>
-                <PaletteIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-
-            {/* Themes Dropdown Menu */}
-            <Menu
-              anchorEl={themeMenuAnchor}
-              open={Boolean(themeMenuAnchor)}
-              onClose={handleCloseThemeMenu}
+            {/* Profile / Preferences Trigger */}
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                try { navigator.vibrate?.(10); } catch {}
+                setSettingsOpen(true);
+              }}
               sx={{
-                '& .MuiPaper-root': {
-                  borderRadius: '16px',
-                  minWidth: 210,
-                  p: 0.5,
-                  bgcolor: 'background.paper',
-                  boxShadow: '0 12px 36px rgba(0, 0, 0, 0.65)',
-                  border: `1px solid ${theme.palette.divider}`
-                }
+                p: 0.2,
+                borderRadius: '50%',
+                transition: 'transform 0.15s ease',
+                '&:active': { transform: 'scale(0.92)' }
               }}
             >
-              <Box sx={{ px: 2, py: 0.75, borderBottom: `1px solid ${theme.palette.divider}` }}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', fontSize: '0.65rem' }}>
-                  Select Theme
+              {isAuthenticated && userProfile?.login ? (
+                <Avatar
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    fontSize: '0.74rem',
+                    fontWeight: 800,
+                    bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.22 : 0.14),
+                    color: theme.palette.primary.main,
+                    border: `1.5px solid ${alpha(theme.palette.primary.main, 0.4)}`,
+                    boxShadow: `0 2px 6px ${alpha(theme.palette.primary.main, 0.2)}`
+                  }}
+                >
+                  {userProfile.login.slice(0, 2).toUpperCase()}
+                </Avatar>
+              ) : (
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.14 : 0.08),
+                    border: `1.5px solid ${alpha(theme.palette.primary.main, 0.35)}`,
+                    boxShadow: `0 2px 6px ${alpha(theme.palette.primary.main, 0.15)}`
+                  }}
+                >
+                  <OneGitVaultLogo size={19} outlineOnly color={theme.palette.primary.main} />
+                </Box>
+              )}
+            </IconButton>
+          </Box>
+        </Box>
+
+        {/* Sleek refresh indicator line */}
+        {isRefreshing && (
+          <LinearProgress
+            color="primary"
+            sx={{
+              height: 2.5,
+              borderRadius: '2px',
+              mt: 0.5,
+              mx: 2
+            }}
+          />
+        )}
+      </Box>
+
+      {/* ── Native Material 3 Settings & Account Bottom Sheet ── */}
+      <Dialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '28px',
+            bgcolor: 'background.paper',
+            p: 1,
+            boxShadow: '0 16px 40px rgba(0,0,0,0.45)',
+            border: `1px solid ${theme.palette.divider}`
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1, px: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <OneGitVaultLogo size={26} />
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+                OneGitVault
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                v1.1.0 · Publisher: VKaddala
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton size="small" onClick={() => setSettingsOpen(false)}>
+            <CloseIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent sx={{ px: 2, pb: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {/* Card 1: GitHub API Quota */}
+          <Box
+            sx={{
+              p: 1.75,
+              borderRadius: '18px',
+              bgcolor: alpha(theme.palette.primary.main, 0.08),
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <SpeedIcon sx={{ fontSize: 18, color: 'primary.main' }} />
+                <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                  GitHub API Quota
                 </Typography>
               </Box>
+              <Chip
+                size="small"
+                label={isAuthenticated ? 'PAT Connected' : 'Public Limit'}
+                sx={{
+                  height: 22,
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
+                  borderRadius: '12px',
+                  bgcolor: isAuthenticated
+                    ? alpha(theme.palette.primary.main, 0.16)
+                    : alpha(theme.palette.text.secondary, 0.12),
+                  color: isAuthenticated ? theme.palette.primary.main : 'text.secondary',
+                  border: `1px solid ${isAuthenticated ? alpha(theme.palette.primary.main, 0.38) : theme.palette.divider}`
+                }}
+              />
+            </Box>
+
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+              {coreRemaining} requests remaining of {isAuthenticated ? '5,000 req/hr' : '60 req/hr'}.
+            </Typography>
+
+            <LinearProgress
+              variant="determinate"
+              value={Math.min(100, (coreRemaining / (isAuthenticated ? 5000 : 60)) * 100)}
+              sx={{ height: 6, borderRadius: '3px', mb: 1.5 }}
+            />
+
+            <Button
+              size="small"
+              variant="outlined"
+              fullWidth
+              startIcon={<VpnKeyIcon sx={{ fontSize: 15 }} />}
+              onClick={() => {
+                setSettingsOpen(false);
+                onOpenTokenDialog();
+              }}
+              sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 700 }}
+            >
+              {isAuthenticated ? 'Manage GitHub Token' : 'Connect Personal Access Token'}
+            </Button>
+          </Box>
+
+          {/* Card 2: Feed & View Preferences */}
+          <Box
+            sx={{
+              p: 1.75,
+              borderRadius: '18px',
+              bgcolor: alpha(theme.palette.text.primary, 0.03),
+              border: `1px solid ${theme.palette.divider}`,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1.25
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 800 }}>
+              Display & Controls
+            </Typography>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {isCompactView ? <TableRowsIcon sx={{ fontSize: 18, color: 'text.secondary' }} /> : <ViewAgendaIcon sx={{ fontSize: 18, color: 'text.secondary' }} />}
+                <Typography variant="body2" sx={{ fontSize: '0.82rem' }}>
+                  Compact Card View
+                </Typography>
+              </Box>
+              <FormControlLabel
+                control={<Switch size="small" checked={isCompactView} onChange={onToggleCompactView} />}
+                label=""
+                sx={{ m: 0 }}
+              />
+            </Box>
+
+            <Button
+              size="small"
+              variant="text"
+              startIcon={<RefreshIcon sx={{ fontSize: 16 }} />}
+              onClick={() => {
+                setSettingsOpen(false);
+                onRefresh();
+              }}
+              sx={{ justifyContent: 'flex-start', textTransform: 'none', fontWeight: 700, p: 0 }}
+            >
+              Refresh Repository Feeds
+            </Button>
+          </Box>
+
+          {/* Card 3: Theme Selector */}
+          <Box
+            sx={{
+              p: 1.75,
+              borderRadius: '18px',
+              bgcolor: alpha(theme.palette.text.primary, 0.03),
+              border: `1px solid ${theme.palette.divider}`
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.2 }}>
+              <PaletteIcon sx={{ fontSize: 18, color: 'primary.main' }} />
+              <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                Theme & Palette
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
               {availableThemes.map((t) => {
                 const isSelected = t.id === currentThemeId;
                 return (
-                  <MenuItem
+                  <Box
                     key={t.id}
-                    onClick={() => {
-                      onSelectTheme(t.id);
-                      handleCloseThemeMenu();
-                    }}
+                    onClick={() => onSelectTheme(t.id)}
                     sx={{
-                      borderRadius: '8px',
-                      my: 0.25,
-                      py: 0.75,
-                      bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.12) : 'transparent'
+                      p: 1,
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      border: `1.5px solid ${isSelected ? theme.palette.primary.main : theme.palette.divider}`,
+                      bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.12) : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <Box
-                      sx={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: '50%',
-                        bgcolor: t.colors.accent,
-                        border: `1.5px solid ${t.colors.borderDefault}`,
-                        mr: 1.25
-                      }}
-                    />
-                    <ListItemText
-                      primary={t.name}
-                      primaryTypographyProps={{
-                        fontSize: '0.8rem',
-                        fontWeight: isSelected ? 800 : 500,
-                        color: isSelected ? theme.palette.primary.main : 'text.primary'
-                      }}
-                    />
-                    {isSelected && (
-                      <ListItemIcon sx={{ minWidth: 16, color: theme.palette.primary.main, justifyContent: 'flex-end' }}>
-                        <CheckIcon sx={{ fontSize: 14 }} />
-                      </ListItemIcon>
-                    )}
-                  </MenuItem>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                      <Box
+                        sx={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: '50%',
+                          bgcolor: t.colors.accent,
+                          border: `1px solid ${t.colors.borderDefault}`
+                        }}
+                      />
+                      <Typography variant="caption" sx={{ fontWeight: isSelected ? 800 : 600, fontSize: '0.72rem' }}>
+                        {t.name}
+                      </Typography>
+                    </Box>
+                    {isSelected && <CheckIcon sx={{ fontSize: 14, color: 'primary.main' }} />}
+                  </Box>
                 );
               })}
-            </Menu>
+            </Box>
           </Box>
-        </Box>
-      </Toolbar>
-      {/* Sleek refresh indicator line at bottom edge of TopAppBar */}
-      {isRefreshing && (
-        <LinearProgress
-          color="primary"
-          sx={{
-            height: 2.5,
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 1300
-          }}
-        />
-      )}
-    </AppBar>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };

@@ -118,14 +118,20 @@ export const createMuiThemeFromPlugin = (plugin: ThemePlugin): Theme => {
       MuiChip: {
         styleOverrides: {
           root: {
-            borderRadius: 10,
-            fontWeight: 600,
-            fontSize: '0.775rem',
+            borderRadius: 12,
+            fontWeight: 700,
+            fontSize: '0.75rem',
             fontFamily: '"Nunito", "Google Sans", sans-serif',
           },
           filled: {
             backgroundColor: c.bgSubtle || alpha(c.accent, 0.1),
             border: `1px solid ${c.borderSubtle || c.borderDefault}`,
+            color: c.textSecondary,
+          },
+          filledPrimary: {
+            backgroundColor: c.accent,
+            color: c.textInverse || '#ffffff',
+            border: `1px solid ${c.accent}`,
           },
         },
       },

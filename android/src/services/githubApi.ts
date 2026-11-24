@@ -6,6 +6,14 @@ const BASE_URL = 'https://api.github.com';
 const TOKEN_KEY = 'onegitvault_github_pat';
 const LEGACY_TOKEN_KEY = 'onegitvault_android_token';
 
+const USER_CACHE_KEY = 'onegitvault_cached_user_profile';
+
+export interface GitHubUserProfile {
+  login: string;
+  name?: string;
+  avatar_url?: string;
+}
+
 export function getStoredToken(): string {
   try {
     return localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY) || '';
@@ -14,10 +22,55 @@ export function getStoredToken(): string {
   }
 }
 
+export function getCachedUser(): GitHubUserProfile | null {
+  try {
+    const raw = localStorage.getItem(USER_CACHE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+export async function fetchAuthenticatedUser(): Promise<GitHubUserProfile | null> {
+  const token = getStoredToken();
+  if (!token) {
+    try { localStorage.removeItem(USER_CACHE_KEY); } catch {}
+    return null;
+  }
+
+  const cached = getCachedUser();
+  if (cached && cached.login) return cached;
+
+  try {
+    const res = await fetch(`${BASE_URL}/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const profile: GitHubUserProfile = {
+        login: data.login,
+        name: data.name,
+        avatar_url: data.avatar_url
+      };
+      try {
+        localStorage.setItem(USER_CACHE_KEY, JSON.stringify(profile));
+      } catch {}
+      return profile;
+    }
+  } catch (e) {
+    console.warn('Failed to fetch user profile:', e);
+  }
+  return null;
+}
+
 export async function setStoredToken(token: string): Promise<void> {
   try {
+    localStorage.removeItem(USER_CACHE_KEY);
     if (token && token.trim()) {
       localStorage.setItem(TOKEN_KEY, token.trim());
+      await fetchAuthenticatedUser();
     } else {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(LEGACY_TOKEN_KEY);
@@ -392,40 +445,151 @@ export async function fetchRepositories(
   }
 }
 
+const releasesCache = new Map<string, { data: ReleaseAsset[]; timestamp: number }>();
+
 export async function fetchReleases(repoFullName: string): Promise<ReleaseAsset[]> {
+  const normKey = repoFullName.toLowerCase().trim();
+  const cacheKey = `ogv_rel_${normKey}`;
+
+  // 1. Check in-memory cache (fresh within 1 hour)
+  const memCached = releasesCache.get(normKey);
+  if (memCached && Date.now() - memCached.timestamp < 60 * 60 * 1000) {
+    return memCached.data;
+  }
+
+  // 2. Check localStorage cache (fresh within 12 hours)
   try {
-    const url = `${BASE_URL}/repos/${repoFullName}/releases?per_page=5`;
+    const rawLocal = localStorage.getItem(cacheKey);
+    if (rawLocal) {
+      const parsed = JSON.parse(rawLocal);
+      if (Array.isArray(parsed.data) && parsed.data.length > 0) {
+        if (Date.now() - parsed.timestamp < 12 * 60 * 60 * 1000) {
+          releasesCache.set(normKey, parsed);
+          return parsed.data;
+        }
+      }
+    }
+  } catch {}
+
+  // Curated fallback assets if available
+  const curatedMatch = CURATED_ANDROID_APKS.find(
+    (c) => c.full_name.toLowerCase() === normKey || c.name.toLowerCase() === normKey
+  );
+  const curatedAssets = curatedMatch?.latest_release?.assets || [];
+
+  try {
+    const url = `${BASE_URL}/repos/${repoFullName}/releases?per_page=10`;
     const res = await fetch(url, { headers: getHeaders() });
     updateRateLimitFromHeaders(res.headers);
-    if (!res.ok) return [];
+
+    if (!res.ok) {
+      console.warn(`fetchReleases failed (${res.status}) for ${repoFullName}, checking cached fallback`);
+      // Fall back to localStorage even if older than 12h
+      try {
+        const rawLocal = localStorage.getItem(cacheKey);
+        if (rawLocal) {
+          const parsed = JSON.parse(rawLocal);
+          if (Array.isArray(parsed.data) && parsed.data.length > 0) {
+            return parsed.data;
+          }
+        }
+      } catch {}
+
+      if (curatedAssets.length > 0) return curatedAssets;
+      return [];
+    }
 
     const releases = await res.json();
-    if (!Array.isArray(releases) || releases.length === 0) return [];
+    if (!Array.isArray(releases) || releases.length === 0) {
+      if (curatedAssets.length > 0) return curatedAssets;
+      return [];
+    }
 
     const assets: ReleaseAsset[] = [];
     for (const rel of releases) {
       if (Array.isArray(rel.assets)) {
         for (const a of rel.assets) {
-          const isApk = a.name.toLowerCase().endsWith('.apk');
+          const lowerName = (a.name || '').toLowerCase();
+          const isApk =
+            lowerName.endsWith('.apk') ||
+            lowerName.endsWith('.xapk') ||
+            lowerName.endsWith('.aab') ||
+            a.content_type === 'application/vnd.android.package-archive';
+
           assets.push({
             id: a.id,
             name: a.name,
-            size: a.size,
-            download_count: a.download_count,
+            size: a.size || 0,
+            download_count: a.download_count || 0,
             browser_download_url: a.browser_download_url,
-            content_type: a.content_type,
+            content_type: a.content_type || '',
             is_apk: isApk
           });
         }
       }
     }
-    return assets;
-  } catch {
+
+    const finalAssets = assets.length > 0 ? assets : curatedAssets;
+
+    if (finalAssets.length > 0) {
+      const cacheObj = { data: finalAssets, timestamp: Date.now() };
+      releasesCache.set(normKey, cacheObj);
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(cacheObj));
+      } catch {}
+    }
+
+    return finalAssets;
+  } catch (err) {
+    console.warn(`Network error in fetchReleases for ${repoFullName}:`, err);
+    try {
+      const rawLocal = localStorage.getItem(cacheKey);
+      if (rawLocal) {
+        const parsed = JSON.parse(rawLocal);
+        if (Array.isArray(parsed.data) && parsed.data.length > 0) {
+          return parsed.data;
+        }
+      }
+    } catch {}
+
+    if (curatedAssets.length > 0) return curatedAssets;
     return [];
   }
 }
 
 export async function fetchReadme(repoFullName: string): Promise<string> {
+  const normKey = repoFullName.toLowerCase().trim();
+  const cacheKey = `ogv_readme_${normKey}`;
+
+  // Check cache first
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed.data && Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+        return parsed.data;
+      }
+    }
+  } catch {}
+
+  // 1. Try public raw GitHub CDN first (FAST and NO API RATE LIMIT!)
+  const branches = ['HEAD', 'main', 'master'];
+  for (const branch of branches) {
+    try {
+      const rawRes = await fetch(`https://raw.githubusercontent.com/${repoFullName}/${branch}/README.md`);
+      if (rawRes.ok) {
+        const text = await rawRes.text();
+        if (text && text.length > 20) {
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify({ data: text, timestamp: Date.now() }));
+          } catch {}
+          return text;
+        }
+      }
+    } catch {}
+  }
+
+  // 2. Fall back to GitHub API endpoint
   try {
     const url = `${BASE_URL}/repos/${repoFullName}/readme`;
     const res = await fetch(url, {
@@ -435,9 +599,23 @@ export async function fetchReadme(repoFullName: string): Promise<string> {
       }
     });
     updateRateLimitFromHeaders(res.headers);
-    if (!res.ok) return '# No README found for this repository.';
-    return await res.text();
+    if (!res.ok) {
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) return JSON.parse(cached).data;
+      } catch {}
+      return '# No README found for this repository.';
+    }
+    const text = await res.text();
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({ data: text, timestamp: Date.now() }));
+    } catch {}
+    return text;
   } catch {
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) return JSON.parse(cached).data;
+    } catch {}
     return '# Failed to load README.';
   }
 }

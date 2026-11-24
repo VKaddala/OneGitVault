@@ -9,7 +9,8 @@ import {
   CircularProgress,
   IconButton,
   useTheme,
-  alpha
+  alpha,
+  Alert
 } from '@mui/material';
 import BookmarksIcon from '@mui/icons-material/Bookmarks';
 import StarIcon from '@mui/icons-material/Star';
@@ -245,65 +246,84 @@ export const VaultView: React.FC<VaultViewProps> = ({
 
         {/* Action Controls for Active SubSection */}
         {subSection === 'gist' ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', width: { xs: '100%', sm: 'auto' }, gap: 1 }}>
             {token ? (
               <>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  disabled={isGistSyncing}
-                  onClick={handleManualPull}
-                  startIcon={isGistSyncing ? <CircularProgress size={12} /> : <CloudDownloadIcon sx={{ fontSize: 15 }} />}
-                  sx={{
-                    height: 28,
-                    borderRadius: '10px',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    px: 1.2
-                  }}
-                >
-                  Pull from Gist
-                </Button>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={isGistSyncing}
+                    onClick={handleManualPull}
+                    startIcon={isGistSyncing ? <CircularProgress size={12} /> : <CloudDownloadIcon sx={{ fontSize: 15 }} />}
+                    sx={{
+                      height: 30,
+                      borderRadius: '10px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      textTransform: 'none',
+                      px: 1.3
+                    }}
+                  >
+                    Pull from Gist
+                  </Button>
 
-                <Button
-                  size="small"
-                  variant="contained"
-                  disabled={isGistSyncing || bookmarks.length === 0}
-                  onClick={handleManualPush}
-                  startIcon={isGistSyncing ? <CircularProgress size={12} color="inherit" /> : <CloudUploadIcon sx={{ fontSize: 15 }} />}
-                  sx={{
-                    height: 28,
-                    borderRadius: '10px',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    px: 1.2
-                  }}
-                >
-                  Push to Gist
-                </Button>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    disabled={isGistSyncing || bookmarks.length === 0}
+                    onClick={handleManualPush}
+                    startIcon={isGistSyncing ? <CircularProgress size={12} color="inherit" /> : <CloudUploadIcon sx={{ fontSize: 15 }} />}
+                    sx={{
+                      height: 30,
+                      borderRadius: '10px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      textTransform: 'none',
+                      px: 1.3
+                    }}
+                  >
+                    Push to Gist
+                  </Button>
+                </Box>
 
                 {gistSyncStatus && (
-                  <Typography
-                    variant="caption"
+                  <Alert
+                    severity={
+                      gistSyncStatus.startsWith('Backed up') || gistSyncStatus.startsWith('Restored')
+                        ? 'success'
+                        : gistSyncStatus.includes('Backing') || gistSyncStatus.includes('Pulling')
+                        ? 'info'
+                        : 'error'
+                    }
+                    onClose={() => setGistSyncStatus('')}
                     sx={{
-                      fontSize: '0.68rem',
+                      width: '100%',
+                      py: 0.4,
+                      px: 1.25,
+                      fontSize: '0.72rem',
                       fontWeight: 600,
-                      color:
-                        gistSyncStatus.startsWith('Backed up') || gistSyncStatus.startsWith('Restored')
-                          ? '#10b981'
-                          : gistSyncStatus.includes('Backing') || gistSyncStatus.includes('Pulling')
-                          ? 'text.secondary'
-                          : '#ef4444',
-                      ml: 0.5,
-                      display: 'block',
-                      maxWidth: '100%',
-                      wordBreak: 'break-word',
+                      borderRadius: '10px',
+                      alignItems: 'center',
+                      '& .MuiAlert-message': {
+                        wordBreak: 'break-word',
+                        overflowWrap: 'anywhere',
+                        lineHeight: 1.35,
+                        py: 0.2
+                      },
+                      '& .MuiAlert-icon': {
+                        fontSize: 18,
+                        mr: 1,
+                        py: 0
+                      },
+                      '& .MuiAlert-action': {
+                        p: 0,
+                        mr: -0.5
+                      }
                     }}
                   >
                     {gistSyncStatus}
-                  </Typography>
+                  </Alert>
                 )}
               </>
             ) : (

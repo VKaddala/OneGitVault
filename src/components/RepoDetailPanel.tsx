@@ -3,13 +3,19 @@ import {
   X, Star, GitFork, ExternalLink, Copy, Check,
   Bookmark, Download, Terminal, Globe, Scale,
   Calendar, FileText, Loader2, AlertCircle, ChevronDown,
-  Package, Tag, ArrowDownToLine, Clock, FolderArchive, ArrowLeft, Flame
+  Package, Tag, ArrowDownToLine, Clock, FolderArchive, ArrowLeft, Flame,
+  Languages
 } from 'lucide-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { Repository, Release } from '../types';
 import { getStoredToken, fetchRepositoryReleases } from '../services/githubApi';
 import { LANGUAGE_COLORS } from '../data/curatedProjects';
+import {
+  translateMarkdownToEnglish,
+  translateTextToEnglish,
+  needsTranslation
+} from '../services/translateService';
 
 interface RepoDetailPanelProps {
   repo: Repository | null;
@@ -86,6 +92,15 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
   const [releases, setReleases] = useState<Release[]>([]);
   const [releasesLoading, setReleasesLoading] = useState<boolean>(false);
   const [selectedReleaseIndex, setSelectedReleaseIndex] = useState<number>(0);
+
+  // Translation state
+  const [isTranslated, setIsTranslated] = useState<boolean>(false);
+  const [isTranslating, setIsTranslating] = useState<boolean>(false);
+  const [translatedHtml, setTranslatedHtml] = useState<string>('');
+
+  const [isDescTranslated, setIsDescTranslated] = useState<boolean>(false);
+  const [isTranslatingDesc, setIsTranslatingDesc] = useState<boolean>(false);
+  const [translatedDesc, setTranslatedDesc] = useState<string>('');
 
   const fetchReadme = useCallback(async (r: Repository) => {
     setReadmeState('loading');
@@ -167,8 +182,64 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
       fetchReadme(repo);
       fetchReleases(repo);
       setActiveTab('readme');
+      setIsTranslated(false);
+      setTranslatedHtml('');
+      setIsDescTranslated(false);
+      setTranslatedDesc('');
     }
   }, [repo, fetchReadme, fetchReleases]);
+
+  const handleToggleTranslate = async () => {
+    if (isTranslated) {
+      setIsTranslated(false);
+      return;
+    }
+
+    if (translatedHtml) {
+      setIsTranslated(true);
+      return;
+    }
+
+    if (!readmeContent) return;
+    setIsTranslating(true);
+    try {
+      const translatedMd = await translateMarkdownToEnglish(readmeContent);
+      const parsed = marked.parse(translatedMd) as string;
+      const sanitized = DOMPurify.sanitize(parsed, {
+        ADD_ATTR: ['target', 'rel'],
+      });
+      setTranslatedHtml(sanitized);
+      setIsTranslated(true);
+    } catch (e) {
+      console.warn('Desktop README translation failed:', e);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const handleToggleDescTranslate = async () => {
+    if (isDescTranslated) {
+      setIsDescTranslated(false);
+      return;
+    }
+
+    if (translatedDesc) {
+      setIsDescTranslated(true);
+      return;
+    }
+
+    if (!repo?.description) return;
+    setIsTranslatingDesc(true);
+    try {
+      const res = await translateTextToEnglish(repo.description);
+      setTranslatedDesc(res);
+      setIsDescTranslated(true);
+    } catch (e) {
+      console.warn('Desktop description translation failed:', e);
+    } finally {
+      setIsTranslatingDesc(false);
+    }
+  };
 
   // Handle ESC key to close modal or go back
   useEffect(() => {
@@ -321,9 +392,26 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
         <div className="px-5 py-3.5 border-b border-themeline bg-surface-active/70 flex-shrink-0 space-y-3">
           {/* Description */}
           {repo.description && (
-            <p className="text-xs sm:text-sm font-sans text-txt-secondary leading-relaxed">
-              {repo.description}
-            </p>
+            <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
+              <p className="text-xs sm:text-sm font-sans text-txt-secondary leading-relaxed">
+                {isDescTranslated ? translatedDesc : repo.description}
+              </p>
+              {needsTranslation(repo.description) && (
+                <button
+                  onClick={handleToggleDescTranslate}
+                  disabled={isTranslatingDesc}
+                  className="flex-shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold bg-surface hover:bg-surface-active border border-themeline hover:border-action text-txt-muted hover:text-action transition-all shadow-sm"
+                  title="Translate repository description to English"
+                >
+                  {isTranslatingDesc ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Languages className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isDescTranslated ? 'Show Original' : 'Translate to English'}</span>
+                </button>
+              )}
+            </div>
           )}
 
           {/* Quick Meta Row */}
@@ -440,10 +528,33 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
 
             {readmeState === 'success' && (
               <div className="relative">
+                {/* Translation Controls Bar */}
+                <div className="flex items-center justify-between gap-3 pb-3 mb-4 border-b border-themeline flex-wrap">
+                  <span className="text-xs font-mono text-txt-muted">
+                    {isTranslated ? 'Translated into English (Google Edge CDN)' : 'Original repository documentation'}
+                  </span>
+                  <button
+                    onClick={handleToggleTranslate}
+                    disabled={isTranslating}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all shadow-sm ${
+                      isTranslated
+                        ? 'bg-action text-txt-inverse'
+                        : 'bg-surface-active hover:bg-surface text-txt-primary border border-themeline hover:border-action-border'
+                    }`}
+                  >
+                    {isTranslating ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Languages className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isTranslated ? 'Show Original' : 'Translate to English'}</span>
+                  </button>
+                </div>
+
                 <div
-                  className={`readme-body ${!showFullReadme && readmeContent.length > 7000 ? 'max-h-[620px] overflow-hidden' : ''}`}
+                  className={`readme-body ${!showFullReadme && (isTranslated ? (translatedHtml || renderedHtml) : readmeContent).length > 7000 ? 'max-h-[620px] overflow-hidden' : ''}`}
                   onClick={handleReadmeLinkClick}
-                  dangerouslySetInnerHTML={{ __html: renderedHtml }}
+                  dangerouslySetInnerHTML={{ __html: isTranslated ? (translatedHtml || renderedHtml) : renderedHtml }}
                 />
                 {!showFullReadme && readmeContent.length > 7000 && (
                   <div className="sticky bottom-0 pt-20 pb-2 bg-gradient-to-t from-surface via-surface to-transparent flex justify-center">

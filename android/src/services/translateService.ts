@@ -45,7 +45,7 @@ function setCachedTranslation(text: string, translated: string): void {
  * Checks whether text actually contains non-English / non-Latin characters.
  * Covers CJK, Cyrillic, Arabic, Devanagari, Thai, Hebrew, Greek, accented European Latin, etc.
  */
-export function needsTranslation(text: string): boolean {
+export function needsTranslation(text: string | null | undefined): boolean {
   if (!text || text.length < 2) return false;
   // Non-ASCII characters: CJK, Cyrillic, Arabic, Asian scripts, European accents
   const nonEnglishRegex = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\u0400-\u04FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u00C0-\u00FF]/;

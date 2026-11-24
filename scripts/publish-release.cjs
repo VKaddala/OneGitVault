@@ -30,50 +30,40 @@ const REPO_OWNER = 'VKaddala';
 const REPO_NAME = 'OneGitVault';
 const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
 const VERSION = pkg.version;
+const ANDROID_VERSION = '1.1.0';
 const TAG_NAME = `v${VERSION}`;
-const RELEASE_NAME = `v${VERSION} — System Theme Auto-Default, Google Rounded Sans, Star Integration & Themed Filters`;
+const RELEASE_NAME = `v${VERSION} (Desktop) / v${ANDROID_VERSION} (Android) — Translation Engine & Vault Alert Redesign`;
 
-const RELEASE_BODY = `## 🚀 What's New in v${VERSION}
+const RELEASE_BODY = `## 🚀 What's New in Desktop v${VERSION} & Android v${ANDROID_VERSION}
 
-### 🌓 System Theme Auto-Default (GitHub Simple Light & Dark)
-- **Automatic OS Theme Alignment**: OneGitVault now intelligently detects your operating system theme preference:
-  - Defaults to **GitHub Simple Light** on light mode.
-  - Defaults to **GitHub Simple Dark** on dark mode.
-  - Actively listens to system theme transitions in real time while preserving any explicitly chosen theme overrides.
-- **Instant Paint**: Zero flash of unstyled content (FOUC) on startup.
-
----
-
-### 🔤 Google Rounded Sans Typography (Nunito & Google Sans)
-- **Enhanced Legibility**: Applied Google rounded sans (\`Nunito\` / \`Google Sans\`) across cards, titles, descriptions, and detail dialogs for soft, modern, high-comfort reading.
-- **Proportional Numbers**: Replaced rigid typewriter monospace fonts on repository numbers, star counters, and filter tags with beautifully proportioned rounded numerals.
+### 🌐 Desktop Ultra-Fast Translation Support (Google Anycast Edge CDN)
+- **On-Demand Translation**: Ported Android's edge CDN translation engine directly into Desktop (\`src/services/translateService.ts\`).
+- **Markdown Documentation**: Instant translation of non-English README documentation in \`RepoDetailPanel\` with parallel paragraph chunking (~2,000 chars) via \`Promise.all()\`.
+- **Card-Level Descriptions**: Direct inline translation toggles on \`ProjectCard\` (both Grid & List views) and detail modals for repos in Chinese, Japanese, Russian, Korean, German, and more.
+- **Dual-Layer Caching**: In-memory Map + SessionStorage provides 0ms instant switching between original text and translated English.
+- **Markdown & Code Protection**: Fenced code blocks (\`\`\`...\`\`\`), inline code snippets (\`...\`), and badges are preserved untouched during translation.
 
 ---
 
-### 🎛️ Custom-Themed Floating Dropdown Filters
-- **Native OS Selects Replaced**: FilterBar dropdowns for Category, Sorting, and Language now feature custom-styled floating popover menus with sector icons, checkmarks, search inputs, and backdrop blur.
-- **New Technology Sectors**: Added dedicated filters for "Android & APK Releases" and "Videography & Media Tools".
+### 🛡️ Android Vault Alert Banner & Error Layout Redesign
+- **Full-Width Diagnostic Alert**: Resolved issue where long GitHub error messages (such as missing \`gist\` scope) overflowed horizontally and squeezed the action icons.
+- **Responsive Stacking**: Action buttons ("Pull from Gist", "Push to Gist") now maintain their dedicated top row, while status messages render below in a responsive Material-UI \`Alert\` banner.
+- **Severity-Aware Feedback**: Distinct styling, icons, and colors for Success (green), In-Progress (blue), and Error diagnostics (red) with one-click dismiss buttons.
 
 ---
 
-### ⭐ Direct GitHub Repository Starring
-- **Interactive Star Toggle**: Authenticated users can now star or unstar repositories directly from the app with live counter feedback and visual pulse animations.
+### 👤 Publisher Identity (VKaddala)
+- Standardized publisher and author metadata to **VKaddala** across Windows Inno Setup installer metadata, package manifests, and Android application resources.
 
 ---
 
-### ⏱️ Decoupled API Quotas & Gist Sync Fixes
-- **Separated Quotas**: Independently tracks Core (5,000 req/hr) and Search (30 req/min) rate limits with 2s live polling and countdown timers.
-- **Reliable Gist Bookmarks**: Fixed "No backup found" bug by querying single Gist endpoints directly by ID.
-- **Streamlined Navigation**: Clean, uncluttered icon-only \`[ ← ]\` back navigation in repository details.
+### 📦 Official Downloads & Verification
+| Platform | Binary | Version | Size | Verification |
+|---|---|---|---|---|
+| **Windows Desktop** | **\`OneGitVault-Setup-${VERSION}.exe\`** | v${VERSION} | ~98 MB | Inno Setup x64 Installer (Interactive & Silent \`/VERYSILENT\` restart) |
+| **Android** | **\`OneGitVault-Android-${ANDROID_VERSION}.apk\`** | v${ANDROID_VERSION} | ~3.3 MB | Release APK (v2 signature scheme verified) |
 
----
-
-### 📦 Downloads & Verification
-| File | Type | Architecture | Setup Type |
-|---|---|---|---|
-| **\`OneGitVault-Setup-${VERSION}.exe\`** | Inno Setup Windows Installer | x64 | Clean Upgrade / Seamless Replace |
-
-*Built with Electron 33, React 18, TypeScript, and Vite.*
+*Built with Electron 33, Capacitor 8, React 18, TypeScript, and Vite.*
 `;
 
 function request(options, postData) {
@@ -186,29 +176,40 @@ function uploadAsset(uploadUrlTemplate, filePath, fileName) {
 async function main() {
   try {
     const release = await createRelease();
-    const installerName = `OneGitVault-Setup-${VERSION}.exe`;
-    const installerPath = path.resolve(__dirname, `../release/setup/${installerName}`);
-    if (!fs.existsSync(installerPath)) {
-      throw new Error(`Installer file not found at: ${installerPath}`);
+    const assetsToUpload = [
+      {
+        fileName: `OneGitVault-Setup-${VERSION}.exe`,
+        filePath: path.resolve(__dirname, `../release/setup/OneGitVault-Setup-${VERSION}.exe`)
+      },
+      {
+        fileName: `OneGitVault-Android-${ANDROID_VERSION}.apk`,
+        filePath: path.resolve(__dirname, `../release/setup/OneGitVault-Android-${ANDROID_VERSION}.apk`)
+      }
+    ];
+
+    for (const asset of assetsToUpload) {
+      if (!fs.existsSync(asset.filePath)) {
+        throw new Error(`File not found at: ${asset.filePath}`);
+      }
+
+      const existingAsset = (release.assets || []).find(a => a.name === asset.fileName);
+      if (existingAsset) {
+        console.log(`Asset ${asset.fileName} already exists (ID: ${existingAsset.id}), deleting old one first...`);
+        await request({
+          hostname: 'api.github.com',
+          path: `/repos/${REPO_OWNER}/${REPO_NAME}/releases/assets/${existingAsset.id}`,
+          method: 'DELETE',
+          headers: {
+            'User-Agent': 'OneGitVault-Release-Bot',
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json'
+          }
+        });
+      }
+
+      await uploadAsset(release.upload_url, asset.filePath, asset.fileName);
     }
 
-    // Check if asset already exists on release
-    const existingAsset = (release.assets || []).find(a => a.name === installerName);
-    if (existingAsset) {
-      console.log(`Asset ${installerName} already exists (ID: ${existingAsset.id}), deleting old one first...`);
-      await request({
-        hostname: 'api.github.com',
-        path: `/repos/${REPO_OWNER}/${REPO_NAME}/releases/assets/${existingAsset.id}`,
-        method: 'DELETE',
-        headers: {
-          'User-Agent': 'OneGitVault-Release-Bot',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github+json'
-        }
-      });
-    }
-
-    await uploadAsset(release.upload_url, installerPath, installerName);
     console.log(`\n🎉 RELEASE COMPLETE!`);
     console.log(`URL: ${release.html_url}`);
   } catch (err) {

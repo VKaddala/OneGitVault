@@ -5,7 +5,7 @@
 ; ============================================================
 
 #ifndef AppVersion
-  #define AppVersion "2.1.1"
+  #define AppVersion "2.2.0"
 #endif
 
 #define AppName      "OneGitVault"

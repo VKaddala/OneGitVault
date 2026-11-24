@@ -8,10 +8,13 @@ import {
   Bookmark, 
   Globe, 
   Scale,
-  Calendar
+  Calendar,
+  Languages,
+  Loader2
 } from 'lucide-react';
 import { Repository, ViewMode } from '../types';
 import { LANGUAGE_COLORS } from '../data/curatedProjects';
+import { translateTextToEnglish, needsTranslation } from '../services/translateService';
 
 interface ProjectCardProps {
   repo: Repository;
@@ -39,6 +42,32 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   onToggleStar,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [isDescTranslated, setIsDescTranslated] = useState(false);
+  const [translatedDesc, setTranslatedDesc] = useState('');
+  const [isTranslatingDesc, setIsTranslatingDesc] = useState(false);
+
+  const handleTranslateDesc = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isDescTranslated) {
+      setIsDescTranslated(false);
+      return;
+    }
+    if (translatedDesc) {
+      setIsDescTranslated(true);
+      return;
+    }
+    if (!repo.description) return;
+    setIsTranslatingDesc(true);
+    try {
+      const res = await translateTextToEnglish(repo.description);
+      setTranslatedDesc(res);
+      setIsDescTranslated(true);
+    } catch (err) {
+      console.warn('Failed to translate card description', err);
+    } finally {
+      setIsTranslatingDesc(false);
+    }
+  };
   const effectiveStarCount = starCount !== undefined ? starCount : repo.stargazers_count;
 
   const formatNumber = (num: number) => {
@@ -104,9 +133,22 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               )}
             </div>
 
-            <p className="text-xs sm:text-sm text-txt-secondary line-clamp-1 mt-1 font-sans">
-              {repo.description || 'No description provided.'}
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-xs sm:text-sm text-txt-secondary line-clamp-1 font-sans flex-1">
+                {isDescTranslated ? translatedDesc : (repo.description || 'No description provided.')}
+              </p>
+              {needsTranslation(repo.description) && (
+                <button
+                  onClick={handleTranslateDesc}
+                  disabled={isTranslatingDesc}
+                  className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-surface-active hover:bg-surface border border-themeline hover:border-action text-txt-muted hover:text-action transition-all"
+                  title="Translate description to English"
+                >
+                  {isTranslatingDesc ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Languages className="w-2.5 h-2.5" />}
+                  <span>{isDescTranslated ? 'Orig' : 'EN'}</span>
+                </button>
+              )}
+            </div>
 
             <div className="flex items-center gap-1.5 flex-wrap mt-2">
               {repo.topics.slice(0, 4).map((topic) => (
@@ -250,9 +292,24 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         </div>
 
         {/* Description */}
-        <p className="text-xs sm:text-[13px] text-txt-secondary line-clamp-3 mb-3 leading-relaxed min-h-[3rem] font-sans">
-          {repo.description || 'No description provided for this repository.'}
-        </p>
+        <div className="relative mb-3 min-h-[3rem]">
+          <p className="text-xs sm:text-[13px] text-txt-secondary line-clamp-3 leading-relaxed font-sans">
+            {isDescTranslated ? translatedDesc : (repo.description || 'No description provided for this repository.')}
+          </p>
+          {needsTranslation(repo.description) && (
+            <div className="mt-1 flex justify-end">
+              <button
+                onClick={handleTranslateDesc}
+                disabled={isTranslatingDesc}
+                className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-surface-active hover:bg-surface border border-themeline hover:border-action text-txt-muted hover:text-action transition-all shadow-sm"
+                title="Translate description to English"
+              >
+                {isTranslatingDesc ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Languages className="w-2.5 h-2.5" />}
+                <span>{isDescTranslated ? 'Show Original' : 'Translate to English'}</span>
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Topic Chips */}
         <div className="flex items-center gap-1.5 flex-wrap mb-3">

@@ -41,7 +41,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { Repository, ReleaseAsset } from '../types';
-import { fetchReadme, fetchReleases } from '../services/githubApi';
+import { fetchReadme, fetchReleases, fetchRepoCompleteDetails } from '../services/githubApi';
 import { shareProject } from '../services/shareHelper';
 import { translateMarkdownToEnglish } from '../services/translateService';
 import { downloadApkFile } from '../services/downloadHelper';
@@ -114,22 +114,52 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
         setLoadingReadme(false);
       });
 
-      fetchReleases(repo.full_name)
-        .then((assets) => {
+      // 1. Grouped GraphQL Query: Try to fetch complete details & releases in 1 single network request!
+      fetchRepoCompleteDetails(repo.full_name)
+        .then((complete) => {
           if (!isMounted) return;
-          if (assets && assets.length > 0) {
-            setReleases(assets);
-          } else if (repo.latest_release?.assets && repo.latest_release.assets.length > 0) {
-            setReleases(repo.latest_release.assets);
+          if (complete && complete.releases && complete.releases.length > 0) {
+            setReleases(complete.releases);
+            setLoadingReleases(false);
+          } else {
+            // Fall back to multi-tier cached REST release loader
+            fetchReleases(repo.full_name)
+              .then((assets) => {
+                if (!isMounted) return;
+                if (assets && assets.length > 0) {
+                  setReleases(assets);
+                } else if (repo.latest_release?.assets && repo.latest_release.assets.length > 0) {
+                  setReleases(repo.latest_release.assets);
+                }
+                setLoadingReleases(false);
+              })
+              .catch(() => {
+                if (!isMounted) return;
+                if (repo.latest_release?.assets && repo.latest_release.assets.length > 0) {
+                  setReleases(repo.latest_release.assets);
+                }
+                setLoadingReleases(false);
+              });
           }
-          setLoadingReleases(false);
         })
         .catch(() => {
-          if (!isMounted) return;
-          if (repo.latest_release?.assets && repo.latest_release.assets.length > 0) {
-            setReleases(repo.latest_release.assets);
-          }
-          setLoadingReleases(false);
+          fetchReleases(repo.full_name)
+            .then((assets) => {
+              if (!isMounted) return;
+              if (assets && assets.length > 0) {
+                setReleases(assets);
+              } else if (repo.latest_release?.assets && repo.latest_release.assets.length > 0) {
+                setReleases(repo.latest_release.assets);
+              }
+              setLoadingReleases(false);
+            })
+            .catch(() => {
+              if (!isMounted) return;
+              if (repo.latest_release?.assets && repo.latest_release.assets.length > 0) {
+                setReleases(repo.latest_release.assets);
+              }
+              setLoadingReleases(false);
+            });
         });
     }
 

@@ -111,7 +111,23 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
     const authHeader: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
     try {
-      // 1. Try requesting raw markdown directly (GitHub returns clean UTF-8 text)
+      // 0. Try public raw GitHub Fastly CDN first (FAST and NO API RATE LIMIT!)
+      const branches = ['HEAD', 'main', 'master'];
+      for (const branch of branches) {
+        try {
+          const rawCdnRes = await fetch(`https://raw.githubusercontent.com/${r.full_name}/${branch}/README.md`);
+          if (rawCdnRes.ok) {
+            const cdnText = await rawCdnRes.text();
+            if (cdnText && cdnText.length > 20) {
+              setReadmeContent(cdnText);
+              setReadmeState('success');
+              return;
+            }
+          }
+        } catch {}
+      }
+
+      // 1. Fallback to requesting raw markdown directly via API
       const resRaw = await fetch(
         `https://api.github.com/repos/${r.full_name}/readme`,
         {

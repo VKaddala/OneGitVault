@@ -94,18 +94,18 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
     }
   }, [open]);
 
-  // Debounce search query
+  // Debounce search query with 500ms throttle to prevent query exhaustion while typing
   useEffect(() => {
     if (!open) return;
     const timer = setTimeout(() => {
       setDebouncedQuery(query.trim());
-    }, 350);
+    }, 500);
     return () => clearTimeout(timer);
   }, [query, open]);
 
-  // Execute global search across GitHub
+  // Execute global search across GitHub (requires at least 2 characters)
   useEffect(() => {
-    if (!open || !debouncedQuery) {
+    if (!open || !debouncedQuery || debouncedQuery.length < 2) {
       setResults([]);
       setTotalCount(0);
       setLoading(false);

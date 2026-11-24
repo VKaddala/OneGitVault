@@ -325,16 +325,41 @@ export async function pullBookmarksFromGist(
   }
 }
 
+const starredCache = new Map<string, { data: Repository[]; timestamp: number }>();
+const STARRED_CACHE_KEY = 'ogv_cached_starred_repos';
+const STARRED_CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours persistent cache
+
 /**
- * Fetch all repositories starred by the authenticated user.
+ * Fetch all repositories starred by the authenticated user with multi-tier caching.
  */
 export async function fetchUserStarredRepositories(
   token: string,
   page: number = 1,
-  perPage: number = 100
+  perPage: number = 100,
+  forceRefresh: boolean = false
 ): Promise<Repository[]> {
   const clean = sanitizeToken(token);
   if (!clean) return [];
+
+  const cacheKey = `${STARRED_CACHE_KEY}_${page}_${perPage}`;
+
+  if (!forceRefresh) {
+    const mem = starredCache.get(cacheKey);
+    if (mem && Date.now() - mem.timestamp < STARRED_CACHE_TTL) {
+      return mem.data;
+    }
+    try {
+      const local = localStorage.getItem(cacheKey);
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (Date.now() - (parsed.timestamp || 0) < STARRED_CACHE_TTL && Array.isArray(parsed.data)) {
+          starredCache.set(cacheKey, parsed);
+          return parsed.data;
+        }
+      }
+    } catch {}
+  }
+
   try {
     const res = await fetchGistWithFallback(
       `https://api.github.com/user/starred?per_page=${perPage}&page=${page}&sort=created&direction=desc`,
@@ -345,12 +370,19 @@ export async function fetchUserStarredRepositories(
     );
     if (!res.ok) {
       console.warn(`Failed to fetch user starred repositories: HTTP ${res.status}`);
+      try {
+        const local = localStorage.getItem(cacheKey);
+        if (local) {
+          const parsed = JSON.parse(local);
+          if (Array.isArray(parsed.data)) return parsed.data;
+        }
+      } catch {}
       return [];
     }
     const data = await res.json();
     if (!Array.isArray(data)) return [];
 
-    return data.map((item: any) => ({
+    const mapped: Repository[] = data.map((item: any) => ({
       ...item,
       has_apks:
         item.topics &&
@@ -358,6 +390,14 @@ export async function fetchUserStarredRepositories(
           item.topics.includes('android-app') ||
           item.topics.includes('android')),
     }));
+
+    const cachePayload = { data: mapped, timestamp: Date.now() };
+    starredCache.set(cacheKey, cachePayload);
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify(cachePayload));
+    } catch {}
+
+    return mapped;
   } catch (e) {
     console.warn('Failed to fetch user starred repos:', e);
     return [];

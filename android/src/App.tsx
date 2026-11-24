@@ -114,7 +114,7 @@ export const App: React.FC = () => {
     const token = getStoredToken();
     if (!token) return;
     try {
-      const starred = await fetchUserStarredRepositories(token, 1, 100);
+      const starred = await fetchUserStarredRepositories(token, 1, 100, true);
       if (starred && Array.isArray(starred)) {
         setStarredReposList(starred);
         setStarredRepos(new Set(starred.map((r) => r.full_name)));
@@ -306,16 +306,16 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // Debounce search input
+  // Debounce search input with 500ms throttle
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-    }, 400);
+    }, 500);
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
   // Load APK repositories data
-  const loadApkData = useCallback(async () => {
+  const loadApkData = useCallback(async (forceRefresh: boolean = false) => {
     setApkLoading(true);
     setApkPage(1);
     setApkLoadMoreError(null);
@@ -328,7 +328,8 @@ export const App: React.FC = () => {
         minStars,
         1,
         30,
-        true
+        true,
+        forceRefresh
       );
       setApkRepos(data.repositories);
       setApkTotalCount(data.totalCount);
@@ -345,7 +346,7 @@ export const App: React.FC = () => {
   }, [selectedApkCategory, debouncedSearchQuery, sortOption, minStars]);
 
   // Load Explore repositories data
-  const loadExploreData = useCallback(async () => {
+  const loadExploreData = useCallback(async (forceRefresh: boolean = false) => {
     setExploreLoading(true);
     setExplorePage(1);
     setExploreLoadMoreError(null);
@@ -359,7 +360,8 @@ export const App: React.FC = () => {
         minStars,
         1,
         30,
-        false
+        false,
+        forceRefresh
       );
       setExploreRepos(data.repositories);
       setExploreTotalCount(data.totalCount);
@@ -617,16 +619,16 @@ export const App: React.FC = () => {
     try {
       if (currentTab === 'trending') {
         setTrendingRefreshKey((k) => k + 1);
-        await checkLiveRateLimit();
+        await checkLiveRateLimit(true);
       } else if (currentTab === 'vault') {
         setVaultVersion((v) => v + 1);
-        await checkLiveRateLimit();
+        await checkLiveRateLimit(true);
       } else if (currentTab === 'apks') {
-        await loadApkData();
-        await checkLiveRateLimit();
+        await loadApkData(true);
+        await checkLiveRateLimit(true);
       } else {
-        await loadExploreData();
-        await checkLiveRateLimit();
+        await loadExploreData(true);
+        await checkLiveRateLimit(true);
       }
       setSnackbarMessage('Refreshed feed & quotas');
       setSnackbarOpen(true);

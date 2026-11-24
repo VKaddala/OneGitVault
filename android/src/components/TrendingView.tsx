@@ -52,12 +52,12 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
   const [repos, setRepos] = useState<Repository[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const loadTrending = useCallback(async () => {
+  const loadTrending = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
     try {
       const langParam = selectedLanguage === 'All' ? undefined : selectedLanguage;
-      const data = await fetchTrendingRepositories(timeRange, scope, langParam);
+      const data = await fetchTrendingRepositories(timeRange, scope, langParam, forceRefresh);
       setRepos(data);
     } catch (err: any) {
       console.warn('Failed to load trending:', err);
@@ -68,7 +68,7 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
   }, [timeRange, scope, selectedLanguage]);
 
   useEffect(() => {
-    loadTrending();
+    loadTrending(refreshTrigger > 0);
   }, [loadTrending, refreshTrigger]);
 
   const getTimeRangeLabel = () => {
@@ -104,7 +104,7 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
         {/* Refresh Icon Button */}
         <IconButton
           size="small"
-          onClick={loadTrending}
+          onClick={() => loadTrending(true)}
           disabled={loading}
           sx={{
             bgcolor: alpha(theme.palette.primary.main, 0.08),
@@ -300,7 +300,7 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
           <Typography variant="body2" sx={{ color: 'error.main', mb: 2, fontWeight: 600 }}>
             {error}
           </Typography>
-          <Button variant="outlined" size="small" onClick={loadTrending} sx={{ borderRadius: '12px' }}>
+          <Button variant="outlined" size="small" onClick={() => loadTrending(true)} sx={{ borderRadius: '12px' }}>
             Retry
           </Button>
         </Box>

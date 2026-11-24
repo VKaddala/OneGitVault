@@ -522,10 +522,19 @@ function getFallbackResults(
   };
 }
 
+const desktopTrendingCache = new Map<string, { data: Repository[]; timestamp: number }>();
+const desktopReleasesCache = new Map<string, { data: Release[]; timestamp: number }>();
+
 /**
  * Fetches recent GitHub releases and their downloadable binary assets
  */
 export async function fetchRepositoryReleases(fullName: string): Promise<Release[]> {
+  const normKey = fullName.toLowerCase().trim();
+  const cached = desktopReleasesCache.get(normKey);
+  if (cached && Date.now() - cached.timestamp < 60 * 60 * 1000) {
+    return cached.data;
+  }
+
   const token = getStoredToken();
   const headers: HeadersInit = {
     Accept: 'application/vnd.github.v3+json',
@@ -541,16 +550,18 @@ export async function fetchRepositoryReleases(fullName: string): Promise<Release
     });
     updateRateLimitFromHeaders(res.headers);
     if (!res.ok) {
-      return [];
+      return cached ? cached.data : [];
     }
     const data = await res.json();
     if (Array.isArray(data)) {
-      return data as Release[];
+      const releases = data as Release[];
+      desktopReleasesCache.set(normKey, { data: releases, timestamp: Date.now() });
+      return releases;
     }
     return [];
   } catch (e) {
     console.error(`Failed to fetch releases for ${fullName}`, e);
-    return [];
+    return cached ? cached.data : [];
   }
 }
 
@@ -561,6 +572,12 @@ export async function fetchTrendingRepositories(
   period: 'daily' | 'weekly' | 'monthly' = 'daily',
   language?: string
 ): Promise<Repository[]> {
+  const cacheKey = `desktop_trending_${period}_${language || 'all'}`;
+  const cached = desktopTrendingCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < 2 * 60 * 60 * 1000) {
+    return cached.data;
+  }
+
   const now = new Date();
   let daysAgo = 3;
   if (period === 'weekly') daysAgo = 7;
@@ -590,7 +607,7 @@ export async function fetchTrendingRepositories(
     if (res.ok) {
       const data = await res.json();
       const items = data.items || [];
-      return items.map((item: any) => ({
+      const mapped = items.map((item: any) => ({
         id: item.id,
         name: item.name,
         full_name: item.full_name,
@@ -618,6 +635,8 @@ export async function fetchTrendingRepositories(
             }
           : null,
       }));
+      desktopTrendingCache.set(cacheKey, { data: mapped, timestamp: Date.now() });
+      return mapped;
     }
   } catch (e) {
     console.error('Failed to fetch trending repos from GitHub', e);

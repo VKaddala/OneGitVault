@@ -239,13 +239,9 @@ OneGitVault functions out-of-the-box with unauthenticated public GitHub API acce
 
 ### 2. Android View
 
-<img width="590" height="1280" alt="image" src="https://github.com/user-attachments/assets/7db9544c-19f6-4fa8-9e5e-55090e2741e4" />
+<img width="1216" height="2640" alt="Screenshot_20261124_204619" src="https://github.com/user-attachments/assets/4519d42d-8e0b-46ad-b1f3-9925b5733a4f" />
 
----
-
-### 3. Android Recording
-
-https://github.com/user-attachments/assets/41dc4e4b-c50f-4db8-9ff4-8b78d9858333
+<img width="1216" height="2640" alt="Screenshot_20261124_204625" src="https://github.com/user-attachments/assets/03512e88-bb3f-492e-8851-af82b76b445e" />
 
 ---
 

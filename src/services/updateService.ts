@@ -1,6 +1,6 @@
 import { getStoredToken } from './githubApi';
 
-export const CURRENT_APP_VERSION = '2.2.0';
+export const CURRENT_APP_VERSION = '2.3.0';
 const REPO_OWNER = 'VKaddala';
 const REPO_NAME = 'OneGitVault';
 

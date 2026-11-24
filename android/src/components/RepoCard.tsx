@@ -72,6 +72,221 @@ export const RepoCard = React.memo<RepoCardProps>(({
     }
   };
 
+  // ── High-Density List View Layout ──
+  if (isCompact) {
+    return (
+      <Card
+        onClick={() => {
+          if (isSelectMode && onToggleSelect) {
+            onToggleSelect(repo.id);
+          } else {
+            onOpenDetail(repo);
+          }
+        }}
+        sx={{
+          cursor: 'pointer',
+          position: 'relative',
+          overflow: 'hidden',
+          bgcolor: isSelected
+            ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.09)
+            : (theme.palette.mode === 'dark' ? 'rgba(21, 28, 44, 0.94)' : 'rgba(255, 255, 255, 0.97)'),
+          borderRadius: '16px',
+          border: isSelected
+            ? `2px solid ${theme.palette.primary.main}`
+            : (theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.09)' : '1px solid rgba(0, 0, 0, 0.06)'),
+          boxShadow: isSelected
+            ? `0 0 16px ${alpha(theme.palette.primary.main, 0.45)}`
+            : (theme.palette.mode === 'dark' ? '0 2px 10px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(0, 0, 0, 0.03)'),
+          transition: 'all 0.15s ease',
+          '&:active': {
+            transform: 'scale(0.985)',
+            filter: theme.palette.mode === 'dark' ? 'brightness(1.08)' : 'brightness(0.97)'
+          }
+        }}
+      >
+        {isSelectMode && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              zIndex: 10,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: 'background.paper',
+              borderRadius: '50%',
+              p: 0.2,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.25)'
+            }}
+          >
+            {isSelected ? (
+              <CheckCircleIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+            ) : (
+              <RadioButtonUncheckedIcon sx={{ color: 'text.disabled', fontSize: 20 }} />
+            )}
+          </Box>
+        )}
+
+        <Box sx={{ display: 'flex', alignItems: 'center', p: 1.25, gap: 1.25 }}>
+          {/* Avatar */}
+          <Avatar
+            src={repo.owner.avatar_url}
+            alt={repo.owner.login}
+            sx={{
+              width: 38,
+              height: 38,
+              borderRadius: '10px',
+              bgcolor: 'background.default',
+              flexShrink: 0,
+              border: `1px solid ${theme.palette.divider}`
+            }}
+          />
+
+          {/* Central Info Column */}
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            {/* Row 1: Repo Title & Owner */}
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75, minWidth: 0 }}>
+              <Typography
+                noWrap
+                sx={{
+                  color: 'text.primary',
+                  fontSize: '0.88rem',
+                  fontWeight: 800,
+                  lineHeight: 1.2,
+                  letterSpacing: '-0.01em'
+                }}
+              >
+                {repo.name}
+              </Typography>
+              <Typography
+                noWrap
+                sx={{
+                  color: 'text.secondary',
+                  fontSize: '0.68rem',
+                  fontWeight: 600,
+                  flexShrink: 0
+                }}
+              >
+                by {repo.owner.login}
+              </Typography>
+            </Box>
+
+            {/* Row 2: Description preview (1-line truncated) */}
+            <Typography
+              noWrap
+              sx={{
+                color: 'text.secondary',
+                fontSize: '0.73rem',
+                lineHeight: 1.35,
+                my: '1px'
+              }}
+            >
+              {repo.description || 'No description provided.'}
+            </Typography>
+
+            {/* Row 3: Meta pills (Stars, Forks, Language) */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, color: 'text.secondary', fontSize: '0.68rem' }}>
+              <Box
+                onClick={handleStarClick}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.35,
+                  cursor: 'pointer',
+                  fontWeight: 800,
+                  color: isStarred ? '#e3b341' : 'inherit'
+                }}
+              >
+                <StarIcon sx={{ fontSize: 13, color: '#e3b341' }} />
+                <span>{formatCount(repo.stargazers_count + (isStarred ? 1 : 0))}</span>
+              </Box>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, fontWeight: 600 }}>
+                <CallSplitIcon sx={{ fontSize: 12 }} />
+                <span>{formatCount(repo.forks_count)}</span>
+              </Box>
+
+              {repo.language && (
+                <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'secondary.main' }}>
+                  • {repo.language}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+
+          {/* Right Action Stack: APK Button & Bookmark Button */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+            {primaryApkAsset ? (
+              <Button
+                size="small"
+                variant="contained"
+                color="primary"
+                startIcon={<DownloadIcon sx={{ fontSize: 11 }} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  downloadApkFile(primaryApkAsset.browser_download_url, primaryApkAsset.name);
+                }}
+                sx={{
+                  height: 24,
+                  fontSize: '0.64rem',
+                  fontWeight: 800,
+                  borderRadius: '8px',
+                  px: 0.9,
+                  textTransform: 'none',
+                  lineHeight: 1
+                }}
+              >
+                APK
+              </Button>
+            ) : hasApk ? (
+              <Chip
+                icon={<AndroidIcon sx={{ fontSize: 11 }} />}
+                label="APK"
+                size="small"
+                sx={{
+                  height: 22,
+                  fontSize: '0.62rem',
+                  fontWeight: 800,
+                  bgcolor: alpha(theme.palette.primary.main, 0.15),
+                  color: theme.palette.primary.main,
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`
+                }}
+              />
+            ) : null}
+
+            <Tooltip title={isBookmarked ? "Remove from Vault" : "Save to Vault"}>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleBookmark(repo);
+                  try { navigator.vibrate?.(10); } catch {}
+                }}
+                sx={{
+                  color: isBookmarked ? theme.palette.primary.main : 'text.secondary',
+                  bgcolor: isBookmarked
+                    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.22 : 0.12)
+                    : alpha(theme.palette.text.primary, 0.04),
+                  borderRadius: '50%',
+                  p: 0.55,
+                  '&:active': { transform: 'scale(0.88)' }
+                }}
+              >
+                {isBookmarked ? (
+                  <BookmarkIcon sx={{ fontSize: 18 }} />
+                ) : (
+                  <BookmarkBorderIcon sx={{ fontSize: 18 }} />
+                )}
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Box>
+      </Card>
+    );
+  }
+
+  // ── Full-Size Detailed Card View Layout ──
   return (
     <Card
       onClick={() => {

@@ -11,8 +11,8 @@
 <p align="center">
   <a href="https://github.com/VKaddala/OneGitVault"><img src="https://img.shields.io/badge/platform-Windows-blue?logo=windows&logoColor=white" alt="Windows" /></a>
   <a href="SETUP_ANDROID.md"><img src="https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white" alt="Android" /></a>
-  <a href="https://github.com/VKaddala/OneGitVault/releases/latest"><img src="https://img.shields.io/badge/desktop-v2.2.0-blue?logo=github" alt="Desktop v2.2.0" /></a>
-  <a href="https://github.com/VKaddala/OneGitVault/releases/latest"><img src="https://img.shields.io/badge/android-v1.1.0-3DDC84?logo=android" alt="Android v1.1.0" /></a>
+  <a href="https://github.com/VKaddala/OneGitVault/releases/latest"><img src="https://img.shields.io/badge/desktop-v2.3.0-blue?logo=github" alt="Desktop v2.3.0" /></a>
+  <a href="https://github.com/VKaddala/OneGitVault/releases/latest"><img src="https://img.shields.io/badge/android-v1.2.0-3DDC84?logo=android" alt="Android v1.2.0" /></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-blue?logo=react&logoColor=white" alt="React" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white" alt="TypeScript" /></a>
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-teal?logo=electron&logoColor=white" alt="Electron" /></a>
@@ -27,8 +27,8 @@
 
 | Platform | Latest Release | Binary | Direct Download |
 | :--- | :--- | :--- | :--- |
-| **Windows Desktop** | **v2.2.0** | `OneGitVault-Setup-2.2.0.exe` (~98 MB) | [Download Setup (.exe)](https://github.com/VKaddala/OneGitVault/releases/download/v2.2.0/OneGitVault-Setup-2.2.0.exe) |
-| **Android** | **v1.1.0** | `OneGitVault-Android-1.1.0.apk` (~3.3 MB) | [Download APK (.apk)](https://github.com/VKaddala/OneGitVault/releases/download/v2.2.0/OneGitVault-Android-1.1.0.apk) |
+| **Windows Desktop** | **v2.3.0** | `OneGitVault-Setup-2.3.0.exe` (~98 MB) | [Download Setup (.exe)](https://github.com/VKaddala/OneGitVault/releases/download/v2.3.0/OneGitVault-Setup-2.3.0.exe) |
+| **Android** | **v1.2.0** | `OneGitVault-Android-1.2.0.apk` (~3.5 MB) | [Download APK (.apk)](https://github.com/VKaddala/OneGitVault/releases/download/v2.3.0/OneGitVault-Android-1.2.0.apk) |
 
 ---
 
@@ -155,7 +155,7 @@ OneGitVault/
 
 ### Option 2: Android Native APK Installation (Recommended for Android)
 
-1. Download the latest **`OneGitVault-Android-1.0.0.apk`** from [GitHub Releases](https://github.com/VKaddala/OneGitVault/releases/latest).
+1. Download the latest **`OneGitVault-Android-1.2.0.apk`** from [GitHub Releases](https://github.com/VKaddala/OneGitVault/releases/latest).
 2. Open the `.apk` file on your Android device (Android 8.0+) and confirm installation.
 3. For building from source with Node.js, JDK 17, and Gradle, see the comprehensive [Android Setup Guide](SETUP_ANDROID.md).
 

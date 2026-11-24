@@ -46,6 +46,7 @@ import { TokenDialog } from './components/TokenDialog';
 import { SearchFlyout } from './components/SearchFlyout';
 import { BottomNav } from './components/BottomNav';
 import { UpdateDialog } from './components/UpdateDialog';
+import { SettingsPage } from './components/SettingsPage';
 import { checkForAndroidUpdates, AndroidUpdateInfo } from './services/updateService';
 import { OneGitVaultLogo } from './components/OneGitVaultLogo';
 
@@ -197,6 +198,7 @@ export const App: React.FC = () => {
   const [activeRepo, setActiveRepo] = useState<Repository | null>(null);
   const [detailOpen, setDetailOpen] = useState<boolean>(false);
   const [tokenDialogOpen, setTokenDialogOpen] = useState<boolean>(false);
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
 
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
@@ -208,18 +210,22 @@ export const App: React.FC = () => {
   // Universal Android Back Gesture & Hardware Back Button Handling (Edge Swipe)
   useEffect(() => {
     (window as any).__handleAndroidBack = () => {
-      if (detailOpen) {
-        setDetailOpen(false);
-        return true;
-      }
       if (tokenDialogOpen) {
         setTokenDialogOpen(false);
+        return true;
+      }
+      if (detailOpen) {
+        setDetailOpen(false);
         return true;
       }
       if (isSearchActive) {
         setIsSearchActive(false);
         setSearchQuery('');
         setDebouncedSearchQuery('');
+        return true;
+      }
+      if (settingsOpen) {
+        setSettingsOpen(false);
         return true;
       }
       if (currentTab !== 'apks') {
@@ -248,7 +254,7 @@ export const App: React.FC = () => {
         backListener.remove();
       }
     };
-  }, [detailOpen, tokenDialogOpen, isSearchActive, currentTab]);
+  }, [settingsOpen, detailOpen, tokenDialogOpen, isSearchActive, currentTab]);
 
   // Visual Viewport & Keyboard Detection (Lightweight: only listen to resize, not scroll)
   useEffect(() => {
@@ -661,6 +667,7 @@ export const App: React.FC = () => {
         <TopAppBar
           onRefresh={handleTitleBarRefresh}
           isRefreshing={isRefreshing || apkLoading || exploreLoading}
+          onOpenSettings={() => setSettingsOpen(true)}
           onOpenTokenDialog={() => setTokenDialogOpen(true)}
           currentThemeId={themeId}
           availableThemes={themeRegistry.getAll()}
@@ -1064,6 +1071,23 @@ export const App: React.FC = () => {
           onShareMessage={handleShareMessage}
         />
 
+        {/* Full-Page Native Android Settings Screen */}
+        <SettingsPage
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          coreRemaining={rateLimit.remaining}
+          isAuthenticated={!!getStoredToken()}
+          onOpenTokenDialog={() => setTokenDialogOpen(true)}
+          isCompactView={isCompactView}
+          onToggleCompactView={handleToggleCompactView}
+          onRefresh={handleTitleBarRefresh}
+          currentThemeId={themeId}
+          availableThemes={themeRegistry.getAll()}
+          onSelectTheme={handleSelectTheme}
+          updateInfo={updateInfo}
+          onOpenUpdateDialog={() => setUpdateDialogOpen(true)}
+        />
+
         {/* WhatsApp / Instagram Style Translucent Search Flyout */}
         <SearchFlyout
           open={isSearchActive}
@@ -1152,7 +1176,7 @@ export const App: React.FC = () => {
           autoHideDuration={2500}
           onClose={() => setSnackbarOpen(false)}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-          sx={{ bottom: { xs: 72, sm: 72 }, zIndex: 1300 }}
+          sx={{ bottom: { xs: 72, sm: 72 }, zIndex: 1900 }}
         >
           <Alert
             severity="success"

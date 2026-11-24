@@ -6,8 +6,8 @@ import { TokenModal } from './components/TokenModal';
 import { TrendingView } from './components/TrendingView';
 import { VaultView } from './components/VaultView';
 import { RepoDetailView } from './components/RepoDetailView';
+import { SettingsView } from './components/SettingsView';
 import { UpdateModal } from './components/UpdateModal';
-import { OneGitVaultLogo } from './components/OneGitVaultLogo';
 import { CATEGORIES } from './data/curatedProjects';
 import { Repository, ViewMode } from './types';
 import { rateLimitManager, RateLimitInfo } from './services/rateLimit';
@@ -15,18 +15,22 @@ import { useRepositories } from './hooks/useRepositories';
 import { useBookmarks } from './hooks/useBookmarks';
 import { useGitHubStars } from './hooks/useGitHubStars';
 import { checkForAppUpdates, UpdateInfo } from './services/updateService';
+import { useTheme } from './context/ThemeContext';
 import { 
   Loader2, 
   RefreshCw, 
   FolderSearch, 
   ArrowUp,
   Zap,
-  Globe,
+  Key,
   Clock,
-  Sparkles
+  Sparkles,
+  Palette,
+  Bookmark
 } from 'lucide-react';
 
 export const App: React.FC = () => {
+  const { currentTheme } = useTheme();
   // Navigation View State
   const [activeView, setActiveView] = useState<ActiveView>('explore');
   const [previousView, setPreviousView] = useState<ActiveView>('explore');
@@ -132,77 +136,14 @@ export const App: React.FC = () => {
   const handleRepoStarToggle = useCallback(async (repo: Repository) => {
     const res = await handleToggleStar(repo);
     if (res.needToken) {
-      setIsTokenModalOpen(true);
+      handleViewChange('settings');
     }
-  }, [handleToggleStar]);
+  }, [handleToggleStar, handleViewChange]);
 
   // Rate limit subscription
   const [rateLimit, setRateLimit] = useState<RateLimitInfo>(rateLimitManager.get());
   useEffect(() => {
     return rateLimitManager.subscribe(setRateLimit);
-  }, []);
-
-  // Live Digital Clock & Country / Location in Footer
-  const [currentTime, setCurrentTime] = useState<string>('');
-  const [countryName, setCountryName] = useState<string>('');
-
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setCurrentTime(
-        now.toLocaleTimeString(undefined, {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: true,
-        })
-      );
-    };
-    updateTime();
-    const timer = setInterval(updateTime, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-      const intlLocale = Intl.DateTimeFormat().resolvedOptions().locale || '';
-      let country = '';
-
-      if (tz.includes('Kolkata') || tz.includes('Calcutta') || intlLocale.endsWith('-IN')) {
-        country = 'India';
-      } else if (tz.startsWith('America/')) {
-        if (tz.includes('Toronto') || tz.includes('Vancouver') || tz.includes('Montreal')) country = 'Canada';
-        else if (tz.includes('Sao_Paulo')) country = 'Brazil';
-        else if (tz.includes('Mexico_City')) country = 'Mexico';
-        else country = 'United States';
-      } else if (tz.startsWith('Europe/')) {
-        if (tz.includes('London')) country = 'United Kingdom';
-        else if (tz.includes('Paris')) country = 'France';
-        else if (tz.includes('Berlin')) country = 'Germany';
-        else country = 'Europe';
-      } else if (tz.startsWith('Asia/')) {
-        if (tz.includes('Tokyo')) country = 'Japan';
-        else if (tz.includes('Singapore')) country = 'Singapore';
-        else if (tz.includes('Dubai')) country = 'UAE';
-        else if (tz.includes('Seoul')) country = 'South Korea';
-        else country = tz.split('/')[1]?.replace(/_/g, ' ') || 'Asia';
-      } else if (tz.startsWith('Australia/')) {
-        country = 'Australia';
-      } else if (tz.includes('/')) {
-        country = tz.split('/')[1]?.replace(/_/g, ' ') || tz;
-      } else {
-        country = tz || 'Local';
-      }
-
-      const tzShort = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' })
-        .formatToParts(new Date())
-        .find((p) => p.type === 'timeZoneName')?.value || '';
-
-      setCountryName(country ? `${country} (${tzShort})` : tzShort);
-    } catch {
-      setCountryName('Local');
-    }
   }, []);
 
   const observerTarget = useRef<HTMLDivElement | null>(null);
@@ -277,7 +218,7 @@ export const App: React.FC = () => {
   return (
     <div className="h-full w-full overflow-hidden bg-canvas text-txt-primary flex flex-col font-sans transition-colors duration-200">
 
-      {/* Themed Unified TitleBar (Window Controls, Search Flyout, and Header Utilities) */}
+      {/* Themed Unified TitleBar (Window Controls & Search Flyout) */}
       <TitleBar
         searchQuery={searchQuery}
         onSearchChange={(q) => {
@@ -286,12 +227,6 @@ export const App: React.FC = () => {
             setActiveView('explore');
           }
         }}
-        bookmarksCount={bookmarksCount}
-        onOpenBookmarks={() => handleViewChange('vault')}
-        onOpenTokenModal={() => setIsTokenModalOpen(true)}
-        onOpenTrending={() => handleViewChange('trending')}
-        rateLimit={rateLimit}
-        isOfflineFallback={isOfflineFallback}
         updateInfo={updateInfo}
         onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
         onCheckUpdates={handleManualCheckUpdates}
@@ -339,7 +274,7 @@ export const App: React.FC = () => {
             onScroll={handleScroll}
             className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col"
           >
-            {/* VIEW 1: REPO DETAIL VIEW (Rendered inline with back option) */}
+            {/* VIEW 1: REPO DETAIL VIEW (Rendered inline with back option & collapsible info) */}
             {activeView === 'detail' && selectedRepo && (
               <RepoDetailView
                 repo={selectedRepo}
@@ -383,69 +318,26 @@ export const App: React.FC = () => {
                 onSelectRepo={handleOpenRepoDetail}
                 isStarred={isStarred}
                 onToggleStar={handleRepoStarToggle}
-                onOpenTokenModal={() => setIsTokenModalOpen(true)}
+                onOpenTokenModal={() => handleViewChange('settings')}
               />
             )}
 
-            {/* VIEW 4: EXPLORE REPOSITORIES (Default Main Browser) */}
+            {/* VIEW 4: SETTINGS VIEW (Dedicated page for Themes & API Token) */}
+            {activeView === 'settings' && (
+              <SettingsView
+                rateLimit={rateLimit}
+                onTokenUpdated={refresh}
+                onCheckUpdates={handleManualCheckUpdates}
+                isCheckingUpdates={isCheckingUpdates}
+                updateInfo={updateInfo}
+                onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
+              />
+            )}
+
+            {/* VIEW 5: EXPLORE REPOSITORIES (Default Main Browser) */}
             {activeView === 'explore' && (
               <main className="flex-1 max-w-[2400px] w-full mx-auto px-3 sm:px-5 lg:px-6 py-4 pb-16">
                 
-                {/* Live Streaming Info Ribbon */}
-                <div className="mb-4 flex items-center justify-between gap-2 bg-surface/90 border border-themeline rounded-2xl px-4 py-2.5 text-xs transition-colors duration-200 shadow-sm">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="w-2.5 h-2.5 rounded-full bg-action animate-pulse flex-shrink-0" />
-                    <h2 className="text-xs sm:text-sm font-display font-bold text-txt-primary flex items-center gap-1.5 truncate">
-                      <span>{activeCategoryObj.name}</span>
-                      {searchQuery.trim() && (
-                        <span className="text-[11px] font-mono font-normal text-txt-muted truncate">
-                          matching "<span className="text-action">{searchQuery}</span>"
-                        </span>
-                      )}
-                    </h2>
-                    <span className="text-[11px] font-mono text-txt-muted hidden sm:inline flex-shrink-0">
-                      • {totalCount > 0 
-                        ? `${displayedRepositories.length} of ${totalCount.toLocaleString()} loaded`
-                        : activeCategoryObj.description}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {/* Refreshing indicator */}
-                    {isRefreshing && (
-                      <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-action-soft border border-action-border text-action text-[11px] font-mono animate-fadeIn">
-                        <Loader2 className="w-3 h-3 animate-spin text-action" />
-                        <span className="hidden md:inline">Fetching repos...</span>
-                      </div>
-                    )}
-
-                    {/* Auto-stream toggle */}
-                    <button
-                      onClick={() => setAutoScroll(!autoScroll)}
-                      className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-mono border transition-all ${
-                        autoScroll
-                          ? 'bg-action text-txt-inverse border-action font-semibold shadow-sm'
-                          : 'bg-surface-active text-txt-muted border-themeline'
-                      }`}
-                      title="Toggle automatic streaming when scrolling down"
-                    >
-                      <Zap className={`w-3 h-3 ${autoScroll ? 'text-txt-inverse' : 'text-action'}`} />
-                      <span>Auto-Stream: {autoScroll ? 'ON' : 'OFF'}</span>
-                    </button>
-
-                    {/* Refresh */}
-                    <button
-                      onClick={refresh}
-                      disabled={isLoading || isRefreshing}
-                      className="flex items-center gap-1.5 text-[11px] font-mono text-txt-secondary hover:text-action bg-surface-active hover:bg-surface px-3 py-1 rounded-lg border border-themeline transition-colors disabled:opacity-50 shadow-sm"
-                      title="Fetch fresh repositories and update rate limit"
-                    >
-                      <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-action' : ''}`} />
-                      <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
-                    </button>
-                  </div>
-                </div>
-
                 {/* Loading Spinner */}
                 {isLoading && (
                   <div className="py-24 flex flex-col items-center justify-center gap-3">
@@ -574,32 +466,168 @@ export const App: React.FC = () => {
 
           </div>
 
-          {/* Persistent Small Footer (Edge-to-edge inside content column) */}
-          <footer className="w-full flex-shrink-0 border-t border-themeline bg-header py-1 px-2.5 sm:px-3 text-[11px] font-mono text-txt-muted z-20 transition-colors duration-200 select-none">
-            <div className="w-full flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <OneGitVaultLogo className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="font-display font-bold text-txt-primary">OneGitVault</span>
-                <span className="hidden sm:inline text-txt-muted">• Open-Source Observatory</span>
-              </div>
-
-              {/* Country & Live Clock */}
-              <div className="flex items-center gap-2 text-txt-muted font-mono text-[11px]">
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-active/60 border border-themeline text-txt-primary">
-                  <Globe className="w-3 h-3 text-action" />
-                  <span>{countryName}</span>
-                </div>
-                <span className="text-themeline">•</span>
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-active/60 border border-themeline text-txt-primary font-semibold">
-                  <Clock className="w-3 h-3 text-action" />
-                  <span>{currentTime}</span>
-                </div>
-              </div>
-            </div>
-          </footer>
-
         </div>
       </div>
+
+      {/* ── Sleek Full-Width Native IDE Status Bar (Edge-to-Edge) ── */}
+      <footer className="w-full h-7 min-h-[28px] flex-shrink-0 border-t border-themeline bg-header px-3 text-[11px] font-mono text-txt-muted z-20 flex items-center justify-between select-none transition-colors duration-200">
+        
+        {/* Left Segment: Connection State & Active View Context */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* Connection Pulse */}
+          {isOfflineFallback ? (
+            <span className="flex items-center gap-1.5 text-amber-500 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <span>Offline Mode</span>
+            </span>
+          ) : isRefreshing || isLoading ? (
+            <span className="flex items-center gap-1.5 text-action font-medium">
+              <Loader2 className="w-3 h-3 animate-spin text-action" />
+              <span>Syncing...</span>
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 text-emerald-500 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Connected</span>
+            </span>
+          )}
+
+          <span className="text-themeline hidden sm:inline">•</span>
+
+          {/* Active Context / Scope */}
+          <span className="truncate hidden sm:inline text-txt-secondary">
+            {activeView === 'explore' && (
+              <>
+                <span className="text-txt-primary font-medium">{activeCategoryObj.name}</span>
+                {searchQuery.trim() && (
+                  <span className="text-txt-muted ml-1 truncate">
+                    matching "<span className="text-action">{searchQuery}</span>"
+                  </span>
+                )}
+                {totalCount > 0 && (
+                  <span className="text-txt-muted ml-1.5">
+                    • {displayedRepositories.length} of {totalCount.toLocaleString()} loaded
+                  </span>
+                )}
+              </>
+            )}
+            {activeView === 'trending' && (
+              <span className="text-txt-primary font-medium">Trending Repositories • Live Feed</span>
+            )}
+            {activeView === 'vault' && (
+              <span className="text-txt-primary font-medium">
+                Vault • {bookmarksCount} {bookmarksCount === 1 ? 'repository' : 'repositories'} saved
+              </span>
+            )}
+            {activeView === 'settings' && (
+              <span className="text-txt-primary font-medium">Settings & Configuration</span>
+            )}
+            {activeView === 'detail' && selectedRepo && (
+              <span className="text-txt-primary font-medium truncate">
+                Viewing: {selectedRepo.full_name}
+              </span>
+            )}
+          </span>
+        </div>
+
+        {/* Right Segment: Stream Controls, Vault Shortcut, Active Theme & Live API Quota */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Explore Controls: Live Auto-Stream & Refresh */}
+          {activeView === 'explore' && (
+            <>
+              <div className="flex items-center gap-1 text-[11px] font-mono">
+                {/* Auto-Stream Toggle */}
+                <button
+                  onClick={() => setAutoScroll(!autoScroll)}
+                  className={`flex items-center gap-1 px-2 h-[20px] leading-none rounded transition-all text-[11px] font-mono border ${
+                    autoScroll
+                      ? 'text-action font-semibold bg-action-soft border-action-border'
+                      : 'border-transparent text-txt-muted hover:text-txt-primary hover:bg-surface-active'
+                  }`}
+                  title="Toggle automatic streaming when scrolling down"
+                >
+                  <Zap className={`w-3 h-3 ${autoScroll ? 'text-action fill-current' : 'text-txt-muted'}`} />
+                  <span>Auto-Stream: {autoScroll ? 'ON' : 'OFF'}</span>
+                </button>
+
+                {/* Refresh Button */}
+                <button
+                  onClick={refresh}
+                  disabled={isLoading || isRefreshing}
+                  className="flex items-center gap-1 px-2 h-[20px] leading-none rounded text-txt-secondary hover:text-action hover:bg-surface-active transition-colors disabled:opacity-50"
+                  title="Fetch fresh repositories and update rate limit"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-action' : ''}`} />
+                  <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+                </button>
+              </div>
+
+              <span className="text-themeline hidden sm:inline">•</span>
+            </>
+          )}
+
+          {/* Esc Back Hint (in Detail view) */}
+          {activeView === 'detail' && (
+            <>
+              <div className="hidden sm:flex items-center gap-1 text-[10px] text-txt-muted h-[20px] leading-none">
+                <kbd className="px-1 py-0.2 rounded bg-surface border border-themeline">Esc</kbd> Back
+              </div>
+              <span className="text-themeline hidden sm:inline">•</span>
+            </>
+          )}
+
+          {/* Vault Counter (if bookmarks exist) */}
+          {bookmarksCount > 0 && (
+            <>
+              <button
+                onClick={() => handleViewChange('vault')}
+                className={`flex items-center gap-1 px-1.5 h-[20px] leading-none rounded transition-colors ${
+                  activeView === 'vault' ? 'text-action font-semibold' : 'hover:text-txt-primary hover:bg-surface-active'
+                }`}
+                title={`View ${bookmarksCount} bookmarked repositories in Vault`}
+              >
+                <Bookmark className="w-3 h-3 text-action" />
+                <span>{bookmarksCount}</span>
+              </button>
+
+              <span className="text-themeline hidden sm:inline">•</span>
+            </>
+          )}
+
+          {/* Active Theme Indicator */}
+          <button
+            onClick={() => handleViewChange('settings')}
+            className="hidden sm:flex items-center gap-1.5 px-1.5 h-[20px] leading-none rounded hover:text-txt-primary hover:bg-surface-active transition-colors text-txt-secondary"
+            title={`Active Theme: ${currentTheme.name}. Click to change theme in Settings.`}
+          >
+            <Palette className="w-3 h-3 text-action" />
+            <span className="truncate max-w-[130px]">{currentTheme.name}</span>
+          </button>
+
+          <span className="text-themeline hidden sm:inline">•</span>
+
+          {/* Key Left Remaining Data */}
+          <button
+            onClick={() => handleViewChange('settings')}
+            className="flex items-center gap-1.5 px-1.5 h-[20px] leading-none rounded hover:text-txt-primary hover:bg-surface-active transition-colors cursor-pointer"
+            title={`GitHub API Quota: ${rateLimit.remaining.toLocaleString()} / ${rateLimit.limit.toLocaleString()} req/hr (Core API)${
+              rateLimit.searchRemaining !== undefined ? ` • Search: ${rateLimit.searchRemaining} / ${rateLimit.searchLimit || 30} req/min` : ''
+            }. Click to manage GitHub Token in Settings.`}
+          >
+            <Key className="w-3 h-3 text-action flex-shrink-0" />
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              rateLimit.remaining > 500 ? 'bg-emerald-500' : rateLimit.remaining > 100 ? 'bg-amber-500' : 'bg-rose-500'
+            }`} />
+            <span className="font-semibold text-txt-primary">{rateLimit.remaining.toLocaleString()}</span>
+            <span className="text-txt-muted">/{rateLimit.limit.toLocaleString()}</span>
+            {rateLimit.searchRemaining !== undefined && (
+              <span className="hidden md:inline text-[10px] text-txt-muted bg-surface/80 px-1 py-0.2 rounded border border-themeline">
+                s:{rateLimit.searchRemaining}
+              </span>
+            )}
+          </button>
+        </div>
+      </footer>
 
       {/* System Modals */}
       <UpdateModal

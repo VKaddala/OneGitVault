@@ -1,27 +1,20 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import ReactDOM from 'react-dom';
+import React, { useMemo } from 'react';
 import {
   Compass,
   Flame,
   Bookmark,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Star,
-  ArrowUpDown,
-  Code2,
+  ChevronLeft,
+  ChevronRight,
   LayoutGrid,
   List,
   RotateCcw,
-  ChevronDown,
-  Check,
-  Search,
-  Filter,
-  Sparkles
+  Settings as SettingsIcon,
+  Layers,
+  Filter
 } from 'lucide-react';
 import { CategoryId, Category, SortOption, ViewMode } from '../types';
-import { CategoryChooserModal, getCategoryIcon } from './CategoryChooserModal';
 
-export type ActiveView = 'explore' | 'trending' | 'vault' | 'detail';
+export type ActiveView = 'explore' | 'trending' | 'vault' | 'settings' | 'detail';
 
 interface SideNavProps {
   activeView: ActiveView;
@@ -62,607 +55,335 @@ export const SideNav: React.FC<SideNavProps> = ({
   onMinStarsChange,
   viewMode,
   onViewModeChange,
-  onlyBookmarked,
-  onToggleBookmarked,
   onResetFilters,
   isFiltered,
   bookmarksCount,
 }) => {
-  const [isExpanded, setIsExpanded] = useState<boolean>(true);
-  const [isCategoryChooserOpen, setIsCategoryChooserOpen] = useState<boolean>(false);
+  const [isExpanded, setIsExpanded] = React.useState<boolean>(true);
 
-  // Dropdown states for Sort, Language, and Custom Stars
-  const [isSortOpen, setIsSortOpen] = useState(false);
-  const [isLangOpen, setIsLangOpen] = useState(false);
-  const [isCustomStarsOpen, setIsCustomStarsOpen] = useState(false);
-  const [customStarsInput, setCustomStarsInput] = useState(minStars > 0 ? minStars.toString() : '');
-  const [langSearch, setLangSearch] = useState('');
+  const starPresets = useMemo(() => [
+    { label: 'All Stars (0+)', value: 0 },
+    { label: '1,000+ ★', value: 1000 },
+    { label: '5,000+ ★', value: 5000 },
+    { label: '10,000+ ★', value: 10000 },
+    { label: '50,000+ ★', value: 50000 },
+    { label: '100,000+ ★', value: 100000 },
+  ], []);
 
-  const sortTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const langTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const customStarsTriggerRef = useRef<HTMLButtonElement | null>(null);
-
-  const [sortPos, setSortPos] = useState<{ top: number; left: number } | null>(null);
-  const [langPos, setLangPos] = useState<{ top: number; left: number } | null>(null);
-  const [customStarsPos, setCustomStarsPos] = useState<{ top: number; left: number } | null>(null);
-
-  const activeCategoryObj = useMemo(() => {
-    return categories.find((c) => c.id === selectedCategory) || categories[0];
-  }, [categories, selectedCategory]);
-
-  const presetTiers = [
-    { label: 'All', value: 0 },
-    { label: '10k+ ★', value: 10000 },
-    { label: '50k+ ★', value: 50000 },
-    { label: '100k+ ★', value: 100000 },
-  ];
-  const isCustomStarValue = !presetTiers.some((t) => t.value === minStars);
-
-  const computePos = (trigger: HTMLElement | null, width: number) => {
-    if (!trigger) return null;
-    const rect = trigger.getBoundingClientRect();
-    let left = rect.left;
-    if (left + width > window.innerWidth - 12) {
-      left = window.innerWidth - width - 12;
-    }
-    return {
-      top: rect.bottom + 6,
-      left: Math.max(12, left),
-    };
-  };
-
-  const updatePositions = useCallback(() => {
-    if (sortTriggerRef.current) setSortPos(computePos(sortTriggerRef.current, 200));
-    if (langTriggerRef.current) setLangPos(computePos(langTriggerRef.current, 220));
-    if (customStarsTriggerRef.current) setCustomStarsPos(computePos(customStarsTriggerRef.current, 230));
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      const insideSortTrigger = sortTriggerRef.current?.contains(target);
-      const insideSortPortal = document.getElementById('sidenav-sort-portal')?.contains(target);
-      if (!insideSortTrigger && !insideSortPortal) setIsSortOpen(false);
-
-      const insideLangTrigger = langTriggerRef.current?.contains(target);
-      const insideLangPortal = document.getElementById('sidenav-lang-portal')?.contains(target);
-      if (!insideLangTrigger && !insideLangPortal) setIsLangOpen(false);
-
-      const insideStarTrigger = customStarsTriggerRef.current?.contains(target);
-      const insideStarPortal = document.getElementById('sidenav-stars-portal')?.contains(target);
-      if (!insideStarTrigger && !insideStarPortal) setIsCustomStarsOpen(false);
-    };
-
-    window.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('resize', updatePositions);
-    return () => {
-      window.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('resize', updatePositions);
-    };
-  }, [updatePositions]);
-
-  const filteredLanguages = useMemo(() => {
-    if (!langSearch.trim()) return availableLanguages;
-    const q = langSearch.toLowerCase();
-    return availableLanguages.filter((l) => l.toLowerCase().includes(q));
-  }, [availableLanguages, langSearch]);
-
-  const handleApplyCustomStars = (val?: number) => {
-    const stars = val !== undefined ? val : parseInt(customStarsInput, 10);
-    if (!isNaN(stars) && stars >= 0) {
-      onMinStarsChange(stars);
-      setIsCustomStarsOpen(false);
-    }
-  };
-
-  const formatStarsLabel = (count: number) => {
-    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M+ ★`;
-    if (count >= 1000) return `${Math.floor(count / 1000)}k+ ★`;
-    return `${count}+ ★`;
-  };
+  const hasCustomStar = useMemo(() => {
+    return minStars > 0 && !starPresets.some((p) => p.value === minStars);
+  }, [minStars, starPresets]);
 
   return (
-    <>
-      <nav
-        className={`h-full flex flex-col bg-header border-r border-themeline flex-shrink-0 transition-all duration-200 select-none z-30 ${
-          isExpanded ? 'w-64 sm:w-72' : 'w-14'
-        }`}
-      >
-        {/* ── Top Header: Toggle Expand / Collapse ── */}
-        <div className="flex items-center justify-between py-2 px-2.5 border-b border-themeline/60">
-          {isExpanded ? (
-            <div className="flex items-center justify-between w-full">
-              <span className="text-[11px] font-mono uppercase font-bold tracking-wider text-txt-muted flex items-center gap-1.5">
-                <Compass className="w-3.5 h-3.5 text-action" />
-                <span>Navigation</span>
+    <nav
+      className={`h-full flex flex-col bg-header border-r border-themeline flex-shrink-0 transition-all duration-200 select-none z-30 ${
+        isExpanded ? 'w-52' : 'w-14'
+      }`}
+    >
+      {/* ── SECTION 1: VIEWS / DISCOVER ── */}
+      <div className="p-2.5 pb-2 border-b border-themeline flex-shrink-0">
+        {isExpanded ? (
+          <div className="space-y-1">
+            <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-txt-muted px-1.5 flex items-center gap-1.5 mb-1.5">
+              <Layers className="w-3 h-3 text-action" />
+              <span>Views</span>
+            </span>
+
+            {/* Explore Button */}
+            <button
+              onClick={() => onSelectView('explore')}
+              className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-sans font-medium transition-all ${
+                activeView === 'explore'
+                  ? 'bg-action text-txt-inverse font-bold shadow-sm'
+                  : 'text-txt-secondary hover:bg-surface-hover hover:text-txt-primary'
+              }`}
+            >
+              <Compass className={`w-4 h-4 flex-shrink-0 ${activeView === 'explore' ? 'text-txt-inverse' : 'text-action'}`} />
+              <span className="truncate">Explore</span>
+            </button>
+
+            {/* Trending Button */}
+            <button
+              onClick={() => onSelectView('trending')}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-sans font-medium transition-all ${
+                activeView === 'trending'
+                  ? 'bg-action text-txt-inverse font-bold shadow-sm'
+                  : 'text-txt-secondary hover:bg-surface-hover hover:text-txt-primary'
+              }`}
+            >
+              <div className="flex items-center gap-2.5 truncate">
+                <Flame className={`w-4 h-4 flex-shrink-0 ${activeView === 'trending' ? 'text-txt-inverse fill-current' : 'text-action'}`} />
+                <span className="truncate">Trending</span>
+              </div>
+              <span className={`text-[8px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                activeView === 'trending' ? 'bg-black/25 text-white' : 'bg-action/20 text-action'
+              }`}>
+                LIVE
               </span>
+            </button>
+
+            {/* Vault Button */}
+            <button
+              onClick={() => onSelectView('vault')}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-sans font-medium transition-all ${
+                activeView === 'vault'
+                  ? 'bg-action text-txt-inverse font-bold shadow-sm'
+                  : 'text-txt-secondary hover:bg-surface-hover hover:text-txt-primary'
+              }`}
+            >
+              <div className="flex items-center gap-2.5 truncate">
+                <Bookmark className={`w-4 h-4 flex-shrink-0 ${activeView === 'vault' ? 'text-txt-inverse fill-current' : 'text-action'}`} />
+                <span className="truncate">Vault</span>
+              </div>
+              {bookmarksCount > 0 && (
+                <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full ${
+                  activeView === 'vault' ? 'bg-black/25 text-white' : 'bg-surface-active text-txt-muted'
+                }`}>
+                  {bookmarksCount}
+                </span>
+              )}
+            </button>
+          </div>
+        ) : (
+          /* Collapsed View Icons */
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={() => onSelectView('explore')}
+              className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all ${
+                activeView === 'explore'
+                  ? 'bg-action text-txt-inverse shadow-sm'
+                  : 'text-txt-muted hover:text-txt-primary hover:bg-surface-active'
+              }`}
+              title="Explore Repositories"
+            >
+              <Compass className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => onSelectView('trending')}
+              className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all relative ${
+                activeView === 'trending'
+                  ? 'bg-action text-txt-inverse shadow-sm'
+                  : 'text-txt-muted hover:text-txt-primary hover:bg-surface-active'
+              }`}
+              title="GitHub Trending"
+            >
+              <Flame className="w-4 h-4 fill-current" />
+            </button>
+
+            <button
+              onClick={() => onSelectView('vault')}
+              className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all relative ${
+                activeView === 'vault'
+                  ? 'bg-action text-txt-inverse shadow-sm'
+                  : 'text-txt-muted hover:text-txt-primary hover:bg-surface-active'
+              }`}
+              title="Vault"
+            >
+              <Bookmark className="w-4 h-4 fill-current" />
+              {bookmarksCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 text-[8px] font-mono font-bold text-white bg-action rounded-full flex items-center justify-center border border-header">
+                  {bookmarksCount}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── SECTION 2: FILTERS (Combobox Values) ── */}
+      {isExpanded ? (
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 no-scrollbar text-xs">
+          {/* Header Row */}
+          <div className="flex items-center justify-between px-0.5">
+            <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-txt-muted flex items-center gap-1.5">
+              <Filter className="w-3 h-3 text-action" />
+              <span>Filters</span>
+            </span>
+            {isFiltered && (
               <button
-                onClick={() => setIsExpanded(false)}
-                className="p-1 rounded-lg text-txt-muted hover:text-action hover:bg-surface-hover transition-colors"
-                title="Collapse sidebar"
+                onClick={onResetFilters}
+                className="flex items-center gap-1 text-[10px] font-mono text-txt-muted hover:text-rose-500 transition-colors"
+                title="Reset all filters"
               >
-                <PanelLeftClose className="w-4 h-4" />
+                <RotateCcw className="w-2.5 h-2.5" />
+                <span>Reset</span>
+              </button>
+            )}
+          </div>
+
+          {/* 1. Category Combobox */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-mono uppercase text-txt-muted block">
+              Category
+            </label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => onSelectCategory(e.target.value as CategoryId)}
+              className="w-full bg-surface-active hover:bg-surface border border-themeline hover:border-action-border text-txt-primary rounded-lg px-2.5 py-1.5 text-xs font-sans focus:outline-none focus:border-action cursor-pointer transition-colors shadow-sm"
+            >
+              {categories.map((c) => (
+                <option key={c.id} value={c.id} className="bg-surface text-txt-primary">
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 2. Sort Combobox */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-mono uppercase text-txt-muted block">
+              Sort By
+            </label>
+            <select
+              value={sortBy}
+              onChange={(e) => onSortChange(e.target.value as SortOption)}
+              className="w-full bg-surface-active hover:bg-surface border border-themeline hover:border-action-border text-txt-primary rounded-lg px-2.5 py-1.5 text-xs font-sans focus:outline-none focus:border-action cursor-pointer transition-colors shadow-sm"
+            >
+              <option value="stars" className="bg-surface text-txt-primary">Most Stars</option>
+              <option value="forks" className="bg-surface text-txt-primary">Most Forks</option>
+              <option value="updated" className="bg-surface text-txt-primary">Recently Updated</option>
+            </select>
+          </div>
+
+          {/* 3. Language Combobox */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-mono uppercase text-txt-muted block">
+              Language
+            </label>
+            <select
+              value={selectedLanguage}
+              onChange={(e) => onLanguageChange(e.target.value)}
+              className="w-full bg-surface-active hover:bg-surface border border-themeline hover:border-action-border text-txt-primary rounded-lg px-2.5 py-1.5 text-xs font-sans focus:outline-none focus:border-action cursor-pointer transition-colors shadow-sm"
+            >
+              <option value="" className="bg-surface text-txt-primary">All Languages</option>
+              {availableLanguages.map((lang) => (
+                <option key={lang} value={lang} className="bg-surface text-txt-primary">
+                  {lang}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 4. Minimum Stars Combobox */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-mono uppercase text-txt-muted block">
+              Minimum Stars
+            </label>
+            <select
+              value={minStars}
+              onChange={(e) => onMinStarsChange(Number(e.target.value))}
+              className="w-full bg-surface-active hover:bg-surface border border-themeline hover:border-action-border text-txt-primary rounded-lg px-2.5 py-1.5 text-xs font-sans focus:outline-none focus:border-action cursor-pointer transition-colors shadow-sm"
+            >
+              {starPresets.map((p) => (
+                <option key={p.value} value={p.value} className="bg-surface text-txt-primary">
+                  {p.label}
+                </option>
+              ))}
+              {hasCustomStar && (
+                <option value={minStars} className="bg-surface text-txt-primary">
+                  Custom: {minStars.toLocaleString()} ★
+                </option>
+              )}
+            </select>
+          </div>
+
+          {/* 5. Card Layout Toggle */}
+          <div className="space-y-1 pt-1">
+            <label className="text-[10px] font-mono uppercase text-txt-muted block">
+              Layout
+            </label>
+            <div className="flex items-center gap-1 bg-surface-active p-0.5 rounded-lg border border-themeline">
+              <button
+                onClick={() => onViewModeChange('grid')}
+                className={`flex-1 flex items-center justify-center gap-1 py-1 rounded-md text-[11px] font-sans transition-all ${
+                  viewMode === 'grid'
+                    ? 'bg-action text-txt-inverse font-semibold shadow-sm'
+                    : 'text-txt-muted hover:text-txt-primary'
+                }`}
+                title="Grid view"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Grid</span>
+              </button>
+              <button
+                onClick={() => onViewModeChange('list')}
+                className={`flex-1 flex items-center justify-center gap-1 py-1 rounded-md text-[11px] font-sans transition-all ${
+                  viewMode === 'list'
+                    ? 'bg-action text-txt-inverse font-semibold shadow-sm'
+                    : 'text-txt-muted hover:text-txt-primary'
+                }`}
+                title="List view"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span>List</span>
               </button>
             </div>
-          ) : (
+          </div>
+
+          {/* Total Counter pill */}
+          <div className="pt-1.5 text-[10px] font-mono text-txt-muted text-center">
+            <span>{totalResults.toLocaleString()} repositories</span>
+          </div>
+        </div>
+      ) : (
+        /* Collapsed Space Filler */
+        <div className="flex-1" />
+      )}
+
+      {/* ── SECTION 3: BOTTOM / SETTINGS & COLLAPSE ARROW ── */}
+      <div className="border-t border-themeline p-2 flex flex-col gap-1.5 flex-shrink-0 bg-header">
+        {isExpanded ? (
+          <div className="flex items-center justify-between gap-1">
+            {/* Settings Main Navigation Button */}
+            <button
+              onClick={() => onSelectView('settings')}
+              className={`flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-sans font-medium transition-all ${
+                activeView === 'settings'
+                  ? 'bg-action text-txt-inverse font-bold shadow-sm'
+                  : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
+              }`}
+              title="Settings (Theme & GitHub API Token)"
+            >
+              <SettingsIcon className={`w-4 h-4 flex-shrink-0 ${activeView === 'settings' ? 'text-txt-inverse animate-spin' : 'text-action'}`} />
+              <span className="truncate">Settings</span>
+            </button>
+
+            {/* Edge Collapse Arrow */}
+            <button
+              onClick={() => setIsExpanded(false)}
+              className="p-1.5 rounded-lg text-txt-muted hover:text-action hover:bg-surface transition-colors"
+              title="Collapse sidebar"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-1.5">
+            {/* Collapsed Settings Icon */}
+            <button
+              onClick={() => onSelectView('settings')}
+              className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all ${
+                activeView === 'settings'
+                  ? 'bg-action text-txt-inverse shadow-sm'
+                  : 'text-txt-muted hover:text-txt-primary hover:bg-surface-active'
+              }`}
+              title="Settings (Theme & API Token)"
+            >
+              <SettingsIcon className="w-4 h-4" />
+            </button>
+
+            {/* Edge Expand Arrow */}
             <button
               onClick={() => setIsExpanded(true)}
-              className="w-full flex items-center justify-center p-1.5 rounded-lg text-txt-muted hover:text-action hover:bg-surface-hover transition-colors"
+              className="p-1.5 rounded-lg text-txt-muted hover:text-action hover:bg-surface-active transition-colors"
               title="Expand sidebar"
             >
-              <PanelLeftOpen className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4" />
             </button>
-          )}
-        </div>
-
-        {/* ── Section 1: Main View Navigation (Teams-style) ── */}
-        <div className="py-2 px-1.5 space-y-1">
-          {/* Explore Button */}
-          <button
-            onClick={() => onSelectView('explore')}
-            className={`w-full flex items-center gap-3 rounded-xl transition-all duration-150 relative ${
-              isExpanded ? 'px-3 py-2 text-left' : 'px-0 py-2.5 justify-center'
-            } ${
-              activeView === 'explore'
-                ? 'bg-action text-txt-inverse font-bold shadow-md'
-                : 'text-txt-secondary hover:bg-surface-hover hover:text-txt-primary'
-            }`}
-            title="Explore Repositories"
-          >
-            <Compass className={`w-4 h-4 flex-shrink-0 ${activeView === 'explore' ? 'text-txt-inverse' : 'text-action'}`} />
-            {isExpanded && (
-              <span className="text-xs font-sans font-medium flex-1 truncate">
-                Explore
-              </span>
-            )}
-            {activeView === 'explore' && !isExpanded && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-action rounded-r-full" />
-            )}
-          </button>
-
-          {/* Trending Button */}
-          <button
-            onClick={() => onSelectView('trending')}
-            className={`w-full flex items-center gap-3 rounded-xl transition-all duration-150 relative ${
-              isExpanded ? 'px-3 py-2 text-left' : 'px-0 py-2.5 justify-center'
-            } ${
-              activeView === 'trending'
-                ? 'bg-action text-txt-inverse font-bold shadow-md'
-                : 'text-txt-secondary hover:bg-surface-hover hover:text-txt-primary'
-            }`}
-            title="GitHub Trending Repositories"
-          >
-            <Flame className={`w-4 h-4 flex-shrink-0 ${activeView === 'trending' ? 'text-txt-inverse fill-current' : 'text-action'}`} />
-            {isExpanded && (
-              <div className="flex items-center justify-between flex-1 min-w-0">
-                <span className="text-xs font-sans font-medium truncate">Trending</span>
-                <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold ${
-                  activeView === 'trending' ? 'bg-black/20 text-white' : 'bg-action/20 text-action'
-                }`}>
-                  LIVE
-                </span>
-              </div>
-            )}
-            {activeView === 'trending' && !isExpanded && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-action rounded-r-full" />
-            )}
-          </button>
-
-          {/* Vault Button */}
-          <button
-            onClick={() => onSelectView('vault')}
-            className={`w-full flex items-center gap-3 rounded-xl transition-all duration-150 relative ${
-              isExpanded ? 'px-3 py-2 text-left' : 'px-0 py-2.5 justify-center'
-            } ${
-              activeView === 'vault'
-                ? 'bg-action text-txt-inverse font-bold shadow-md'
-                : 'text-txt-secondary hover:bg-surface-hover hover:text-txt-primary'
-            }`}
-            title="Vault (Saved & Starred)"
-          >
-            <Bookmark className={`w-4 h-4 flex-shrink-0 ${activeView === 'vault' ? 'text-txt-inverse fill-current' : 'text-action'}`} />
-            {isExpanded && (
-              <div className="flex items-center justify-between flex-1 min-w-0">
-                <span className="text-xs font-sans font-medium truncate">Vault</span>
-                {bookmarksCount > 0 && (
-                  <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold ${
-                    activeView === 'vault' ? 'bg-black/20 text-white' : 'bg-surface-active text-txt-muted'
-                  }`}>
-                    {bookmarksCount}
-                  </span>
-                )}
-              </div>
-            )}
-            {bookmarksCount > 0 && !isExpanded && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] px-1 text-[9px] font-mono font-bold text-white bg-action rounded-full flex items-center justify-center">
-                {bookmarksCount}
-              </span>
-            )}
-            {activeView === 'vault' && !isExpanded && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-action rounded-r-full" />
-            )}
-          </button>
-        </div>
-
-        {/* ── Divider ── */}
-        <div className="border-t border-themeline/60 my-1" />
-
-        {/* ── Section 2: Filters (All in Left Panel) ── */}
-        <div className="flex-1 overflow-y-auto px-2 py-2 space-y-3.5 no-scrollbar">
-          {isExpanded ? (
-            <>
-              {/* Filter Section Header with Count & Reset */}
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-1.5 text-txt-muted">
-                  <Filter className="w-3.5 h-3.5 text-action" />
-                  <span className="text-[11px] font-mono uppercase font-bold tracking-wider">
-                    Filters
-                  </span>
-                  <span className="text-[10px] font-mono text-txt-secondary bg-surface-active px-1.5 py-0.2 rounded border border-themeline">
-                    {totalResults.toLocaleString()}
-                  </span>
-                </div>
-
-                {isFiltered && (
-                  <button
-                    onClick={onResetFilters}
-                    className="flex items-center gap-1 text-[11px] font-mono text-txt-muted hover:text-rose-500 transition-colors"
-                    title="Reset all filters"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>Reset</span>
-                  </button>
-                )}
-              </div>
-
-              {/* 1. Category Chooser Option (One button that opens chooser) */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono uppercase tracking-wider text-txt-muted font-semibold px-1">
-                  Category
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setIsCategoryChooserOpen(true)}
-                  className="w-full flex items-center justify-between gap-2 p-2.5 rounded-xl bg-surface-active hover:bg-surface border border-themeline hover:border-action-border text-xs font-sans text-txt-primary shadow-sm transition-all group text-left"
-                  title="Click to choose repository category"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="p-1 rounded-lg bg-surface text-action group-hover:bg-action-soft flex-shrink-0 transition-colors">
-                      {getCategoryIcon(activeCategoryObj.icon, 'w-4 h-4')}
-                    </span>
-                    <div className="min-w-0">
-                      <span className="font-semibold text-txt-primary block truncate text-xs">
-                        {activeCategoryObj.name}
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronDown className="w-3.5 h-3.5 text-txt-muted group-hover:text-action flex-shrink-0 transition-transform" />
-                </button>
-              </div>
-
-              {/* 2. Sort Dropdown */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono uppercase tracking-wider text-txt-muted font-semibold px-1">
-                  Sort By
-                </label>
-                <div className="relative">
-                  <button
-                    ref={sortTriggerRef}
-                    onClick={() => {
-                      setSortPos(computePos(sortTriggerRef.current, 200));
-                      setIsSortOpen(!isSortOpen);
-                    }}
-                    type="button"
-                    className="w-full flex items-center justify-between gap-2 p-2 rounded-xl bg-surface-active hover:bg-surface border border-themeline hover:border-action-border text-xs font-sans text-txt-primary shadow-sm transition-all"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <ArrowUpDown className="w-3.5 h-3.5 text-action flex-shrink-0" />
-                      <span className="font-medium truncate text-xs">
-                        {sortBy === 'stars' ? 'Most Stars' : sortBy === 'forks' ? 'Most Forks' : 'Recently Updated'}
-                      </span>
-                    </div>
-                    <ChevronDown className={`w-3.5 h-3.5 text-txt-muted transition-transform ${isSortOpen ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {/* Sort Portal */}
-                  {isSortOpen && sortPos && ReactDOM.createPortal(
-                    <div
-                      id="sidenav-sort-portal"
-                      style={{ position: 'fixed', top: sortPos.top, left: sortPos.left, width: '200px', zIndex: 99999 }}
-                      className="bg-surface border border-themeline rounded-2xl shadow-2xl p-1.5 animate-fadeIn backdrop-blur-2xl"
-                    >
-                      {[
-                        { value: 'stars' as SortOption, label: 'Most Stars' },
-                        { value: 'forks' as SortOption, label: 'Most Forks' },
-                        { value: 'updated' as SortOption, label: 'Recently Updated' },
-                      ].map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => {
-                            onSortChange(opt.value);
-                            setIsSortOpen(false);
-                          }}
-                          className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg text-xs text-left transition-all ${
-                            sortBy === opt.value
-                              ? 'bg-action-soft text-action font-bold'
-                              : 'text-txt-primary hover:bg-surface-hover hover:text-action'
-                          }`}
-                        >
-                          <span>{opt.label}</span>
-                          {sortBy === opt.value && <Check className="w-3.5 h-3.5 text-action" />}
-                        </button>
-                      ))}
-                    </div>,
-                    document.body
-                  )}
-                </div>
-              </div>
-
-              {/* 3. Language Selector */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono uppercase tracking-wider text-txt-muted font-semibold px-1">
-                  Language
-                </label>
-                <div className="relative">
-                  <button
-                    ref={langTriggerRef}
-                    onClick={() => {
-                      setLangPos(computePos(langTriggerRef.current, 220));
-                      setLangSearch('');
-                      setIsLangOpen(!isLangOpen);
-                    }}
-                    type="button"
-                    className="w-full flex items-center justify-between gap-2 p-2 rounded-xl bg-surface-active hover:bg-surface border border-themeline hover:border-action-border text-xs font-sans text-txt-primary shadow-sm transition-all"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <Code2 className="w-3.5 h-3.5 text-action flex-shrink-0" />
-                      <span className="font-medium truncate text-xs">
-                        {selectedLanguage || 'All Languages'}
-                      </span>
-                    </div>
-                    <ChevronDown className={`w-3.5 h-3.5 text-txt-muted transition-transform ${isLangOpen ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {/* Language Portal */}
-                  {isLangOpen && langPos && ReactDOM.createPortal(
-                    <div
-                      id="sidenav-lang-portal"
-                      style={{ position: 'fixed', top: langPos.top, left: langPos.left, width: '220px', zIndex: 99999 }}
-                      className="bg-surface border border-themeline rounded-2xl shadow-2xl p-2 animate-fadeIn backdrop-blur-2xl max-h-[380px] flex flex-col"
-                    >
-                      <div className="relative mb-2">
-                        <Search className="w-3 h-3 text-txt-muted absolute left-2.5 top-2.5" />
-                        <input
-                          type="text"
-                          value={langSearch}
-                          onChange={(e) => setLangSearch(e.target.value)}
-                          placeholder="Search language..."
-                          autoFocus
-                          className="w-full pl-7 pr-2.5 py-1 bg-surface-active border border-themeline rounded-lg text-xs font-mono text-txt-primary placeholder-txt-muted/50 focus:outline-none focus:border-action"
-                        />
-                      </div>
-                      <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-0.5 max-h-[250px]">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onLanguageChange('');
-                            setIsLangOpen(false);
-                          }}
-                          className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg text-xs text-left transition-all ${
-                            !selectedLanguage
-                              ? 'bg-action-soft text-action font-bold'
-                              : 'text-txt-primary hover:bg-surface-hover hover:text-action'
-                          }`}
-                        >
-                          <span>All Languages</span>
-                          {!selectedLanguage && <Check className="w-3.5 h-3.5 text-action" />}
-                        </button>
-                        {filteredLanguages.map((lang) => (
-                          <button
-                            key={lang}
-                            type="button"
-                            onClick={() => {
-                              onLanguageChange(lang);
-                              setIsLangOpen(false);
-                            }}
-                            className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg text-xs text-left transition-all ${
-                              selectedLanguage.toLowerCase() === lang.toLowerCase()
-                                ? 'bg-action-soft text-action font-bold'
-                                : 'text-txt-primary hover:bg-surface-hover hover:text-action'
-                            }`}
-                          >
-                            <span className="truncate">{lang}</span>
-                            {selectedLanguage.toLowerCase() === lang.toLowerCase() && (
-                              <Check className="w-3.5 h-3.5 text-action" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </div>,
-                    document.body
-                  )}
-                </div>
-              </div>
-
-              {/* 4. Minimum Stars Filter */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono uppercase tracking-wider text-txt-muted font-semibold px-1">
-                  Minimum Stars
-                </label>
-                <div className="grid grid-cols-2 gap-1 bg-surface-active p-1 rounded-xl border border-themeline">
-                  {presetTiers.map((tier) => (
-                    <button
-                      key={tier.value}
-                      type="button"
-                      onClick={() => onMinStarsChange(tier.value)}
-                      className={`text-[11px] font-sans font-medium py-1 px-1.5 rounded-lg transition-all text-center ${
-                        !isCustomStarValue && minStars === tier.value
-                          ? 'bg-action text-txt-inverse font-bold shadow-sm'
-                          : 'text-txt-muted hover:text-txt-primary hover:bg-surface'
-                      }`}
-                    >
-                      {tier.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Custom Stars Trigger */}
-                <div className="relative mt-1">
-                  <button
-                    ref={customStarsTriggerRef}
-                    onClick={() => {
-                      setCustomStarsPos(computePos(customStarsTriggerRef.current, 230));
-                      setCustomStarsInput(minStars > 0 ? minStars.toString() : '');
-                      setIsCustomStarsOpen(!isCustomStarsOpen);
-                    }}
-                    type="button"
-                    className={`w-full flex items-center justify-between px-2.5 py-1 rounded-lg text-[11px] font-sans border transition-all ${
-                      isCustomStarValue
-                        ? 'bg-action text-txt-inverse font-bold border-action'
-                        : 'bg-surface-active hover:bg-surface text-txt-muted hover:text-txt-primary border-themeline'
-                    }`}
-                  >
-                    <span className="flex items-center gap-1">
-                      <Star className={`w-3 h-3 ${isCustomStarValue ? 'fill-current' : ''}`} />
-                      <span>{isCustomStarValue ? formatStarsLabel(minStars) : 'Custom Stars...'}</span>
-                    </span>
-                    <ChevronDown className="w-3 h-3" />
-                  </button>
-
-                  {/* Custom Stars Portal */}
-                  {isCustomStarsOpen && customStarsPos && ReactDOM.createPortal(
-                    <div
-                      id="sidenav-stars-portal"
-                      style={{ position: 'fixed', top: customStarsPos.top, left: customStarsPos.left, width: '230px', zIndex: 99999 }}
-                      className="bg-surface border border-themeline rounded-2xl shadow-2xl p-2.5 animate-fadeIn backdrop-blur-2xl"
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[11px] font-sans font-semibold text-txt-primary flex items-center gap-1">
-                          <Star className="w-3 h-3 text-action fill-current" />
-                          <span>Custom Min Stars</span>
-                        </span>
-                        <button
-                          onClick={() => setIsCustomStarsOpen(false)}
-                          className="p-0.5 rounded text-txt-muted hover:text-txt-primary text-xs"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <input
-                          type="number"
-                          min="0"
-                          step="100"
-                          value={customStarsInput}
-                          onChange={(e) => setCustomStarsInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleApplyCustomStars();
-                          }}
-                          placeholder="e.g. 2500"
-                          autoFocus
-                          className="w-full bg-surface-active border border-themeline rounded-lg px-2 py-1 text-xs font-sans text-txt-primary focus:outline-none focus:border-action"
-                        />
-                        <button
-                          onClick={() => handleApplyCustomStars()}
-                          className="px-2.5 py-1 rounded-lg bg-action hover:opacity-90 text-txt-inverse text-xs font-sans font-bold shadow-sm"
-                        >
-                          Apply
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-1 flex-wrap pt-1.5 border-t border-themeline/60 text-[10px] font-sans">
-                        {[500, 1000, 5000, 25000].map((val) => (
-                          <button
-                            key={val}
-                            onClick={() => handleApplyCustomStars(val)}
-                            className="px-1.5 py-0.5 rounded bg-surface-active hover:bg-surface text-txt-secondary hover:text-action border border-themeline"
-                          >
-                            {val >= 1000 ? `${val / 1000}k` : val}
-                          </button>
-                        ))}
-                      </div>
-                    </div>,
-                    document.body
-                  )}
-                </div>
-              </div>
-
-              {/* 5. View Mode Toggle */}
-              <div className="space-y-1 pt-1">
-                <label className="text-[10px] font-mono uppercase tracking-wider text-txt-muted font-semibold px-1">
-                  Card Layout
-                </label>
-                <div className="flex items-center gap-1 bg-surface-active p-1 rounded-xl border border-themeline">
-                  <button
-                    onClick={() => onViewModeChange('grid')}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-1 px-2 rounded-lg text-xs font-sans transition-all ${
-                      viewMode === 'grid'
-                        ? 'bg-action text-txt-inverse font-bold shadow-sm'
-                        : 'text-txt-muted hover:text-txt-primary'
-                    }`}
-                  >
-                    <LayoutGrid className="w-3.5 h-3.5" />
-                    <span>Grid</span>
-                  </button>
-                  <button
-                    onClick={() => onViewModeChange('list')}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-1 px-2 rounded-lg text-xs font-sans transition-all ${
-                      viewMode === 'list'
-                        ? 'bg-action text-txt-inverse font-bold shadow-sm'
-                        : 'text-txt-muted hover:text-txt-primary'
-                    }`}
-                  >
-                    <List className="w-3.5 h-3.5" />
-                    <span>List</span>
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            /* Collapsed Mode Icons */
-            <div className="flex flex-col items-center space-y-2">
-              {/* Category Chooser trigger icon */}
-              <button
-                onClick={() => setIsCategoryChooserOpen(true)}
-                className="p-2.5 rounded-xl bg-surface-active hover:bg-surface text-action border border-themeline hover:border-action-border transition-all shadow-sm"
-                title={`Category: ${activeCategoryObj.name} (Click to choose)`}
-              >
-                {getCategoryIcon(activeCategoryObj.icon, 'w-4 h-4')}
-              </button>
-
-              {/* Sort cycle icon */}
-              <button
-                onClick={() => {
-                  const nextSort: SortOption = sortBy === 'stars' ? 'forks' : sortBy === 'forks' ? 'updated' : 'stars';
-                  onSortChange(nextSort);
-                }}
-                className="p-2.5 rounded-xl bg-surface-active hover:bg-surface text-txt-muted hover:text-action border border-themeline hover:border-action-border transition-all"
-                title={`Sort: ${sortBy} (Click to switch)`}
-              >
-                <ArrowUpDown className="w-4 h-4" />
-              </button>
-
-              {/* View mode toggle icon */}
-              <button
-                onClick={() => onViewModeChange(viewMode === 'grid' ? 'list' : 'grid')}
-                className="p-2.5 rounded-xl bg-surface-active hover:bg-surface text-txt-muted hover:text-action border border-themeline hover:border-action-border transition-all"
-                title={`View: ${viewMode} (Click to toggle)`}
-              >
-                {viewMode === 'grid' ? <LayoutGrid className="w-4 h-4" /> : <List className="w-4 h-4" />}
-              </button>
-            </div>
-          )}
-        </div>
-      </nav>
-
-      {/* ── Category Chooser Modal ── */}
-      <CategoryChooserModal
-        isOpen={isCategoryChooserOpen}
-        onClose={() => setIsCategoryChooserOpen(false)}
-        categories={categories}
-        selectedCategory={selectedCategory}
-        onSelectCategory={onSelectCategory}
-      />
-    </>
+          </div>
+        )}
+      </div>
+    </nav>
   );
 };

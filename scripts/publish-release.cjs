@@ -30,34 +30,28 @@ const REPO_OWNER = 'VKaddala';
 const REPO_NAME = 'OneGitVault';
 const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
 const VERSION = pkg.version;
-const ANDROID_VERSION = '1.1.0';
+const ANDROID_VERSION = '1.2.0';
 const TAG_NAME = `v${VERSION}`;
-const RELEASE_NAME = `v${VERSION} (Desktop) / v${ANDROID_VERSION} (Android) — Native UI Redesign, Floating Liquid Glass Island & Rate Limit Fixes`;
+const RELEASE_NAME = `v${VERSION} (Desktop) / v${ANDROID_VERSION} (Android) — Full-Screen Settings, List View, Modal Elimination & Native Status Bar`;
 
 const RELEASE_BODY = `## 🚀 What's New in Desktop v${VERSION} & Android v${ANDROID_VERSION}
 
-### 💎 Android Native UI Redesign & Floating Liquid Glass Action Island
-- **Floating Capsule Action Island**: Transformed repository details bottom action bar into a floating capsule island with Material 3 glassmorphism, matching bottom navigation physics.
-- **Scroll Clearance**: Extended bottom scroll margins so repository content, specs, and topics scroll completely above the floating bottom bar without clipping.
-- **Uncluttered Actions**: Streamlined the bottom bar to focus on Star, Translate, APK, GitHub, and Share actions, with clean un-highlighted state.
-- **Clean README**: Removed redundant top summary card from the README tab for an unobstructed reading experience.
+### 🖥️ Desktop v${VERSION}: Teams-Style Architecture & Modal Elimination
+- **Integrated Full-Page Viewports**: Eliminated floating popup modals for Settings and Repository Details. Settings and Details now render as dedicated full-screen views with native keyboard (\`Esc\`) and toolbar back navigation.
+- **Repository Observatory Tabs**: Reordered repository details tabs to **\`[ Info | README | Releases ]\`** with \`Info\` set as the default view, displaying complete 6-metric repository health stats, quick clone terminal snippets, and author profiles upfront.
+- **2-Zone Edge-to-Edge IDE Status Bar**: Replaced redundant top explore ribbons with a 28px native bottom status bar. Left segment displays connection state and active loaded count (\`All Projects • 33 of 33 loaded\`), while the Right segment groups all interactive toggles (\`Auto-Stream: ON/OFF\`, \`Refresh\`, \`Vault\`, \`Theme\`, and live \`API Quotas\`).
+- **Clean TitleBar & Settings Combobox**: Removed legacy dropdown menus from the frameless title bar. Settings now features an uncluttered theme dropdown selector and live telemetry progress meters.
 
 ---
 
-### ℹ️ Comprehensive Repository Info Dashboard
-- **6-Metric Health Grid**: Real-time display of Stars, Forks, Watchers, Open Issues, Primary Language, and License without edge bleeding.
-- **Android Package Status**: Dedicated APK distribution card displaying package size, filename, and direct 1-tap download.
-- **Repository Specifications**: Default branch, creation timestamp, last push/commit relative time, and last updated date.
-- **Developer Quick Clone**: Embedded terminal code snippet with one-tap clipboard copy and feedback.
-- **Publisher Profile**: Direct link and avatar preview of repository author/organization.
-
----
-
-### 🛡️ Rate Limit Resilience & Release Caching
-- **Multi-Tier Release Caching**: Releases are cached in-memory and persistent \`localStorage\` to eliminate empty release states when browsing multiple repositories.
-- **Public Raw CDN Fallback**: README documentation queries \`raw.githubusercontent.com\` first, consuming 0 GitHub API rate limit quota and preserving rate limits for releases.
-- **Android Installer Filtering**: Desktop-only binaries (\`.exe\`, \`.dmg\`, \`.deb\`, \`.zip\`) are marked "Desktop only" and disabled, preventing accidental incompatible downloads.
-- **Empty State Recovery**: Added retry action and rate limit guidance if GitHub API limits are reached.
+### 📱 Android v${ANDROID_VERSION}: Full-Screen Settings, List View & Navigation Stacking
+- **Dedicated Full-Page Settings Page**: Replaced the previous modal popup with a native full-screen Android Settings screen featuring safe-area camera cutout padding, live GitHub quota telemetry, and seamless edge-swipe / hardware back button handling.
+- **Card & List View Switcher**: Added a tactile Material 3 segmented control (\`[ Card View | List View ]\`) in Settings. Toggling to **List View** switches repository feeds into a sleek 64px horizontal list tile layout, doubling browsing density.
+- **Full-Page Personal Access Token Screen**: Converted token management into a top-tier full-screen view (\`zIndex: 1800\`) that reliably overlays all views—including repository details and settings—returning cleanly to the previous screen on completion.
+- **Repo Details Star Action Bugfix**: Tapping Star anywhere within the repository details sheet (floating action island, metric card, or title chip) when unauthenticated immediately and reliably launches the Token Connection screen over the details sheet.
+- **Theme Dropdown Stacking Fix**: Elevated modal z-index hierarchy so Material-UI \`<Select>\` dropdowns render cleanly above full-screen pages with theme color dots and active checkmarks.
+- **Release Flexbox Collision Guard**: Fixed text overflow in repository details where high download counts clipped the "View Releases" button.
+`;
 
 ---
 

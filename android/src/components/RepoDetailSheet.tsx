@@ -468,14 +468,19 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
                   <Chip
                     size="small"
+                    clickable
+                    onClick={() => {
+                      try { navigator.vibrate?.(10); } catch {}
+                      onToggleStar && onToggleStar(repo);
+                    }}
                     icon={<StarIcon sx={{ fontSize: '13px !important', color: '#e3b341' }} />}
                     label={`${formatCount(repo.stargazers_count + (isStarred ? 1 : 0))} stars`}
                     sx={{
                       height: 23,
                       fontSize: '0.7rem',
                       fontWeight: 700,
-                      bgcolor: alpha(theme.palette.text.primary, 0.05),
-                      border: `1px solid ${theme.palette.divider}`
+                      bgcolor: isStarred ? alpha('#e3b341', 0.18) : alpha(theme.palette.text.primary, 0.05),
+                      border: `1px solid ${isStarred ? '#e3b341' : theme.palette.divider}`
                     }}
                   />
                   {repo.language && (
@@ -528,7 +533,24 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
             {/* 2. Key Metrics Grid (6 Metrics: Stars, Forks, Watchers, Issues, Language, License) */}
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1.25, width: '100%', boxSizing: 'border-box' }}>
               {/* Metric 1: Stars */}
-              <Box sx={{ p: 1.5, borderRadius: '16px', bgcolor: alpha(theme.palette.text.primary, 0.04), border: `1px solid ${theme.palette.divider}`, minWidth: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
+              <Box
+                onClick={() => {
+                  try { navigator.vibrate?.(10); } catch {}
+                  onToggleStar && onToggleStar(repo);
+                }}
+                sx={{
+                  p: 1.5,
+                  borderRadius: '16px',
+                  bgcolor: isStarred ? alpha('#f59e0b', 0.12) : alpha(theme.palette.text.primary, 0.04),
+                  border: `1px solid ${isStarred ? '#f59e0b' : theme.palette.divider}`,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  boxSizing: 'border-box',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  '&:active': { transform: 'scale(0.97)' }
+                }}
+              >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, color: '#f59e0b', mb: 0.5 }}>
                   <StarIcon sx={{ fontSize: 18 }} />
                   <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>Stars</Typography>
@@ -652,14 +674,14 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                   </Button>
                 </Box>
                 {releases.length > 1 && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pt: 0.5, borderTop: '1px dashed rgba(16, 185, 129, 0.2)' }}>
-                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, pt: 0.5, borderTop: '1px dashed rgba(16, 185, 129, 0.2)' }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, flex: 1, minWidth: 0 }}>
                       {releases.length} releases published • {totalDownloads.toLocaleString()} total downloads
                     </Typography>
                     <Typography
                       variant="caption"
                       onClick={() => setTabIndex(2)}
-                      sx={{ color: theme.palette.primary.main, fontWeight: 700, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                      sx={{ color: theme.palette.primary.main, fontWeight: 700, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', '&:hover': { textDecoration: 'underline' } }}
                     >
                       View all releases →
                     </Typography>
@@ -675,14 +697,25 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                   border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between'
+                  justifyContent: 'space-between',
+                  gap: 1.5
                 }}
               >
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: theme.palette.primary.main }}>
+                <Box sx={{ flex: 1, minWidth: 0, pr: 0.5 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: theme.palette.primary.main, lineHeight: 1.25 }}>
                     {releases.length} Release{releases.length > 1 ? 's' : ''} Published
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                      fontWeight: 600,
+                      display: 'block',
+                      mt: 0.25,
+                      lineHeight: 1.35,
+                      wordBreak: 'break-word'
+                    }}
+                  >
                     {totalDownloads.toLocaleString()} total downloads across release assets
                   </Typography>
                 </Box>
@@ -695,7 +728,9 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                     borderRadius: '8px',
                     fontSize: '0.72rem',
                     fontWeight: 700,
-                    textTransform: 'none'
+                    textTransform: 'none',
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap'
                   }}
                 >
                   View Releases

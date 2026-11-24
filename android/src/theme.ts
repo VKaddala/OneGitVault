@@ -31,6 +31,16 @@ export const createMuiThemeFromPlugin = (plugin: ThemePlugin): Theme => {
     shape: {
       borderRadius: 16,
     },
+    zIndex: {
+      mobileStepper: 1000,
+      fab: 1050,
+      speedDial: 1050,
+      appBar: 1100,
+      drawer: 1200,
+      modal: 1600,
+      snackbar: 1700,
+      tooltip: 1800,
+    },
     typography: {
       fontFamily: '"Nunito", "Google Sans", "Google Sans Text", system-ui, -apple-system, sans-serif',
       h5: {

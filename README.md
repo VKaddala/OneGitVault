@@ -5,15 +5,17 @@
 </p>
 
 <p align="center">
-  <strong>Fast, Standalone Open-Source Repository Observatory & Vault for Windows</strong>
+  <strong>Fast, Standalone Open-Source Repository Observatory & Vault for Windows & Android</strong>
 </p>
 
 <p align="center">
   <a href="https://github.com/VKaddala/OneGitVault"><img src="https://img.shields.io/badge/platform-Windows-blue?logo=windows&logoColor=white" alt="Windows" /></a>
+  <a href="SETUP_ANDROID.md"><img src="https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white" alt="Android" /></a>
   <a href="https://github.com/VKaddala/OneGitVault/releases/latest"><img src="https://img.shields.io/badge/releases-GitHub-emerald?logo=github" alt="GitHub Releases" /></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-blue?logo=react&logoColor=white" alt="React" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white" alt="TypeScript" /></a>
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-teal?logo=electron&logoColor=white" alt="Electron" /></a>
+  <a href="https://capacitorjs.com/"><img src="https://img.shields.io/badge/Capacitor-119EFF?logo=capacitor&logoColor=white" alt="Capacitor" /></a>
   <a href="https://vitejs.dev/"><img src="https://img.shields.io/badge/Vite-purple?logo=vite&logoColor=white" alt="Vite" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/VKaddala/OneGitVault" alt="License" /></a>
 </p>
@@ -25,6 +27,8 @@
 **OneGitVault** is a standalone native Windows desktop application and modern open-source observatory for discovering, inspecting, bookmarking, and synchronizing high-impact repositories from GitHub.
 
 Built with **React**, **TypeScript**, **Tailwind CSS**, and **Electron**, OneGitVault eliminates browser tab clutter by packing real-time repository streaming, in-app GitHub trending discovery, instant markdown documentation rendering, release binary downloading, and cross-device cloud synchronization into a distraction-free native desktop environment.
+
+Alongside the Windows desktop app, **OneGitVault for Android** brings the full observatory experience to mobile devices. Built with **Capacitor**, **React**, and **TypeScript**, the Android companion features an immersive edge-to-edge transparent system bar architecture, automatic dark/light status bar contrast adaptation, 120Hz smooth scrolling, cloud Gist bookmarks sync, a GitHub Starred repositories browser, translucent search flyout, on-demand README translation into English, and native Android share sheet integration.
 
 ---
 
@@ -83,18 +87,31 @@ Built with **React**, **TypeScript**, **Tailwind CSS**, and **Electron**, OneGit
 - **GitHub Release Monitoring**: Periodically checks for new releases on GitHub.
 - **Silent Background Updates**: Downloads and applies updates silently in the background, automatically restarting the app with zero manual wizard steps.
 
+### 📱 12. OneGitVault for Android (Mobile Companion)
+- **Edge-to-Edge Native Shell**: Complete under-the-bars immersion with transparent status and navigation bars.
+- **Hardware-Accelerated Status Bar Theme Bridge**: Native `AndroidThemeBridge` dynamically synchronizes system icon luminance (`WindowInsetsControllerCompat`) on AMOLED dark and light themes without lag or battery drain.
+- **Dual Vault Architecture**: Easily switch between your locally saved Vault Bookmarks (with automatic private GitHub Gist sync) and your GitHub Starred repositories.
+- **Translucent Search Flyout**: WhatsApp and Instagram-style frosted glass search drawer featuring instant category pills, live repository streaming, and persistent search history.
+- **On-Demand README Translation**: Instant English translation of foreign documentation while safeguarding markdown syntax, code blocks, images, and badges.
+- **Native Android Share Sheet**: One-click sharing directly to native Android messaging and developer apps via `ACTION_SEND`.
+- **Ultra-Smooth 120Hz Scrolling**: Zero-lag list virtualization and frame-throttled scroll listeners designed for low memory and minimal battery consumption.
+
 ---
 
 ## 🏗️ Architecture & Technology Stack
 
 ```
 OneGitVault/
+├── android/                 # Android Native Mobile Application (Capacitor + Vite + React)
+│   ├── android/             # Android Studio / Gradle wrapper project (Java 17, SDK 34)
+│   │   └── app/src/main/    # AndroidManifest.xml, MainActivity.java (AndroidThemeBridge)
+│   └── src/                 # Mobile touch components, BottomNav, SearchFlyout, Gist sync
 ├── assets/                  # Multi-resolution application icons (.ico, .png)
 ├── electron/
 │   ├── main.cjs             # Electron main process (IPC, window lifecycle, shell integration, silent updater)
 │   └── preload.cjs          # Secure context-isolated bridge (electronAPI)
 ├── src/
-│   ├── components/          # Modular React components
+│   ├── components/          # Desktop React components
 │   │   ├── TitleBar.tsx     # Window header, search flyout, and header controls
 │   │   ├── CategoryNav.tsx  # Technology sector navigation
 │   │   ├── FilterBar.tsx    # Sorting, language filter, star thresholds, view toggles
@@ -109,27 +126,34 @@ OneGitVault/
 │   ├── themes/              # Modular theme registry
 │   └── types/               # TypeScript domain contracts
 ├── OneGitVault.iss          # Inno Setup Windows installer compiler script
-└── build-installer.bat      # Automated build & packaging script
+├── build-installer.bat      # Automated build & packaging script
+└── SETUP_ANDROID.md         # Detailed Android setup, build, and run instructions
 ```
 
 ---
 
 ## 🚀 Getting Started
 
-### Option 1: Standalone Windows Installer (Recommended)
+### Option 1: Standalone Windows Installer (Recommended for Windows)
 
 1. Download the latest installer from [GitHub Releases](https://github.com/VKaddala/OneGitVault/releases/latest).
 2. Run the installer. It automatically detects and cleanly upgrades any previous installation without orphan files.
 3. Launch **OneGitVault** from your Desktop or Start Menu.
 
-### Option 2: Precompiled Portable Executable
+### Option 2: Android Native APK Installation (Recommended for Android)
+
+1. Download the latest **`OneGitVault-Android-1.0.0.apk`** from [GitHub Releases](https://github.com/VKaddala/OneGitVault/releases/latest).
+2. Open the `.apk` file on your Android device (Android 8.0+) and confirm installation.
+3. For building from source with Node.js, JDK 17, and Gradle, see the comprehensive [Android Setup Guide](SETUP_ANDROID.md).
+
+### Option 3: Precompiled Portable Windows Executable
 
 Run the standalone executable directly without installation:
 ```
 release\OneGitVault-win32-x64\OneGitVault.exe
 ```
 
-### Option 3: Run from Source (Development)
+### Option 4: Run Windows App from Source (Development)
 
 **Prerequisites**: [Node.js](https://nodejs.org/) LTS and `npm`.
 

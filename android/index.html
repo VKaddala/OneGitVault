@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d1117" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>OneGitVault — Open-Source APK & Repo Observatory</title>
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&family=Google+Sans:wght@400;500;600;700&family=Google+Sans+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --status-bar-height: 42px;
+        --nav-bar-height: 16px;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html, body, #root {
+        width: 100%;
+        min-height: 100%;
+        background-color: var(--bg-canvas, #000000);
+      }
+      body {
+        font-family: 'Nunito', 'Google Sans', 'Google Sans Text', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: var(--text-primary, #f0f6fc);
+        overflow-x: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div id="app-launch-loader" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000000;z-index:99999;">
+        <img src="./favicon.png" alt="OneGitVault" style="width:76px;height:76px;border-radius:18px;animation:ogvPulse 1.6s ease-in-out infinite;" />
+      </div>
+      <style>
+        @keyframes ogvPulse {
+          0%, 100% { transform: scale(1); opacity: 0.95; }
+          50% { transform: scale(1.06); opacity: 0.75; }
+        }
+      </style>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -115,6 +115,29 @@ logs/
 *.log
 
 # ───────────────────────────────────────────
+# Android App (Sources tracked, builds ignored)
+# ───────────────────────────────────────────
+android/node_modules/
+android/dist/
+android/dist-ssr/
+android/*.apk
+android/*.aab
+*.apk
+*.aab
+android/android/.gradle/
+android/android/build/
+android/android/app/build/
+android/android/*/build/
+android/android/local.properties
+android/android/.idea/
+android/android/*.iml
+android/android/*/*.iml
+android/android/capacitor-cordova-android-plugins/
+android/android/app/src/main/assets/public/
+android/android/app/src/main/assets/capacitor.config.json
+android/android/app/src/main/assets/capacitor.plugins.json
+
+# ───────────────────────────────────────────
 # Optional: keep package-lock.json
 # (remove the ignore above and uncomment below
 #  if you want reproducible CI installs)

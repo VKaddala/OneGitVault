@@ -168,43 +168,59 @@ async function createRelease() {
   }
 }
 
-function uploadAsset(uploadUrlTemplate, filePath, fileName) {
-  return new Promise((resolve, reject) => {
-    const uploadUrl = uploadUrlTemplate.replace(/\{(\?name,label)?\}$/, `?name=${encodeURIComponent(fileName)}`);
-    const parsedUrl = new URL(uploadUrl);
-    const stats = fs.statSync(filePath);
-    const fileSize = stats.size;
-    console.log(`⬆️ Uploading ${fileName} (${(fileSize / (1024 * 1024)).toFixed(2)} MB)...`);
+function uploadAsset(uploadUrlTemplate, filePath, fileName, retries = 3) {
+  return new Promise(async (resolve, reject) => {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const uploadUrl = uploadUrlTemplate.replace(/\{(\?name,label)?\}$/, `?name=${encodeURIComponent(fileName)}`);
+        const parsedUrl = new URL(uploadUrl);
+        const stats = fs.statSync(filePath);
+        const fileSize = stats.size;
+        console.log(`⬆️ Uploading ${fileName} (${(fileSize / (1024 * 1024)).toFixed(2)} MB, attempt ${attempt}/${retries})...`);
 
-    const fileStream = fs.createReadStream(filePath);
+        await new Promise((resResolve, resReject) => {
+          const fileStream = fs.createReadStream(filePath);
+          const req = https.request({
+            hostname: parsedUrl.hostname,
+            path: parsedUrl.pathname + parsedUrl.search,
+            method: 'POST',
+            headers: {
+              'User-Agent': 'OneGitVault-Release-Bot',
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/vnd.github+json',
+              'Content-Type': 'application/octet-stream',
+              'Content-Length': fileSize
+            }
+          }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                console.log(`✅ Successfully uploaded ${fileName}!`);
+                resResolve(JSON.parse(data));
+              } else {
+                console.error(`❌ Upload failed with status ${res.statusCode}: ${data}`);
+                resReject(new Error(`Upload failed with status ${res.statusCode}`));
+              }
+            });
+          });
 
-    const req = https.request({
-      hostname: parsedUrl.hostname,
-      path: parsedUrl.pathname + parsedUrl.search,
-      method: 'POST',
-      headers: {
-        'User-Agent': 'OneGitVault-Release-Bot',
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github+json',
-        'Content-Type': 'application/octet-stream',
-        'Content-Length': fileSize
-      }
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          console.log(`✅ Successfully uploaded ${fileName}!`);
-          resolve(JSON.parse(data));
-        } else {
-          console.error(`❌ Upload failed with status ${res.statusCode}: ${data}`);
-          reject(new Error(data));
+          req.on('error', (err) => {
+            console.warn(`Attempt ${attempt} network error for ${fileName}:`, err.message);
+            resReject(err);
+          });
+          fileStream.pipe(req);
+        });
+
+        return resolve(true);
+      } catch (err) {
+        if (attempt === retries) {
+          return reject(err);
         }
-      });
-    });
-
-    req.on('error', reject);
-    fileStream.pipe(req);
+        console.log(`Waiting 3s before retry...`);
+        await new Promise(r => setTimeout(r, 3000));
+      }
+    }
   });
 }
 
@@ -213,21 +229,35 @@ async function main() {
     const release = await createRelease();
     const assetsToUpload = [
       {
-        fileName: `OneGitVault-Setup-${VERSION}.exe`,
-        filePath: path.resolve(__dirname, `../release/setup/OneGitVault-Setup-${VERSION}.exe`)
-      },
-      {
         fileName: `OneGitVault-Android-${ANDROID_VERSION}.apk`,
         filePath: path.resolve(__dirname, `../release/setup/OneGitVault-Android-${ANDROID_VERSION}.apk`)
+      },
+      {
+        fileName: `OneGitVault-Setup-${VERSION}.exe`,
+        filePath: path.resolve(__dirname, `../release/setup/OneGitVault-Setup-${VERSION}.exe`)
       }
     ];
 
     for (const asset of assetsToUpload) {
       if (!fs.existsSync(asset.filePath)) {
-        throw new Error(`File not found at: ${asset.filePath}`);
+        console.warn(`File not found at: ${asset.filePath}, skipping`);
+        continue;
       }
 
-      const existingAsset = (release.assets || []).find(a => a.name === asset.fileName);
+      // Re-fetch current release assets before check to have up-to-date IDs
+      const checkRes = await request({
+        hostname: 'api.github.com',
+        path: `/repos/${REPO_OWNER}/${REPO_NAME}/releases/${release.id}`,
+        method: 'GET',
+        headers: {
+          'User-Agent': 'OneGitVault-Release-Bot',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json'
+        }
+      });
+      const currentRelease = checkRes.statusCode === 200 ? JSON.parse(checkRes.body) : release;
+      const existingAsset = (currentRelease.assets || []).find(a => a.name === asset.fileName);
+
       if (existingAsset) {
         console.log(`Asset ${asset.fileName} already exists (ID: ${existingAsset.id}), deleting old one first...`);
         await request({
@@ -242,7 +272,11 @@ async function main() {
         });
       }
 
-      await uploadAsset(release.upload_url, asset.filePath, asset.fileName);
+      try {
+        await uploadAsset(release.upload_url, asset.filePath, asset.fileName);
+      } catch (uploadErr) {
+        console.error(`Failed to upload ${asset.fileName}:`, uploadErr.message);
+      }
     }
 
     console.log(`\n🎉 RELEASE COMPLETE!`);

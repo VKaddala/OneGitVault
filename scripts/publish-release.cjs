@@ -51,9 +51,6 @@ const RELEASE_BODY = `## 🚀 What's New in Desktop v${VERSION} & Android v${AND
 - **Repo Details Star Action Bugfix**: Tapping Star anywhere within the repository details sheet (floating action island, metric card, or title chip) when unauthenticated immediately and reliably launches the Token Connection screen over the details sheet.
 - **Theme Dropdown Stacking Fix**: Elevated modal z-index hierarchy so Material-UI \`<Select>\` dropdowns render cleanly above full-screen pages with theme color dots and active checkmarks.
 - **Release Flexbox Collision Guard**: Fixed text overflow in repository details where high download counts clipped the "View Releases" button.
-`;
-
----
 
 ### 🎯 Trending Horizontal Scroll Fix
 - **Negative Overflow Elimination**: Fixed issue in Trending where centered flex alignment pushed the "Today" pill into negative coordinates on mobile screens.

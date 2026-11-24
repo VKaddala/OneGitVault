@@ -31,6 +31,18 @@ export function getStoredToken(): string {
   }
 }
 
+// Auto-seed token from system Git Credential Manager if not already set in localStorage
+if (typeof window !== 'undefined' && !getStoredToken()) {
+  const electronAPI = (window as any).electronAPI;
+  if (electronAPI?.getSystemGitToken) {
+    electronAPI.getSystemGitToken().then((token: string) => {
+      if (token && !getStoredToken()) {
+        setStoredToken(token);
+      }
+    }).catch(() => {});
+  }
+}
+
 export async function setStoredToken(token: string): Promise<void> {
   try {
     if (token) {

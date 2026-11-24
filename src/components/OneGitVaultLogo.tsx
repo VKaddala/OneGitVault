@@ -4,26 +4,42 @@ export const OneGitVaultLogo: React.FC<{ className?: string }> = ({ className = 
   return (
     <svg 
       className={className} 
-      viewBox="0 0 32 32" 
+      viewBox="0 0 100 100" 
       fill="none" 
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Outer rounded vault tile - Petrol Slate */}
-      <rect width="32" height="32" rx="8" fill="#16272f" stroke="#244855" strokeWidth="1.5" />
-      
-      {/* Vault Arch - Deep Petrol with Vermilion Outline */}
-      <path d="M8 12C8 7.58172 11.5817 4 16 4C20.4183 4 24 7.58172 24 12V24C24 26.2091 22.2091 28 20 28H12C9.79086 28 8 26.2091 8 24V12Z" fill="#244855" stroke="#e64833" strokeWidth="1.3" />
-      
-      {/* Inner Git Branch Stem forming the '1' - Warm Biscuit Cream */}
-      <path d="M13 11L16 8V24" stroke="#fbe9d0" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-      
-      {/* Right Git branch - Warm Terracotta */}
-      <path d="M16 15C18.5 15 20.5 17 20.5 19.5" stroke="#874f41" strokeWidth="1.8" strokeLinecap="round" />
-      
-      {/* Branching node points - Cream, Flame Vermilion, Dusty Sage */}
-      <circle cx="16" cy="8" r="1.8" fill="#fbe9d0" />
-      <circle cx="16" cy="24" r="1.8" fill="#e64833" />
-      <circle cx="20.5" cy="19.5" r="1.8" fill="#90aead" />
+      <defs>
+        <linearGradient id="ogv-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0f172a" />
+          <stop offset="100%" stopColor="#020617" />
+        </linearGradient>
+        <linearGradient id="ogv-border" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#38bdf8" />
+          <stop offset="50%" stopColor="#818cf8" />
+          <stop offset="100%" stopColor="#f59e0b" />
+        </linearGradient>
+      </defs>
+
+      {/* Outer Squircle Container */}
+      <rect x="3" y="3" width="94" height="94" rx="24" fill="url(#ogv-bg)" stroke="url(#ogv-border)" strokeWidth="3" />
+
+      {/* Top Hexagon (GitHub Star Module) */}
+      <polygon points="50,14 68,24 68,46 50,56 32,46 32,24" fill="#090d16" stroke="#f59e0b" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="50,28 52,33 57,34 53,37 54,42 50,39 46,42 47,37 43,34 48,33" fill="#fbbf24" />
+
+      {/* Bottom Left Hexagon (Code Syntax Module) */}
+      <polygon points="30,48 48,58 48,80 30,90 12,80 12,58" fill="#090d16" stroke="#38bdf8" strokeWidth="2.5" strokeLinejoin="round" />
+      <text x="30" y="73" fontFamily="Consolas, monospace" fontSize="13" fontWeight="900" fill="#38bdf8" textAnchor="middle">&lt;/&gt;</text>
+
+      {/* Bottom Right Hexagon (Git Branch Module) */}
+      <polygon points="70,48 88,58 88,80 70,90 52,80 52,58" fill="#090d16" stroke="#a855f7" strokeWidth="2.5" strokeLinejoin="round" />
+      <circle cx="70" cy="63" r="3.2" fill="#a855f7" />
+      <circle cx="63" cy="76" r="2.6" fill="#c084fc" />
+      <circle cx="77" cy="76" r="2.6" fill="#c084fc" />
+      <path d="M 70 65 L 70 69 M 70 69 L 63 74 M 70 69 L 77 74" stroke="#c084fc" strokeWidth="2.2" strokeLinecap="round" />
+
+      {/* Central Intersection Starlight Node */}
+      <circle cx="50" cy="56" r="4.5" fill="#ffffff" stroke="#38bdf8" strokeWidth="1.5" />
     </svg>
   );
 };

@@ -1,27 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
   Grid,
   Button,
   Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
   CircularProgress,
-  Tooltip,
+  IconButton,
   useTheme,
   alpha
 } from '@mui/material';
 import BookmarksIcon from '@mui/icons-material/Bookmarks';
 import StarIcon from '@mui/icons-material/Star';
-import CloudDoneIcon from '@mui/icons-material/CloudDone';
-import SyncIcon from '@mui/icons-material/Sync';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import SearchIcon from '@mui/icons-material/Search';
 import { Repository } from '../types';
 import { RepoCard } from './RepoCard';
 import { getBookmarks, saveBookmarks } from '../services/bookmarkStore';
@@ -43,6 +39,9 @@ interface VaultViewProps {
   onVaultUpdated: () => void;
   isCompact?: boolean;
   starredRepos?: Set<string>;
+  starredList?: Repository[];
+  starredLoaded?: boolean;
+  onRefreshStarred?: () => void;
   onToggleStar?: (repo: Repository) => void;
   onOpenTokenDialog?: () => void;
   onShareMessage?: (msg: string) => void;
@@ -57,6 +56,9 @@ export const VaultView: React.FC<VaultViewProps> = ({
   onVaultUpdated,
   isCompact = false,
   starredRepos = new Set(),
+  starredList = [],
+  starredLoaded = false,
+  onRefreshStarred,
   onToggleStar,
   onOpenTokenDialog,
   onShareMessage
@@ -72,159 +74,103 @@ export const VaultView: React.FC<VaultViewProps> = ({
   const [isGistSyncing, setIsGistSyncing] = useState<boolean>(false);
   const [gistSyncStatus, setGistSyncStatus] = useState<string>('');
 
-  // Starred Repositories
-  const [starredList, setStarredList] = useState<Repository[]>([]);
+  // Local fallback state for starred repos if not passed from parent
+  const [localStarredList, setLocalStarredList] = useState<Repository[]>([]);
   const [loadingStarred, setLoadingStarred] = useState<boolean>(false);
-  const [starredLoaded, setStarredLoaded] = useState<boolean>(false);
+  const [starredSearch, setStarredSearch] = useState<string>('');
 
-  // Manual Backup/Restore Dialog
-  const [gistDialogOpen, setGistDialogOpen] = useState<boolean>(false);
-  const [manualGistId, setManualGistId] = useState<string>('');
-  const [dialogLoading, setDialogLoading] = useState<boolean>(false);
-  const [dialogStatus, setDialogStatus] = useState<string>('');
-
-  // 1. Auto Pull from Gist when token is available
-  const handleAutoPullGist = useCallback(async (showFeedback = false) => {
-    if (!token) return;
+  // 1. Manual Gist Pull (Restore from Cloud)
+  const handleManualPull = async () => {
+    if (!token) {
+      if (onOpenTokenDialog) onOpenTokenDialog();
+      return;
+    }
     setIsGistSyncing(true);
-    if (showFeedback) setGistSyncStatus('Syncing with Gist...');
-
+    setGistSyncStatus('Pulling from Gist...');
     try {
       const gistBookmarks = await pullBookmarksFromGist(token);
       if (gistBookmarks && Array.isArray(gistBookmarks)) {
-        const local = getBookmarks();
-        const localMap = new Map(local.map((r) => [r.id, r]));
-        let hasNewFromGist = false;
-
-        for (const gb of gistBookmarks) {
-          if (!localMap.has(gb.id)) {
-            localMap.set(gb.id, gb);
-            hasNewFromGist = true;
-          }
-        }
-
-        const merged = Array.from(localMap.values());
-        if (hasNewFromGist) {
-          saveBookmarks(merged);
-          onVaultUpdated();
-        }
-
-        // If local had items not yet in Gist, sync back
-        if (merged.length > gistBookmarks.length) {
-          await pushBookmarksToGist(token, merged);
-        }
-
-        setGistSyncStatus(`Synced with Gist (${merged.length} repos)`);
-      } else if (bookmarks.length > 0) {
-        // If Gist doesn't exist yet but user has local bookmarks, push them
-        await pushBookmarksToGist(token, bookmarks);
-        setGistSyncStatus('Backed up to Gist');
+        saveBookmarks(gistBookmarks);
+        onVaultUpdated();
+        const msg = `Restored ${gistBookmarks.length} bookmarks from cloud Gist!`;
+        setGistSyncStatus(msg);
+        if (onShareMessage) onShareMessage(msg);
       } else {
-        setGistSyncStatus('Gist is up to date');
+        const msg = 'No backup found or pull failed';
+        setGistSyncStatus(msg);
+        if (onShareMessage) onShareMessage(msg);
       }
     } catch (err: any) {
-      console.warn('Auto Gist pull error:', err);
-      if (showFeedback) setGistSyncStatus('Gist sync failed');
+      setGistSyncStatus('Gist pull failed');
+      if (onShareMessage) onShareMessage('Gist pull network error');
     } finally {
       setIsGistSyncing(false);
     }
-  }, [token, bookmarks.length, onVaultUpdated]);
-
-  // Initial Gist auto-pull on mount
-  useEffect(() => {
-    if (token) {
-      handleAutoPullGist(false);
-    }
-  }, [token]);
-
-  // 2. Load User Starred Repositories
-  const loadStarredRepos = useCallback(async () => {
-    if (!token) return;
-    setLoadingStarred(true);
-    try {
-      const items = await fetchUserStarredRepositories(token, 1, 100);
-      setStarredList(items);
-      setStarredLoaded(true);
-    } catch (err) {
-      console.warn('Failed to load starred repos:', err);
-    } finally {
-      setLoadingStarred(false);
-    }
-  }, [token]);
-
-  // Load starred repos when switching to 'starred' tab
-  useEffect(() => {
-    if (subSection === 'starred' && !starredLoaded && token) {
-      loadStarredRepos();
-    }
-  }, [subSection, starredLoaded, token, loadStarredRepos]);
-
-  // Manual Backup to Gist
-  const handleManualBackup = async () => {
-    if (!token) return;
-    setDialogLoading(true);
-    setDialogStatus('Uploading bookmarks to Gist...');
-    try {
-      const url = await pushBookmarksToGist(token, bookmarks);
-      if (url) {
-        setDialogStatus('Backup successful!');
-        setGistSyncStatus('Backed up to Gist');
-      } else {
-        setDialogStatus('Failed to create or update Gist.');
-      }
-    } catch (err: any) {
-      setDialogStatus(`Error: ${err.message}`);
-    } finally {
-      setDialogLoading(false);
-    }
   };
 
-  // Manual Restore from Gist ID
-  const handleManualRestore = async () => {
-    if (!manualGistId.trim()) {
-      setDialogStatus('Please enter a valid Gist ID.');
+  // 2. Manual Gist Push (Backup to Cloud)
+  const handleManualPush = async () => {
+    if (!token) {
+      if (onOpenTokenDialog) onOpenTokenDialog();
       return;
     }
-    setDialogLoading(true);
-    setDialogStatus('Fetching Gist...');
+    const currentBookmarks = getBookmarks();
+    if (currentBookmarks.length === 0) {
+      setGistSyncStatus('Vault is empty, nothing to push');
+      if (onShareMessage) onShareMessage('Vault is empty, nothing to push');
+      return;
+    }
+    setIsGistSyncing(true);
+    setGistSyncStatus('Backing up to Gist...');
     try {
-      const headers: HeadersInit = { Accept: 'application/vnd.github.v3+json' };
-      if (token) headers.Authorization = `Bearer ${token}`;
-
-      const res = await fetch(`https://api.github.com/gists/${manualGistId.trim()}`, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        const file =
-          data.files?.['onegitvault-bookmarks.json'] ||
-          data.files?.['onegitvault-android-bookmarks.json'] ||
-          Object.values(data.files || {})[0] as any;
-
-        if (file && file.content) {
-          const parsed = JSON.parse(file.content);
-          if (Array.isArray(parsed)) {
-            saveBookmarks(parsed);
-            onVaultUpdated();
-            setDialogStatus(`Restored ${parsed.length} bookmarks successfully!`);
-            setGistSyncStatus(`Restored ${parsed.length} repos`);
-          } else {
-            setDialogStatus('Invalid Gist JSON payload.');
-          }
-        } else {
-          setDialogStatus('No bookmark JSON found in specified Gist.');
-        }
+      const url = await pushBookmarksToGist(token, currentBookmarks);
+      if (url) {
+        const msg = `Backed up ${currentBookmarks.length} bookmarks to cloud Gist!`;
+        setGistSyncStatus(msg);
+        if (onShareMessage) onShareMessage(msg);
       } else {
-        setDialogStatus(`Restore failed: HTTP ${res.status}`);
+        const msg = 'Failed to push to Gist';
+        setGistSyncStatus(msg);
+        if (onShareMessage) onShareMessage(msg);
       }
     } catch (err: any) {
-      setDialogStatus(`Error: ${err.message}`);
+      setGistSyncStatus('Gist push failed');
+      if (onShareMessage) onShareMessage('Gist push network error');
     } finally {
-      setDialogLoading(false);
+      setIsGistSyncing(false);
     }
   };
 
+  // 3. Fallback load starred repos if parent didn't load them
+  useEffect(() => {
+    if (subSection === 'starred' && starredList.length === 0 && !starredLoaded && token) {
+      setLoadingStarred(true);
+      fetchUserStarredRepositories(token, 1, 100)
+        .then((items) => {
+          setLocalStarredList(items);
+        })
+        .catch(() => {})
+        .finally(() => setLoadingStarred(false));
+    }
+  }, [subSection, starredList.length, starredLoaded, token]);
+
+  const activeStarredItems = starredList.length > 0 ? starredList : localStarredList;
+
+  // Filtered Starred list by query
+  const filteredStarred = useMemo(() => {
+    if (!starredSearch.trim()) return activeStarredItems;
+    const q = starredSearch.toLowerCase().trim();
+    return activeStarredItems.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        r.full_name.toLowerCase().includes(q) ||
+        (r.description && r.description.toLowerCase().includes(q))
+    );
+  }, [activeStarredItems, starredSearch]);
+
   return (
-    <Box sx={{ p: { xs: 1.5, sm: 2.5 } }}>
-      {/* Vault Top Selector: Segmented Pill Control for Gist vs Starred */}
+    <Box sx={{ pb: 6 }}>
+      {/* ── Top Bar with Dual Selections & Actions ── */}
       <Box
         sx={{
           display: 'flex',
@@ -274,7 +220,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
           <Button
             size="small"
             onClick={() => setSubSection('starred')}
-            startIcon={<StarIcon sx={{ fontSize: 16 }} />}
+            startIcon={<StarIcon sx={{ fontSize: 16, color: subSection === 'starred' ? '#fbbf24' : 'inherit' }} />}
             sx={{
               height: 32,
               px: 1.5,
@@ -290,136 +236,179 @@ export const VaultView: React.FC<VaultViewProps> = ({
               }
             }}
           >
-            GitHub Starred {starredLoaded ? `(${starredList.length})` : ''}
+            GitHub Starred ({activeStarredItems.length})
           </Button>
         </Box>
 
         {/* Action Controls for Active SubSection */}
-        {subSection === 'gist' && (
+        {subSection === 'gist' ? (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {token ? (
-              <Chip
-                icon={isGistSyncing ? <CircularProgress size={12} color="inherit" /> : <CloudDoneIcon sx={{ fontSize: 14 }} />}
-                label={gistSyncStatus || 'Gist Auto-Synced'}
-                size="small"
-                onClick={() => handleAutoPullGist(true)}
-                sx={{
-                  height: 26,
-                  fontSize: '0.7rem',
-                  fontWeight: 700,
-                  bgcolor: alpha(theme.palette.primary.main, 0.12),
-                  color: theme.palette.primary.main,
-                  border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`,
-                  cursor: 'pointer'
-                }}
-              />
+              <>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={isGistSyncing}
+                  onClick={handleManualPull}
+                  startIcon={isGistSyncing ? <CircularProgress size={12} /> : <CloudDownloadIcon sx={{ fontSize: 15 }} />}
+                  sx={{
+                    height: 28,
+                    borderRadius: '10px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    px: 1.2
+                  }}
+                >
+                  Pull from Gist
+                </Button>
+
+                <Button
+                  size="small"
+                  variant="contained"
+                  disabled={isGistSyncing || bookmarks.length === 0}
+                  onClick={handleManualPush}
+                  startIcon={isGistSyncing ? <CircularProgress size={12} color="inherit" /> : <CloudUploadIcon sx={{ fontSize: 15 }} />}
+                  sx={{
+                    height: 28,
+                    borderRadius: '10px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    px: 1.2
+                  }}
+                >
+                  Push to Gist
+                </Button>
+
+                {gistSyncStatus && (
+                  <Typography variant="caption" sx={{ fontSize: '0.68rem', fontWeight: 600, color: 'text.secondary', ml: 0.5 }}>
+                    {gistSyncStatus}
+                  </Typography>
+                )}
+              </>
             ) : (
               <Chip
                 icon={<VpnKeyIcon sx={{ fontSize: 12 }} />}
-                label="Local Only (Connect Token for Gist Sync)"
+                label="Connect Token for Gist Sync"
                 size="small"
                 onClick={onOpenTokenDialog}
                 sx={{
-                  height: 26,
-                  fontSize: '0.68rem',
+                  height: 28,
+                  fontSize: '0.72rem',
                   fontWeight: 700,
                   cursor: 'pointer',
-                  bgcolor: alpha(theme.palette.text.primary, 0.05)
+                  bgcolor: alpha(theme.palette.primary.main, 0.12),
+                  color: theme.palette.primary.main,
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`
                 }}
               />
             )}
-
-            <Tooltip title="Gist Options">
-              <Button
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {token && onRefreshStarred && (
+              <IconButton
                 size="small"
-                variant="outlined"
-                onClick={() => setGistDialogOpen(true)}
+                onClick={onRefreshStarred}
+                disabled={loadingStarred}
+                sx={{
+                  border: `1px solid ${theme.palette.divider}`,
+                  borderRadius: '10px',
+                  p: 0.6
+                }}
+                title="Refresh Starred List"
+              >
+                <RefreshIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            )}
+
+            {!token && (
+              <Chip
+                icon={<VpnKeyIcon sx={{ fontSize: 12 }} />}
+                label="Connect Token to View Stars"
+                size="small"
+                onClick={onOpenTokenDialog}
                 sx={{
                   height: 28,
-                  borderRadius: '10px',
                   fontSize: '0.72rem',
-                  textTransform: 'none',
-                  px: 1.2
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  bgcolor: alpha(theme.palette.primary.main, 0.12),
+                  color: theme.palette.primary.main
                 }}
-              >
-                Gist Options
-              </Button>
-            </Tooltip>
-          </Box>
-        )}
-
-        {subSection === 'starred' && token && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<SyncIcon sx={{ fontSize: 14, animation: loadingStarred ? 'spin 1s linear infinite' : 'none' }} />}
-              onClick={loadStarredRepos}
-              disabled={loadingStarred}
-              sx={{
-                height: 28,
-                borderRadius: '10px',
-                fontSize: '0.72rem',
-                textTransform: 'none',
-                px: 1.2
-              }}
-            >
-              Refresh Starred
-            </Button>
+              />
+            )}
           </Box>
         )}
       </Box>
 
-      {/* ────────────────── SELECTION 1: GIST & VAULT BOOKMARKS ────────────────── */}
+      {/* Starred Repos Search Bar (when in Starred tab) */}
+      {subSection === 'starred' && activeStarredItems.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search your starred repositories..."
+            value={starredSearch}
+            onChange={(e) => setStarredSearch(e.target.value)}
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ fontSize: 18, color: 'text.secondary', mr: 1 }} />
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '14px',
+                fontSize: '0.82rem',
+                bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'
+              }
+            }}
+          />
+        </Box>
+      )}
+
+      {/* ── SubSection 1: Gist Bookmarks Content ── */}
       {subSection === 'gist' && (
         <>
           {bookmarks.length === 0 ? (
             <Box
               sx={{
                 textAlign: 'center',
-                py: 10,
+                py: 8,
                 px: 2,
-                border: `2px dashed ${alpha(theme.palette.divider, 0.8)}`,
                 borderRadius: '24px',
-                bgcolor: alpha(theme.palette.text.primary, 0.02)
+                bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.01)',
+                border: `1px dashed ${theme.palette.divider}`,
+                mt: 1
               }}
             >
-              <BookmarksIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1, opacity: 0.5 }} />
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
-                Your Vault Bookmarks are Empty
+              <BookmarksIcon sx={{ fontSize: 44, color: 'text.disabled', mb: 1.5 }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                Your Vault is Empty
               </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 380, mx: 'auto', mb: 2 }}>
-                Tap the bookmark ribbon icon on any APK or repository to save it here. With a GitHub token, bookmarks automatically sync via private GitHub Gist across all your devices.
+              <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 360, mx: 'auto', mb: 2 }}>
+                Bookmark repositories in the Explore or APKs feeds by tapping the bookmark icon to store them here and back up to your private Gist.
               </Typography>
               {token && (
                 <Button
                   size="small"
                   variant="outlined"
-                  startIcon={<SyncIcon />}
-                  onClick={() => handleAutoPullGist(true)}
-                  disabled={isGistSyncing}
-                  sx={{ borderRadius: '12px', textTransform: 'none', fontSize: '0.75rem' }}
+                  onClick={handleManualPull}
+                  startIcon={<CloudDownloadIcon />}
+                  sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 700 }}
                 >
-                  Pull from Existing Gist
+                  Pull from Cloud Gist
                 </Button>
               )}
             </Box>
           ) : (
-            <Grid container spacing={isCompact ? 1 : 1.5}>
+            <Grid container spacing={isCompact ? 1.5 : 2}>
               {bookmarks.map((repo) => (
-                <Grid item xs={12} sm={isCompact ? 12 : 6} md={isCompact ? 6 : 4} key={repo.id}>
+                <Grid item xs={12} sm={6} md={4} key={repo.id}>
                   <RepoCard
                     repo={repo}
-                    isBookmarked={true}
-                    onToggleBookmark={(r) => {
-                      onToggleBookmark(r);
-                      onVaultUpdated();
-                      // Auto push updated list to Gist
-                      if (token) {
-                        setTimeout(() => pushBookmarksToGist(token, getBookmarks()), 300);
-                      }
-                    }}
                     onOpenDetail={onOpenDetail}
+                    isBookmarked={true}
+                    onToggleBookmark={onToggleBookmark}
                     onCopyClone={onCopyClone}
                     copiedId={copiedId}
                     isCompact={isCompact}
@@ -434,86 +423,81 @@ export const VaultView: React.FC<VaultViewProps> = ({
         </>
       )}
 
-      {/* ────────────────── SELECTION 2: GITHUB STARRED REPOSITORIES ────────────────── */}
+      {/* ── SubSection 2: GitHub Starred Content ── */}
       {subSection === 'starred' && (
         <>
           {!token ? (
             <Box
               sx={{
                 textAlign: 'center',
-                py: 10,
+                py: 8,
                 px: 2,
-                border: `2px dashed ${alpha(theme.palette.divider, 0.8)}`,
                 borderRadius: '24px',
-                bgcolor: alpha(theme.palette.text.primary, 0.02)
+                bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.01)',
+                border: `1px dashed ${theme.palette.divider}`,
+                mt: 1
               }}
             >
-              <StarIcon sx={{ fontSize: 50, color: '#e3b341', mb: 1, opacity: 0.8 }} />
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
-                GitHub Personal Access Token Required
+              <StarIcon sx={{ fontSize: 44, color: '#fbbf24', mb: 1.5 }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                Connect GitHub Token
               </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 400, mx: 'auto', mb: 2.5 }}>
-                Connect your GitHub PAT token to browse, search, and manage your starred repositories and APKs directly inside OneGitVault.
+              <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 360, mx: 'auto', mb: 2 }}>
+                Connect a GitHub Personal Access Token (classic) with public_repo scope to browse, star, and sync your starred repositories directly in OneGitVault.
               </Typography>
               <Button
                 variant="contained"
-                color="primary"
-                startIcon={<VpnKeyIcon />}
+                size="small"
                 onClick={onOpenTokenDialog}
+                startIcon={<VpnKeyIcon />}
                 sx={{ borderRadius: '14px', textTransform: 'none', fontWeight: 700 }}
               >
-                Connect GitHub Token
+                Connect Token
               </Button>
             </Box>
           ) : loadingStarred ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 12, gap: 1.5 }}>
-              <CircularProgress size={30} color="primary" />
-              <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-                Fetching your GitHub Starred repositories...
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <CircularProgress size={32} sx={{ mb: 2 }} />
+              <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                Loading your starred repositories...
               </Typography>
             </Box>
-          ) : starredList.length === 0 ? (
+          ) : filteredStarred.length === 0 ? (
             <Box
               sx={{
                 textAlign: 'center',
-                py: 10,
+                py: 8,
                 px: 2,
-                border: `2px dashed ${alpha(theme.palette.divider, 0.8)}`,
                 borderRadius: '24px',
-                bgcolor: alpha(theme.palette.text.primary, 0.02)
+                bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.01)',
+                border: `1px dashed ${theme.palette.divider}`,
+                mt: 1
               }}
             >
-              <StarIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1, opacity: 0.5 }} />
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
-                No Starred Repositories Found
+              <StarIcon sx={{ fontSize: 44, color: 'text.disabled', mb: 1.5 }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                {starredSearch ? 'No Matching Starred Repositories' : 'No Starred Repositories Found'}
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 360, mx: 'auto' }}>
-                Repositories you star on GitHub will appear here automatically.
+                {starredSearch
+                  ? 'Try searching with a different keyword or repo name.'
+                  : 'Star repositories in the app or on GitHub, and they will appear here.'}
               </Typography>
             </Box>
           ) : (
-            <Grid container spacing={isCompact ? 1 : 1.5}>
-              {starredList.map((repo) => (
-                <Grid item xs={12} sm={isCompact ? 12 : 6} md={isCompact ? 6 : 4} key={repo.id}>
+            <Grid container spacing={isCompact ? 1.5 : 2}>
+              {filteredStarred.map((repo) => (
+                <Grid item xs={12} sm={6} md={4} key={repo.id}>
                   <RepoCard
                     repo={repo}
-                    isBookmarked={isBookmarked(repo.id)}
-                    onToggleBookmark={(r) => {
-                      onToggleBookmark(r);
-                      onVaultUpdated();
-                    }}
                     onOpenDetail={onOpenDetail}
+                    isBookmarked={isBookmarked(repo.id)}
+                    onToggleBookmark={onToggleBookmark}
                     onCopyClone={onCopyClone}
                     copiedId={copiedId}
                     isCompact={isCompact}
                     isStarred={true}
-                    onToggleStar={async (r) => {
-                      if (onToggleStar) {
-                        onToggleStar(r);
-                      }
-                      // Remove from local starred list if unstarred
-                      setStarredList((prev) => prev.filter((item) => item.id !== r.id));
-                    }}
+                    onToggleStar={onToggleStar}
                     onShareMessage={onShareMessage}
                   />
                 </Grid>
@@ -522,62 +506,6 @@ export const VaultView: React.FC<VaultViewProps> = ({
           )}
         </>
       )}
-
-      {/* Manual Gist Backup & Restore Dialog */}
-      <Dialog open={gistDialogOpen} onClose={() => setGistDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, fontSize: '1rem' }}>
-          GitHub Gist Synchronization
-        </DialogTitle>
-        <DialogContent sx={{ pt: 1 }}>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-            OneGitVault automatically synchronizes your bookmarks with your private GitHub Gist when a PAT token is present. You can also manually backup or restore using a custom Gist ID below.
-          </Typography>
-
-          <TextField
-            fullWidth
-            size="small"
-            label="Specific Gist ID (Optional)"
-            placeholder="e.g. 7f4a29b..."
-            value={manualGistId}
-            onChange={(e) => setManualGistId(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-
-          {dialogStatus && (
-            <Typography variant="caption" sx={{ display: 'block', mb: 2, color: theme.palette.primary.main, fontWeight: 700 }}>
-              {dialogStatus}
-            </Typography>
-          )}
-
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              fullWidth
-              variant="contained"
-              startIcon={dialogLoading ? <CircularProgress size={16} /> : <CloudUploadIcon />}
-              onClick={handleManualBackup}
-              disabled={dialogLoading || !token}
-              sx={{ borderRadius: '14px', textTransform: 'none' }}
-            >
-              Push to Gist
-            </Button>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={dialogLoading ? <CircularProgress size={16} /> : <CloudDownloadIcon />}
-              onClick={handleManualRestore}
-              disabled={dialogLoading}
-              sx={{ borderRadius: '14px', textTransform: 'none' }}
-            >
-              Restore ID
-            </Button>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ p: 2, pt: 0 }}>
-          <Button onClick={() => setGistDialogOpen(false)} sx={{ borderRadius: '14px', textTransform: 'none' }}>
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };

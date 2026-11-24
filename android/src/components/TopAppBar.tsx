@@ -22,7 +22,10 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import CheckIcon from '@mui/icons-material/Check';
 import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
 import TableRowsIcon from '@mui/icons-material/TableRows';
+import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
 import { ThemePlugin } from '../themes/types';
+import { OneGitVaultLogo } from './OneGitVaultLogo';
+import { AndroidUpdateInfo } from '../services/updateService';
 
 interface TopAppBarProps {
   searchQuery?: string;
@@ -39,6 +42,8 @@ interface TopAppBarProps {
   onSearchActiveChange: (active: boolean) => void;
   isCompactView: boolean;
   onToggleCompactView: () => void;
+  updateInfo?: AndroidUpdateInfo | null;
+  onOpenUpdateDialog?: () => void;
 }
 
 export const TopAppBar: React.FC<TopAppBarProps> = ({
@@ -53,7 +58,9 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
   isSearchActive,
   onSearchActiveChange,
   isCompactView,
-  onToggleCompactView
+  onToggleCompactView,
+  updateInfo,
+  onOpenUpdateDialog
 }) => {
   const theme = useTheme();
   const [themeMenuAnchor, setThemeMenuAnchor] = useState<null | HTMLElement>(null);
@@ -94,17 +101,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
         <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Left: Small Logo & Clean OneGitVault Title */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box
-              component="img"
-              src="./favicon.png"
-              alt="OneGitVault Logo"
-              sx={{
-                width: 22,
-                height: 22,
-                borderRadius: '6px',
-                objectFit: 'contain'
-              }}
-            />
+            <OneGitVaultLogo size={22} />
             <Typography
               variant="subtitle2"
               sx={{
@@ -117,6 +114,31 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
             >
               OneGitVault
             </Typography>
+
+            {/* Update Available Badge */}
+            {updateInfo?.hasUpdate && (
+              <Chip
+                icon={<SystemUpdateAltIcon sx={{ fontSize: '13px !important' }} />}
+                label={`v${updateInfo.latestVersion}`}
+                size="small"
+                color="primary"
+                onClick={onOpenUpdateDialog}
+                sx={{
+                  height: 20,
+                  fontSize: '0.625rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  borderRadius: '10px',
+                  ml: 0.5,
+                  animation: 'pulse 2s infinite',
+                  bgcolor: theme.palette.primary.main,
+                  color: theme.palette.primary.contrastText,
+                  '& .MuiChip-icon': {
+                    color: 'inherit',
+                  },
+                }}
+              />
+            )}
           </Box>
 
           {/* Right: Search Trigger, Quota Badge, Refresh, Theme Selector */}

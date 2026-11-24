@@ -154,3 +154,40 @@ export async function pullBookmarksFromGist(
     return null;
   }
 }
+
+/**
+ * Fetch all repositories starred by the authenticated user on GitHub.
+ */
+export async function fetchUserStarredRepositories(
+  token: string,
+  page: number = 1,
+  perPage: number = 100
+): Promise<Repository[]> {
+  if (!token) return [];
+  try {
+    const res = await fetch(
+      `https://api.github.com/user/starred?per_page=${perPage}&page=${page}&sort=created&direction=desc`,
+      {
+        headers: gistHeaders(token),
+      }
+    );
+    if (!res.ok) {
+      console.warn(`Failed to fetch user starred repositories: HTTP ${res.status}`);
+      return [];
+    }
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+
+    return data.map((item: any) => ({
+      ...item,
+      has_apks:
+        item.topics &&
+        (item.topics.includes('apk') ||
+          item.topics.includes('android-app') ||
+          item.topics.includes('android')),
+    }));
+  } catch (e) {
+    console.warn('Failed to fetch user starred repos:', e);
+    return [];
+  }
+}

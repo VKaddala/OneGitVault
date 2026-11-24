@@ -22,13 +22,13 @@ export const TokenModal: React.FC<TokenModalProps> = ({
   const [liveRateLimit, setLiveRateLimit] = useState<RateLimitInfo>(rateLimit);
   const [now, setNow] = useState(Date.now());
 
-  // Sync token input when modal opens
+  // Sync token input only when modal opens
   useEffect(() => {
     if (isOpen) {
       setTokenInput(getStoredToken());
       setLiveRateLimit(rateLimit);
     }
-  }, [isOpen, rateLimit]);
+  }, [isOpen]);
 
   // Real-time live polling & second ticker while modal is open
   useEffect(() => {

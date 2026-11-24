@@ -24,6 +24,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import ShareIcon from '@mui/icons-material/Share';
 import { Repository } from '../types';
 import { shareProject } from '../services/shareHelper';
+import { downloadApkFile } from '../services/downloadHelper';
 
 interface RepoCardProps {
   repo: Repository;
@@ -166,7 +167,7 @@ export const RepoCard: React.FC<RepoCardProps> = ({
                 startIcon={<DownloadIcon sx={{ fontSize: isCompact ? 11 : 12 }} />}
                 onClick={(e) => {
                   e.stopPropagation();
-                  window.open(primaryApkAsset.browser_download_url, '_blank');
+                  downloadApkFile(primaryApkAsset.browser_download_url, primaryApkAsset.name);
                 }}
                 sx={{
                   height: isCompact ? 20 : 22,

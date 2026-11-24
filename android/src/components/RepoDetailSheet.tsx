@@ -40,6 +40,7 @@ import { Repository, ReleaseAsset } from '../types';
 import { fetchReadme, fetchReleases } from '../services/githubApi';
 import { shareProject } from '../services/shareHelper';
 import { translateMarkdownToEnglish } from '../services/translateService';
+import { downloadApkFile } from '../services/downloadHelper';
 
 interface RepoDetailSheetProps {
   repo: Repository | null;
@@ -465,9 +466,7 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                         variant={isApk ? 'contained' : 'outlined'}
                         color="primary"
                         startIcon={<DownloadIcon sx={{ fontSize: 14 }} />}
-                        href={asset.browser_download_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        onClick={() => downloadApkFile(asset.browser_download_url, asset.name)}
                         sx={{
                           height: 28,
                           fontSize: '0.725rem',

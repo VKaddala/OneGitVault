@@ -44,7 +44,7 @@
         </provider>
     </application>
 
-    <!-- Permissions -->
+    <!-- Permissions: Standard network access only (Clean Play Protect status) -->
 
     <uses-permission android:name="android.permission.INTERNET" />
 </manifest>

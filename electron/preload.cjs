@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('window-maximized-change', handler);
   },
   openExternal: (url) => ipcRenderer.send('open-external', url),
+  getSystemGitToken: () => ipcRenderer.invoke('get-system-git-token'),
   installUpdateSilently: (downloadUrl) => ipcRenderer.invoke('install-update-silently', downloadUrl),
   onUpdateDownloadProgress: (callback) => {
     const handler = (_event, progress) => callback(progress);

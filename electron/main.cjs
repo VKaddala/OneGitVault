@@ -94,6 +94,26 @@ ipcMain.handle('window-is-maximized', () => {
   return mainWindow && !mainWindow.isDestroyed() ? mainWindow.isMaximized() : false;
 });
 
+// Auto-discover GitHub Personal Access Token from system Git Credential Manager
+ipcMain.handle('get-system-git-token', () => {
+  try {
+    const { execSync } = require('child_process');
+    const creds = execSync('git credential fill', {
+      input: 'protocol=https\nhost=github.com\n\n',
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    for (const line of creds.split('\n')) {
+      if (line.startsWith('password=')) {
+        return line.slice('password='.length).trim();
+      }
+    }
+  } catch (e) {
+    // Ignore if git credentials are not available
+  }
+  return process.env.GITHUB_TOKEN || '';
+});
+
 ipcMain.on('open-external', (_event, url) => {
   if (url && (url.startsWith('http:') || url.startsWith('https:'))) {
     shell.openExternal(url);

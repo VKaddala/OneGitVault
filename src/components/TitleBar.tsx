@@ -305,10 +305,6 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             OneGit<span className="text-action">Vault</span>
           </span>
 
-          <span className="hidden xl:inline-block text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-action-soft text-action border border-action-border font-bold">
-            Desktop
-          </span>
-
           {/* Expand chevron that toggles About popover */}
           <button
             data-about-trigger="true"

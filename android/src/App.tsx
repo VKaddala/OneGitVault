@@ -45,6 +45,8 @@ import { VaultView } from './components/VaultView';
 import { TokenDialog } from './components/TokenDialog';
 import { SearchFlyout } from './components/SearchFlyout';
 import { BottomNav } from './components/BottomNav';
+import { UpdateDialog } from './components/UpdateDialog';
+import { checkForAndroidUpdates, AndroidUpdateInfo } from './services/updateService';
 
 export const App: React.FC = () => {
   // Theme Management
@@ -103,6 +105,37 @@ export const App: React.FC = () => {
 
   // Starred Repositories State (Synced with GitHub when PAT available)
   const [starredRepos, setStarredRepos] = useState<Set<string>>(new Set());
+  const [starredReposList, setStarredReposList] = useState<Repository[]>([]);
+  const [starredListLoaded, setStarredListLoaded] = useState<boolean>(false);
+
+  // Function to refresh starred repositories from GitHub
+  const refreshStarredList = useCallback(async () => {
+    const token = getStoredToken();
+    if (!token) return;
+    try {
+      const starred = await fetchUserStarredRepositories(token, 1, 100);
+      if (starred && Array.isArray(starred)) {
+        setStarredReposList(starred);
+        setStarredRepos(new Set(starred.map((r) => r.full_name)));
+        setStarredListLoaded(true);
+      }
+    } catch (e) {
+      console.warn('Failed to refresh starred repos:', e);
+    }
+  }, []);
+
+  // In-App Background Update State
+  const [updateInfo, setUpdateInfo] = useState<AndroidUpdateInfo | null>(null);
+  const [updateDialogOpen, setUpdateDialogOpen] = useState<boolean>(false);
+
+  // Check for updates on startup
+  useEffect(() => {
+    checkForAndroidUpdates()
+      .then((info) => {
+        setUpdateInfo(info);
+      })
+      .catch(() => {});
+  }, []);
 
   // Navigation: 'apks' | 'trending' | 'vault' | 'explore'
   const [currentTab, setCurrentTab] = useState<string>('apks');
@@ -236,11 +269,9 @@ export const App: React.FC = () => {
       fetchUserStarredRepositories(token, 1, 100)
         .then((starred) => {
           if (starred && Array.isArray(starred)) {
-            setStarredRepos((prev) => {
-              const next = new Set(prev);
-              starred.forEach((r) => next.add(r.full_name));
-              return next;
-            });
+            setStarredReposList(starred);
+            setStarredRepos(new Set(starred.map((r) => r.full_name)));
+            setStarredListLoaded(true);
           }
         })
         .catch(() => {});
@@ -402,15 +433,20 @@ export const App: React.FC = () => {
         next.delete(repo.full_name);
         return next;
       });
+      setStarredReposList((prev) => prev.filter((r) => r.full_name !== repo.full_name));
+
       const success = await unstarRepository(repo.full_name);
       if (success) {
         setSnackbarMessage(`Unstarred ${repo.name} on GitHub`);
       } else {
         setStarredRepos((prev) => new Set(prev).add(repo.full_name));
+        setStarredReposList((prev) => [repo, ...prev]);
         setSnackbarMessage(`Failed to unstar ${repo.name}`);
       }
     } else {
       setStarredRepos((prev) => new Set(prev).add(repo.full_name));
+      setStarredReposList((prev) => [repo, ...prev.filter((r) => r.full_name !== repo.full_name)]);
+
       const success = await starRepository(repo.full_name);
       if (success) {
         setSnackbarMessage(`Starred ${repo.name} on GitHub ★`);
@@ -420,6 +456,7 @@ export const App: React.FC = () => {
           next.delete(repo.full_name);
           return next;
         });
+        setStarredReposList((prev) => prev.filter((r) => r.full_name !== repo.full_name));
         setSnackbarMessage(`Failed to star ${repo.name}`);
       }
     }
@@ -518,6 +555,8 @@ export const App: React.FC = () => {
           }}
           isCompactView={isCompactView}
           onToggleCompactView={handleToggleCompactView}
+          updateInfo={updateInfo}
+          onOpenUpdateDialog={() => setUpdateDialogOpen(true)}
         />
 
         {/* Fixed Top App Bar Spacer to prevent content from scrolling under or into status bar */}
@@ -696,6 +735,9 @@ export const App: React.FC = () => {
             onVaultUpdated={() => setVaultVersion((v) => v + 1)}
             isCompact={isCompactView}
             starredRepos={starredRepos}
+            starredList={starredReposList}
+            starredLoaded={starredListLoaded}
+            onRefreshStarred={refreshStarredList}
             onToggleStar={handleToggleStar}
             onOpenTokenDialog={() => setTokenDialogOpen(true)}
             onShareMessage={handleShareMessage}
@@ -962,11 +1004,9 @@ export const App: React.FC = () => {
               fetchUserStarredRepositories(token, 1, 100)
                 .then((starred) => {
                   if (starred && Array.isArray(starred)) {
-                    setStarredRepos((prev) => {
-                      const next = new Set(prev);
-                      starred.forEach((r) => next.add(r.full_name));
-                      return next;
-                    });
+                    setStarredReposList(starred);
+                    setStarredRepos(new Set(starred.map((r) => r.full_name)));
+                    setStarredListLoaded(true);
                   }
                 })
                 .catch(() => {});
@@ -983,6 +1023,13 @@ export const App: React.FC = () => {
           }}
           vaultCount={vaultCount}
           visible={isBottomNavVisible}
+        />
+
+        {/* In-App Auto Update Dialog */}
+        <UpdateDialog
+          open={updateDialogOpen}
+          onClose={() => setUpdateDialogOpen(false)}
+          updateInfo={updateInfo}
         />
 
         {/* Global Feedback Snackbar */}

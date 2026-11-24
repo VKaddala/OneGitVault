@@ -74,6 +74,7 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
   const [results, setResults] = useState<Repository[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>(() => getSearchHistory());
 
   // Focus input automatically on open
@@ -108,11 +109,13 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
       setResults([]);
       setTotalCount(0);
       setLoading(false);
+      setSearchError(null);
       return;
     }
 
     let active = true;
     setLoading(true);
+    setSearchError(null);
 
     fetchRepositories(
       'all',
@@ -127,12 +130,18 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
         if (!active) return;
         setResults(data.repositories);
         setTotalCount(data.totalCount);
+        if (data.error && data.repositories.length === 0) {
+          setSearchError(data.error);
+        } else {
+          setSearchError(null);
+        }
       })
       .catch((err) => {
         console.warn('Flyout search failed:', err);
         if (active) {
           setResults([]);
           setTotalCount(0);
+          setSearchError('Search network error. Check connection or try another query.');
         }
       })
       .finally(() => {
@@ -465,7 +474,7 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
             </Typography>
           </Box>
         ) : results.length === 0 ? (
-          /* State C: No results found */
+          /* State C: No results found or rate limit */
           <Box
             sx={{
               textAlign: 'center',
@@ -477,17 +486,24 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
               mx: 'auto'
             }}
           >
-            <AutoAwesomeIcon sx={{ fontSize: 42, color: 'text.secondary', mb: 1, opacity: 0.6 }} />
-            <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>
-              No repositories found
+            <AutoAwesomeIcon sx={{ fontSize: 42, color: searchError ? 'error.main' : 'text.secondary', mb: 1, opacity: 0.8 }} />
+            <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5, color: searchError ? 'error.main' : 'text.primary' }}>
+              {searchError ? 'Search Limit or Network Notice' : 'No repositories found'}
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 380, mx: 'auto' }}>
-              No matches found for "{debouncedQuery}". Try searching by app name, technology (e.g. Kotlin, Flutter), or broad keywords.
+              {searchError || `No matches found for "${debouncedQuery}". Try searching by app name, technology (e.g. Kotlin, Flutter), or broad keywords.`}
             </Typography>
           </Box>
         ) : (
           /* State D: Search Results Grid */
           <Box>
+            {searchError && (
+              <Box sx={{ mb: 2, p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.warning.main, 0.12), border: `1px solid ${alpha(theme.palette.warning.main, 0.3)}` }}>
+                <Typography variant="caption" sx={{ color: 'warning.main', fontWeight: 700 }}>
+                  {searchError}
+                </Typography>
+              </Box>
+            )}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, px: 0.5 }}>
               <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase' }}>
                 Found {totalCount > 0 ? totalCount.toLocaleString() : results.length} repositories

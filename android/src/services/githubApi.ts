@@ -87,12 +87,12 @@ export async function unstarRepository(fullName: string): Promise<boolean> {
 
 export function getHeaders(token?: string): HeadersInit {
   const t = token !== undefined ? token : getStoredToken();
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
-    'User-Agent': 'OneGitVault-Android/1.0'
   };
-  if (t) {
-    headers.Authorization = `Bearer ${t.trim()}`;
+  if (t && t.trim()) {
+    const cleanToken = t.trim().replace(/^(Bearer|token)\s+/i, '');
+    headers.Authorization = `Bearer ${cleanToken}`;
   }
   return headers;
 }
@@ -165,10 +165,10 @@ export async function checkLiveRateLimit(): Promise<RateLimitInfo> {
   const token = getStoredToken();
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
-    'User-Agent': 'OneGitVault-Android/1.0',
   };
-  if (token) {
-    headers.Authorization = `Bearer ${token.trim()}`;
+  if (token && token.trim()) {
+    const cleanToken = token.trim().replace(/^(Bearer|token)\s+/i, '');
+    headers.Authorization = `Bearer ${cleanToken}`;
   }
 
   try {
@@ -282,6 +282,27 @@ export async function fetchRepositories(
         }
       } catch {}
 
+      if (searchQuery.trim()) {
+        const qLower = searchQuery.toLowerCase().trim();
+        const matches = CURATED_ANDROID_APKS.filter(
+          (r) =>
+            r.name.toLowerCase().includes(qLower) ||
+            r.full_name.toLowerCase().includes(qLower) ||
+            (r.description && r.description.toLowerCase().includes(qLower)) ||
+            (r.topics && r.topics.some((t) => t.toLowerCase().includes(qLower)))
+        );
+        if (matches.length > 0) {
+          return {
+            repositories: matches,
+            totalCount: matches.length,
+            hasMore: false,
+            page: 1,
+            error: res.status === 403 ? 'Search rate limit active. Showing matching curated repositories.' : undefined,
+            isRateLimit: res.status === 403,
+          };
+        }
+      }
+
       if (page === 1 && isApkTab) {
         return {
           repositories: CURATED_ANDROID_APKS,
@@ -335,6 +356,24 @@ export async function fetchRepositories(
     return result;
   } catch (err: any) {
     console.warn('Failed to fetch from GitHub API:', err);
+    if (searchQuery.trim()) {
+      const qLower = searchQuery.toLowerCase().trim();
+      const matches = CURATED_ANDROID_APKS.filter(
+        (r) =>
+          r.name.toLowerCase().includes(qLower) ||
+          r.full_name.toLowerCase().includes(qLower) ||
+          (r.description && r.description.toLowerCase().includes(qLower)) ||
+          (r.topics && r.topics.some((t) => t.toLowerCase().includes(qLower)))
+      );
+      if (matches.length > 0) {
+        return {
+          repositories: matches,
+          totalCount: matches.length,
+          hasMore: false,
+          page: 1,
+        };
+      }
+    }
     if (page === 1 && isApkTab) {
       return {
         repositories: CURATED_ANDROID_APKS,

@@ -11,7 +11,8 @@
 <p align="center">
   <a href="https://github.com/VKaddala/OneGitVault"><img src="https://img.shields.io/badge/platform-Windows-blue?logo=windows&logoColor=white" alt="Windows" /></a>
   <a href="SETUP_ANDROID.md"><img src="https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white" alt="Android" /></a>
-  <a href="https://github.com/VKaddala/OneGitVault/releases/latest"><img src="https://img.shields.io/badge/releases-GitHub-emerald?logo=github" alt="GitHub Releases" /></a>
+  <a href="https://github.com/VKaddala/OneGitVault/releases/latest"><img src="https://img.shields.io/badge/desktop-v2.1.1-blue?logo=github" alt="Desktop v2.1.1" /></a>
+  <a href="https://github.com/VKaddala/OneGitVault/releases/latest"><img src="https://img.shields.io/badge/android-v1.0.1-3DDC84?logo=android" alt="Android v1.0.1" /></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-blue?logo=react&logoColor=white" alt="React" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white" alt="TypeScript" /></a>
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-teal?logo=electron&logoColor=white" alt="Electron" /></a>
@@ -19,6 +20,15 @@
   <a href="https://vitejs.dev/"><img src="https://img.shields.io/badge/Vite-purple?logo=vite&logoColor=white" alt="Vite" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/VKaddala/OneGitVault" alt="License" /></a>
 </p>
+
+---
+
+### 📥 Official Downloads & Releases
+
+| Platform | Latest Release | Binary | Direct Download |
+| :--- | :--- | :--- | :--- |
+| **Windows Desktop** | **v2.1.1** | `OneGitVault-Setup-2.1.1.exe` (~93 MB) | [Download Setup (.exe)](https://github.com/VKaddala/OneGitVault/releases/download/v2.1.0/OneGitVault-Setup-2.1.1.exe) |
+| **Android** | **v1.0.1** | `OneGitVault-Android-1.0.1.apk` (~4.4 MB) | [Download APK (.apk)](https://github.com/VKaddala/OneGitVault/releases/download/v2.1.0/OneGitVault-Android-1.0.1.apk) |
 
 ---
 
@@ -247,6 +257,13 @@ OneGitVault functions out-of-the-box with unauthenticated public GitHub API acce
 | Vault Bookmarks & Cloud Gist Sync | Seamless Back to Trending Navigation |
 |:---:|:---:|
 | ![Vault Bookmarks](assets/screenshots/08-vault-bookmarks.png) | ![Back to Trending](assets/screenshots/10-trending-back-navigation.png) |
+
+---
+
+### 5. Windows Desktop v2.1.1 & Android v1.0.1 (Module Mesh Releases)
+| Windows Desktop v2.1.1 Unified Dashboard | Android v1.0.1 Mobile APK Observatory |
+|:---:|:---:|
+| ![Desktop v2.1.1](assets/screenshots/26-desktop-v211-module-mesh.png) | ![Android v1.0.1](assets/screenshots/27-android-v101-apk-feed.png) |
 
 ---
 

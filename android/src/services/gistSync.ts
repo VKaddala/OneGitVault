@@ -22,22 +22,32 @@ interface GistResponse {
   html_url: string;
 }
 
+function sanitizeToken(token: string): string {
+  if (!token) return '';
+  return token.trim().replace(/^(Bearer|token)\s+/i, '');
+}
+
 function gistHeaders(token: string): HeadersInit {
+  const clean = sanitizeToken(token);
   return {
     Accept: 'application/vnd.github.v3+json',
-    Authorization: `Bearer ${token}`,
+    Authorization: `Bearer ${clean}`,
     'Content-Type': 'application/json',
-    'User-Agent': 'OneGitVault-Android/1.0',
   };
 }
 
 /** Find the OneGitVault bookmark gist among the user's gists */
 export async function findBookmarkGist(token: string): Promise<GistResponse | null> {
+  const clean = sanitizeToken(token);
+  if (!clean) return null;
   try {
     const res = await fetch('https://api.github.com/gists?per_page=100', {
-      headers: gistHeaders(token),
+      headers: gistHeaders(clean),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`findBookmarkGist failed: HTTP ${res.status}`);
+      return null;
+    }
 
     const gists: GistResponse[] = await res.json();
     return (
@@ -59,10 +69,12 @@ export async function createBookmarkGist(
   token: string,
   bookmarks: Repository[]
 ): Promise<GistResponse | null> {
+  const clean = sanitizeToken(token);
+  if (!clean) return null;
   try {
     const res = await fetch('https://api.github.com/gists', {
       method: 'POST',
-      headers: gistHeaders(token),
+      headers: gistHeaders(clean),
       body: JSON.stringify({
         description: GIST_DESCRIPTION,
         public: false,
@@ -71,7 +83,10 @@ export async function createBookmarkGist(
         },
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`createBookmarkGist failed: HTTP ${res.status}`);
+      return null;
+    }
     return res.json();
   } catch (e) {
     console.warn('Failed to create bookmark gist:', e);
@@ -85,10 +100,12 @@ export async function updateBookmarkGist(
   gistId: string,
   bookmarks: Repository[]
 ): Promise<boolean> {
+  const clean = sanitizeToken(token);
+  if (!clean || !gistId) return false;
   try {
     const res = await fetch(`https://api.github.com/gists/${gistId}`, {
       method: 'PATCH',
-      headers: gistHeaders(token),
+      headers: gistHeaders(clean),
       body: JSON.stringify({
         description: GIST_DESCRIPTION,
         files: {
@@ -96,6 +113,9 @@ export async function updateBookmarkGist(
         },
       }),
     });
+    if (!res.ok) {
+      console.warn(`updateBookmarkGist failed: HTTP ${res.status}`);
+    }
     return res.ok;
   } catch (e) {
     console.warn('Failed to update bookmark gist:', e);
@@ -112,17 +132,23 @@ export async function pushBookmarksToGist(
   token: string,
   bookmarks: Repository[]
 ): Promise<string | null> {
-  if (!token) return null;
+  const clean = sanitizeToken(token);
+  if (!clean) return null;
   try {
-    let gist = await findBookmarkGist(token);
+    let gist = await findBookmarkGist(clean);
 
     if (!gist) {
-      gist = await createBookmarkGist(token, bookmarks);
+      gist = await createBookmarkGist(clean, bookmarks);
       return gist?.html_url ?? null;
     }
 
-    const ok = await updateBookmarkGist(token, gist.id, bookmarks);
-    return ok ? gist.html_url : null;
+    const ok = await updateBookmarkGist(clean, gist.id, bookmarks);
+    if (!ok) {
+      // Fallback: If PATCH failed (e.g., deleted or permission mismatch), create a new Gist
+      gist = await createBookmarkGist(clean, bookmarks);
+      return gist?.html_url ?? null;
+    }
+    return gist.html_url;
   } catch (e) {
     console.warn('Gist push failed:', e);
     return null;
@@ -137,29 +163,45 @@ export async function pushBookmarksToGist(
 export async function pullBookmarksFromGist(
   token: string
 ): Promise<Repository[] | null> {
-  if (!token) return null;
+  const clean = sanitizeToken(token);
+  if (!clean) return null;
   try {
-    const gist = await findBookmarkGist(token);
+    const gist = await findBookmarkGist(clean);
     if (!gist) return null;
 
     // 1. Fetch full gist by ID (GitHub's GET /gists list endpoint omits file contents)
     const fullRes = await fetch(`https://api.github.com/gists/${gist.id}`, {
-      headers: gistHeaders(token),
+      headers: gistHeaders(clean),
     });
     if (fullRes.ok) {
       const fullGist: GistResponse = await fullRes.json();
-      const file = fullGist.files?.[GIST_FILENAME] || fullGist.files?.['onegitvault-android-bookmarks.json'];
-      if (file?.content) {
-        return JSON.parse(file.content) as Repository[];
+      const targetFile =
+        fullGist.files?.[GIST_FILENAME] ||
+        fullGist.files?.['onegitvault-android-bookmarks.json'] ||
+        Object.values(fullGist.files || {})[0];
+
+      if (targetFile?.content) {
+        return JSON.parse(targetFile.content) as Repository[];
+      }
+
+      // If truncated or content empty, fetch via raw_url
+      if (targetFile?.raw_url) {
+        const rawRes = await fetch(targetFile.raw_url, {
+          headers: { Authorization: `Bearer ${clean}` },
+        });
+        if (rawRes.ok) {
+          const rawText = await rawRes.text();
+          return JSON.parse(rawText) as Repository[];
+        }
       }
     }
 
-    // 2. Direct raw URL fallback
+    // 2. Direct raw URL fallback from list item
     const targetFile = gist.files?.[GIST_FILENAME] || gist.files?.['onegitvault-android-bookmarks.json'];
     const rawUrl = targetFile?.raw_url;
     if (rawUrl) {
       const rawRes = await fetch(rawUrl, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${clean}` },
       });
       if (rawRes.ok) {
         const rawText = await rawRes.text();
@@ -182,12 +224,13 @@ export async function fetchUserStarredRepositories(
   page: number = 1,
   perPage: number = 100
 ): Promise<Repository[]> {
-  if (!token) return [];
+  const clean = sanitizeToken(token);
+  if (!clean) return [];
   try {
     const res = await fetch(
       `https://api.github.com/user/starred?per_page=${perPage}&page=${page}&sort=created&direction=desc`,
       {
-        headers: gistHeaders(token),
+        headers: gistHeaders(clean),
       }
     );
     if (!res.ok) {

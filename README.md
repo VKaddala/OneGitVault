@@ -234,7 +234,13 @@ OneGitVault functions out-of-the-box with unauthenticated public GitHub API acce
 ## 🖼️ Application Gallery & Screenshots
 
 ### 1. Repository Dashboard & Discovery
-<img width="3717" height="2157" alt="image" src="https://github.com/user-attachments/assets/42fadde8-0da2-43bc-b1a9-4e52903bc2c6" />
+
+<img width="3375" height="2157" alt="image" src="https://github.com/user-attachments/assets/45f71d39-5ab9-475e-905b-347ac973fbcc" />
+
+<img width="3370" height="2155" alt="image" src="https://github.com/user-attachments/assets/e6af7927-6dcc-4f58-b5f9-55800d3058d6" />
+
+<img width="3355" height="2157" alt="image" src="https://github.com/user-attachments/assets/c7cc082e-f845-4561-a9b5-26bc42082c85" />
+
 ---
 
 ### 2. Android View

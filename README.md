@@ -234,43 +234,18 @@ OneGitVault functions out-of-the-box with unauthenticated public GitHub API acce
 ## 🖼️ Application Gallery & Screenshots
 
 ### 1. Repository Dashboard & Discovery
-![Dashboard View](assets/screenshots/01-dashboard-4col.png)
+<img width="3717" height="2157" alt="image" src="https://github.com/user-attachments/assets/42fadde8-0da2-43bc-b1a9-4e52903bc2c6" />
+---
+
+### 2. Android View
+
+<img width="590" height="1280" alt="image" src="https://github.com/user-attachments/assets/7db9544c-19f6-4fa8-9e5e-55090e2741e4" />
 
 ---
 
-### 2. In-App GitHub Trending Explorer & Markdown README Inspector
-| In-App GitHub Trending Repositories | Markdown README Inspector & Actions |
-|:---:|:---:|
-| ![In-App Trending](assets/screenshots/07-sand-light-trending.png) | ![README Inspector](assets/screenshots/09-readme-inspector.png) |
+### 3. Android Recording
 
----
-
-### 3. Search Flyout & Star Filters
-| Full-Width Search Flyout (`Ctrl+K`) | Custom Min-Stars Popover |
-|:---:|:---:|
-| ![Search Flyout](assets/screenshots/02-search-flyout.png) | ![Custom Stars Filter](assets/screenshots/03-custom-stars-filter.png) |
-
----
-
-### 4. Curated Sectors, Bookmarks & Back Navigation
-| Android & APK Releases Sector | Videography & Media Tools Sector |
-|:---:|:---:|
-| ![Android & APKs](assets/screenshots/11-android-apks-category.png) | ![Videography & Media](assets/screenshots/12-videography-media-category.png) |
-
-| Vault Bookmarks & Cloud Gist Sync | Seamless Back to Trending Navigation |
-|:---:|:---:|
-| ![Vault Bookmarks](assets/screenshots/08-vault-bookmarks.png) | ![Back to Trending](assets/screenshots/10-trending-back-navigation.png) |
-
----
-
-### 5. Windows Desktop v2.2.0 & Android v1.1.0 (Translation Support & Vault Layout Fixes)
-- **Desktop Translation Engine**: Instant multi-engine translation (Google Anycast Edge CDN + session cache) for README markdown and repository descriptions on both ProjectCard grid/list views and RepoDetailPanel.
-- **Android Vault Diagnostics Alert**: Full-width dedicated Alert container in Android's Vault tab prevents icon and button collision when displaying GitHub PAT scope errors or sync feedback.
-- **Publisher Metadata**: Assigned publisher and author credentials to `VKaddala` across Windows Inno Setup installers, package manifests, and Android resources.
-
-| Windows Desktop v2.2.0 Dashboard | Android v1.1.0 Mobile APK Observatory |
-|:---:|:---:|
-| ![Desktop v2.2.0](assets/screenshots/26-desktop-v211-module-mesh.png) | ![Android v1.1.0](assets/screenshots/27-android-v101-apk-feed.png) |
+https://github.com/user-attachments/assets/41dc4e4b-c50f-4db8-9ff4-8b78d9858333
 
 ---
 

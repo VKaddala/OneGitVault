@@ -530,7 +530,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             <Key className="w-3 h-3 text-txt-muted ml-0.5 hidden sm:inline" />
           </button>
 
-          {/* Theme Selector Button (Fixed Palette Icon - never changes with active theme) */}
+          {/* Theme Selector Button */}
           <button
             ref={themeTriggerRef}
             data-theme-trigger="true"
@@ -688,29 +688,6 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             </div>,
             document.body
           )}
-
-          {/* Bookmarks Vault Button */}
-          <button
-            onClick={onOpenBookmarks}
-            className="relative p-1.5 rounded-lg bg-surface hover:bg-surface-hover text-txt-primary hover:text-action border border-themeline transition-all shadow-sm"
-            title="Saved Vault Repositories"
-          >
-            <Bookmark className="w-3.5 h-3.5" />
-            {bookmarksCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[15px] h-[15px] px-1 text-[9px] font-mono font-bold text-white bg-action rounded-full border border-surface">
-                {bookmarksCount}
-              </span>
-            )}
-          </button>
-
-          {/* GitHub Trending in-app Button */}
-          <button
-            onClick={onOpenTrending}
-            className="p-1.5 rounded-lg bg-surface hover:bg-surface-hover text-txt-primary hover:text-action border border-themeline transition-all shadow-sm flex items-center justify-center"
-            title="GitHub Trending Repositories (In-App View)"
-          >
-            <Flame className="w-3.5 h-3.5 text-action" />
-          </button>
 
           {/* Vertical Divider before Window Controls */}
           <div className="h-4 w-px bg-themeline mx-0.5 sm:mx-1" />

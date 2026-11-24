@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { TitleBar } from './components/TitleBar';
+import { SideNav } from './components/SideNav';
 import { FilterBar } from './components/FilterBar';
 import { ProjectCard } from './components/ProjectCard';
 import { TokenModal } from './components/TokenModal';
@@ -295,246 +296,265 @@ export const App: React.FC = () => {
         isCheckingUpdates={isCheckingUpdates}
       />
 
-      {/* Scrollable Content Container */}
-      <div
-        ref={mainScrollRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col"
-      >
-        {/* Main Content Area */}
-        <main className="flex-1 max-w-[2400px] w-full mx-auto px-3 sm:px-5 lg:px-6 pb-16">
+      {/* ── Teams-Style Layout: Side Nav + Main Content ── */}
+      <div className="flex-1 flex overflow-hidden">
 
-        {/* Global Filter & Sorting Control Toolbar with Integrated Category Filter */}
-        <FilterBar
+        {/* Left Sidebar Navigation (Teams-style collapsible drawer) */}
+        <SideNav
           categories={CATEGORIES}
           selectedCategory={selectedCategory}
           onSelectCategory={setSelectedCategory}
-          totalResults={totalCount}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          selectedLanguage={selectedLanguage}
-          onLanguageChange={setSelectedLanguage}
-          availableLanguages={availableLanguages}
-          minStars={minStars}
-          onMinStarsChange={setMinStars}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          onlyBookmarked={onlyBookmarked}
-          onToggleBookmarked={() => setOnlyBookmarked((prev) => !prev)}
-          onResetFilters={handleResetFilters}
-          isFiltered={isFiltered}
+          bookmarksCount={bookmarksCount}
+          onOpenBookmarks={() => setIsBookmarksOpen(true)}
+          onOpenTrending={() => setIsTrendingOpen(true)}
         />
 
-        {/* Live Streaming Info Banner (Compact Ribbon) */}
-        <div className="mb-3 flex items-center justify-between gap-2 bg-surface/80 border border-themeline rounded-xl px-3 py-1.5 text-xs transition-colors duration-200">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-action animate-pulse flex-shrink-0" />
-            <h2 className="text-xs sm:text-sm font-display font-bold text-txt-primary flex items-center gap-1.5 truncate">
-              <span>{activeCategoryObj.name}</span>
-              {searchQuery.trim() && (
-                <span className="text-[11px] font-mono font-normal text-txt-muted truncate">
-                  matching "<span className="text-action">{searchQuery}</span>"
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+
+          {/* Scrollable Content Container */}
+          <div
+            ref={mainScrollRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col"
+          >
+            {/* Main Content Area */}
+            <main className="flex-1 max-w-[2400px] w-full mx-auto px-3 sm:px-5 lg:px-6 pb-16">
+
+            {/* Global Filter & Sorting Control Toolbar with Integrated Category Filter */}
+            <FilterBar
+              categories={CATEGORIES}
+              selectedCategory={selectedCategory}
+              onSelectCategory={setSelectedCategory}
+              totalResults={totalCount}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              selectedLanguage={selectedLanguage}
+              onLanguageChange={setSelectedLanguage}
+              availableLanguages={availableLanguages}
+              minStars={minStars}
+              onMinStarsChange={setMinStars}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              onlyBookmarked={onlyBookmarked}
+              onToggleBookmarked={() => setOnlyBookmarked((prev) => !prev)}
+              onResetFilters={handleResetFilters}
+              isFiltered={isFiltered}
+            />
+
+            {/* Live Streaming Info Banner (Compact Ribbon) */}
+            <div className="mb-3 flex items-center justify-between gap-2 bg-surface/80 border border-themeline rounded-xl px-3 py-1.5 text-xs transition-colors duration-200">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-action animate-pulse flex-shrink-0" />
+                <h2 className="text-xs sm:text-sm font-display font-bold text-txt-primary flex items-center gap-1.5 truncate">
+                  <span>{activeCategoryObj.name}</span>
+                  {searchQuery.trim() && (
+                    <span className="text-[11px] font-mono font-normal text-txt-muted truncate">
+                      matching "<span className="text-action">{searchQuery}</span>"
+                    </span>
+                  )}
+                </h2>
+                <span className="text-[11px] font-mono text-txt-muted hidden sm:inline flex-shrink-0">
+                  • {totalCount > 0 
+                    ? `${displayedRepositories.length} of ${totalCount.toLocaleString()} loaded`
+                    : activeCategoryObj.description}
                 </span>
-              )}
-            </h2>
-            <span className="text-[11px] font-mono text-txt-muted hidden sm:inline flex-shrink-0">
-              • {totalCount > 0 
-                ? `${displayedRepositories.length} of ${totalCount.toLocaleString()} loaded`
-                : activeCategoryObj.description}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Visual representation when user clicks on refresh: loading pill beside it */}
-            {isRefreshing && (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-action-soft border border-action-border text-action text-[11px] font-mono animate-fadeIn">
-                <Loader2 className="w-3 h-3 animate-spin text-action" />
-                <span className="hidden md:inline">Fetching repos...</span>
               </div>
-            )}
 
-            {/* Auto-stream toggle */}
-            <button
-              onClick={() => setAutoScroll(!autoScroll)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono border transition-all ${
-                autoScroll
-                  ? 'bg-action text-txt-inverse border-action font-semibold'
-                  : 'bg-surface-active text-txt-muted border-themeline'
-              }`}
-              title="Toggle automatic streaming when scrolling down"
-            >
-              <Zap className={`w-3 h-3 ${autoScroll ? 'text-txt-inverse' : 'text-action'}`} />
-              <span>Auto-Stream: {autoScroll ? 'ON' : 'OFF'}</span>
-            </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Visual representation when user clicks on refresh: loading pill beside it */}
+                {isRefreshing && (
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-action-soft border border-action-border text-action text-[11px] font-mono animate-fadeIn">
+                    <Loader2 className="w-3 h-3 animate-spin text-action" />
+                    <span className="hidden md:inline">Fetching repos...</span>
+                  </div>
+                )}
 
-            {/* Refresh */}
-            <button
-              onClick={refresh}
-              disabled={isLoading || isRefreshing}
-              className="flex items-center gap-1 text-[11px] font-mono text-txt-secondary hover:text-action bg-surface-active hover:bg-surface px-2.5 py-1 rounded-lg border border-themeline transition-colors disabled:opacity-50"
-              title="Fetch fresh repositories and update rate limit"
-            >
-              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-action' : ''}`} />
-              <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Loading Spinner */}
-        {isLoading && (
-          <div className="py-24 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="w-8 h-8 text-action animate-spin" />
-            <p className="text-xs font-mono text-txt-muted">
-              Discovering repositories across GitHub...
-            </p>
-          </div>
-        )}
-
-        {/* Repositories Grid / List */}
-        {!isLoading && (
-          <div className={
-            viewMode === 'grid'
-              ? 'grid grid-cols-[repeat(auto-fill,minmax(330px,1fr))] gap-4 sm:gap-5'
-              : 'flex flex-col gap-2.5'
-          }>
-            {displayedRepositories.map((repo) => (
-              <ProjectCard
-                key={repo.id}
-                repo={repo}
-                viewMode={viewMode}
-                isBookmarked={isBookmarked(repo.id)}
-                onToggleBookmark={toggleBookmark}
-                onSelectTopic={(topic) => setSearchQuery(topic)}
-                onOpenDetail={(r) => {
-                  setSelectedRepo(r);
-                  setDetailSource('main');
-                }}
-                isStarred={isStarred(repo.full_name)}
-                starCount={getRepoStarCount(repo)}
-                hasToken={hasToken}
-                onToggleStar={handleRepoStarToggle}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!isLoading && displayedRepositories.length === 0 && (
-          <div className="py-20 text-center bg-surface border border-themeline rounded-2xl p-8 my-6 shadow-sm">
-            <FolderSearch className="w-12 h-12 text-txt-muted/50 mx-auto mb-3" />
-            <h3 className="text-base font-display font-bold text-txt-primary">No repositories found</h3>
-            <p className="text-xs font-sans text-txt-muted max-w-sm mx-auto mt-1 mb-4">
-              {onlyBookmarked 
-                ? 'You have not saved any repositories matching this category to your vault yet.' 
-                : 'No repositories matched your current search filters or keywords.'}
-            </p>
-            {isFiltered && (
-              <button
-                onClick={handleResetFilters}
-                className="px-4 py-2 text-xs font-mono font-semibold bg-action text-txt-inverse rounded-xl shadow-sm hover:opacity-90 transition-all"
-              >
-                Reset Filters
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Continuous Streaming Sentinel & Load More */}
-        {!isLoading && displayedRepositories.length > 0 && !onlyBookmarked && (
-          <div className="py-12 flex flex-col items-center justify-center gap-4">
-            
-            {/* Loading more spinner */}
-            {isLoadingMore && (
-              <div className="flex items-center gap-2 text-xs font-mono text-action py-4 animate-fadeIn">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Streaming next batch of repositories from GitHub...</span>
-              </div>
-            )}
-
-            {/* Search API Rate Limit (30/min) Cooldown banner */}
-            {searchCooldownSec > 0 && (
-              <div className="flex flex-col items-center justify-center gap-2 text-center bg-surface border border-themeline rounded-2xl p-5 my-2 shadow-sm max-w-lg mx-auto">
-                <div className="flex items-center gap-2 text-amber-500 font-mono text-xs font-semibold">
-                  <Clock className="w-4 h-4 animate-spin" />
-                  <span>GitHub Search API Pacing Cooldown</span>
-                </div>
-                <p className="text-xs text-txt-muted">
-                  GitHub limits Search queries to 30 requests/minute. Core API quota remains high ({rateLimit.remaining} calls).
-                  Streaming auto-resumes in <span className="font-bold text-action font-mono">{searchCooldownSec}s</span>.
-                </p>
+                {/* Auto-stream toggle */}
                 <button
-                  onClick={retryLoadMore}
-                  className="mt-1 px-4 py-1.5 text-xs font-mono font-semibold bg-action text-txt-inverse rounded-xl shadow-sm hover:opacity-90 transition-all"
+                  onClick={() => setAutoScroll(!autoScroll)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono border transition-all ${
+                    autoScroll
+                      ? 'bg-action text-txt-inverse border-action font-semibold'
+                      : 'bg-surface-active text-txt-muted border-themeline'
+                  }`}
+                  title="Toggle automatic streaming when scrolling down"
                 >
-                  Resume Stream Now
+                  <Zap className={`w-3 h-3 ${autoScroll ? 'text-txt-inverse' : 'text-action'}`} />
+                  <span>Auto-Stream: {autoScroll ? 'ON' : 'OFF'}</span>
+                </button>
+
+                {/* Refresh */}
+                <button
+                  onClick={refresh}
+                  disabled={isLoading || isRefreshing}
+                  className="flex items-center gap-1 text-[11px] font-mono text-txt-secondary hover:text-action bg-surface-active hover:bg-surface px-2.5 py-1 rounded-lg border border-themeline transition-colors disabled:opacity-50"
+                  title="Fetch fresh repositories and update rate limit"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-action' : ''}`} />
+                  <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
                 </button>
               </div>
-            )}
+            </div>
 
-            {/* Manual Load More button */}
-            {!isLoadingMore && hasMore && searchCooldownSec === 0 && (
-              <button
-                onClick={loadMore}
-                className="group flex items-center gap-2 px-6 py-2.5 rounded-xl bg-surface hover:bg-surface-hover text-txt-primary border border-themeline hover:border-action-border font-mono text-xs shadow-sm transition-all active:scale-95"
-              >
-                <span>Load Next 40 Repositories</span>
-                <span className="text-[11px] text-action font-bold">
-                  (Page {currentPage + 1})
-                </span>
-              </button>
-            )}
-
-            {/* End of list reached */}
-            {!hasMore && searchCooldownSec === 0 && (
-              <div className="text-center py-6 text-xs font-mono text-txt-muted">
-                <span>✦ End of available search stream for this query.</span>
+            {/* Loading Spinner */}
+            {isLoading && (
+              <div className="py-24 flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-8 h-8 text-action animate-spin" />
+                <p className="text-xs font-mono text-txt-muted">
+                  Discovering repositories across GitHub...
+                </p>
               </div>
             )}
 
-            {/* Hidden observer target element */}
-            <div ref={observerTarget} className="h-10 w-full pointer-events-none" />
+            {/* Repositories Grid / List */}
+            {!isLoading && (
+              <div className={
+                viewMode === 'grid'
+                  ? 'grid grid-cols-[repeat(auto-fill,minmax(330px,1fr))] gap-4 sm:gap-5'
+                  : 'flex flex-col gap-2.5'
+              }>
+                {displayedRepositories.map((repo) => (
+                  <ProjectCard
+                    key={repo.id}
+                    repo={repo}
+                    viewMode={viewMode}
+                    isBookmarked={isBookmarked(repo.id)}
+                    onToggleBookmark={toggleBookmark}
+                    onSelectTopic={(topic) => setSearchQuery(topic)}
+                    onOpenDetail={(r) => {
+                      setSelectedRepo(r);
+                      setDetailSource('main');
+                    }}
+                    isStarred={isStarred(repo.full_name)}
+                    starCount={getRepoStarCount(repo)}
+                    hasToken={hasToken}
+                    onToggleStar={handleRepoStarToggle}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Empty state */}
+            {!isLoading && displayedRepositories.length === 0 && (
+              <div className="py-20 text-center bg-surface border border-themeline rounded-2xl p-8 my-6 shadow-sm">
+                <FolderSearch className="w-12 h-12 text-txt-muted/50 mx-auto mb-3" />
+                <h3 className="text-base font-display font-bold text-txt-primary">No repositories found</h3>
+                <p className="text-xs font-sans text-txt-muted max-w-sm mx-auto mt-1 mb-4">
+                  {onlyBookmarked 
+                    ? 'You have not saved any repositories matching this category to your vault yet.' 
+                    : 'No repositories matched your current search filters or keywords.'}
+                </p>
+                {isFiltered && (
+                  <button
+                    onClick={handleResetFilters}
+                    className="px-4 py-2 text-xs font-mono font-semibold bg-action text-txt-inverse rounded-xl shadow-sm hover:opacity-90 transition-all"
+                  >
+                  Reset Filters
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Continuous Streaming Sentinel & Load More */}
+            {!isLoading && displayedRepositories.length > 0 && !onlyBookmarked && (
+              <div className="py-12 flex flex-col items-center justify-center gap-4">
+                
+                {/* Loading more spinner */}
+                {isLoadingMore && (
+                  <div className="flex items-center gap-2 text-xs font-mono text-action py-4 animate-fadeIn">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Streaming next batch of repositories from GitHub...</span>
+                  </div>
+                )}
+
+                {/* Search API Rate Limit (30/min) Cooldown banner */}
+                {searchCooldownSec > 0 && (
+                  <div className="flex flex-col items-center justify-center gap-2 text-center bg-surface border border-themeline rounded-2xl p-5 my-2 shadow-sm max-w-lg mx-auto">
+                    <div className="flex items-center gap-2 text-amber-500 font-mono text-xs font-semibold">
+                      <Clock className="w-4 h-4 animate-spin" />
+                      <span>GitHub Search API Pacing Cooldown</span>
+                    </div>
+                    <p className="text-xs text-txt-muted">
+                      GitHub limits Search queries to 30 requests/minute. Core API quota remains high ({rateLimit.remaining} calls).
+                      Streaming auto-resumes in <span className="font-bold text-action font-mono">{searchCooldownSec}s</span>.
+                    </p>
+                    <button
+                      onClick={retryLoadMore}
+                      className="mt-1 px-4 py-1.5 text-xs font-mono font-semibold bg-action text-txt-inverse rounded-xl shadow-sm hover:opacity-90 transition-all"
+                    >
+                      Resume Stream Now
+                    </button>
+                  </div>
+                )}
+
+                {/* Manual Load More button */}
+                {!isLoadingMore && hasMore && searchCooldownSec === 0 && (
+                  <button
+                    onClick={loadMore}
+                    className="group flex items-center gap-2 px-6 py-2.5 rounded-xl bg-surface hover:bg-surface-hover text-txt-primary border border-themeline hover:border-action-border font-mono text-xs shadow-sm transition-all active:scale-95"
+                  >
+                    <span>Load Next 40 Repositories</span>
+                    <span className="text-[11px] text-action font-bold">
+                      (Page {currentPage + 1})
+                    </span>
+                  </button>
+                )}
+
+                {/* End of list reached */}
+                {!hasMore && searchCooldownSec === 0 && (
+                  <div className="text-center py-6 text-xs font-mono text-txt-muted">
+                    <span>✦ End of available search stream for this query.</span>
+                  </div>
+                )}
+
+                {/* Hidden observer target element */}
+                <div ref={observerTarget} className="h-10 w-full pointer-events-none" />
+
+              </div>
+            )}
+
+          </main>
+
+          {/* Floating Scroll to Top button */}
+          {showScrollTop && (
+            <button
+              onClick={scrollToTop}
+              className="fixed bottom-10 right-6 p-2.5 rounded-xl bg-surface hover:bg-surface-hover text-action shadow-xl border border-themeline hover:border-action-border transition-all duration-200 hover:scale-105 z-40"
+              title="Scroll to Top"
+            >
+              <ArrowUp className="w-4 h-4" />
+            </button>
+          )}
 
           </div>
-        )}
 
-      </main>
+          {/* Persistent Small Footer (Always visible at the bottom of the content area) */}
+          <footer className="w-full flex-shrink-0 border-t border-themeline bg-header py-1 px-1.5 sm:px-2 text-[11px] font-mono text-txt-muted z-30 transition-colors duration-200 select-none">
+            <div className="w-full flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <OneGitVaultLogo className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="font-display font-bold text-txt-primary">OneGitVault</span>
+                <span className="hidden sm:inline text-txt-muted">• Open-Source Observatory</span>
+              </div>
 
-      {/* Floating Scroll to Top button */}
-      {showScrollTop && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-10 right-6 p-2.5 rounded-xl bg-surface hover:bg-surface-hover text-action shadow-xl border border-themeline hover:border-action-border transition-all duration-200 hover:scale-105 z-40"
-          title="Scroll to Top"
-        >
-          <ArrowUp className="w-4 h-4" />
-        </button>
-      )}
-
-      </div>
-
-      {/* Persistent Small Footer (Always visible at the bottom of the window, edge-to-edge aligned) */}
-      <footer className="w-full flex-shrink-0 border-t border-themeline bg-header py-1 px-1.5 sm:px-2 text-[11px] font-mono text-txt-muted z-30 transition-colors duration-200 select-none">
-        <div className="w-full flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <OneGitVaultLogo className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="font-display font-bold text-txt-primary">OneGitVault</span>
-            <span className="hidden sm:inline text-txt-muted">• Open-Source Observatory</span>
-          </div>
-
-          {/* Country & Live Clock */}
-          <div className="flex items-center gap-2 text-txt-muted font-mono text-[11px]">
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-active/60 border border-themeline text-txt-primary">
-              <Globe className="w-3 h-3 text-action" />
-              <span>{countryName}</span>
+              {/* Country & Live Clock */}
+              <div className="flex items-center gap-2 text-txt-muted font-mono text-[11px]">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-active/60 border border-themeline text-txt-primary">
+                  <Globe className="w-3 h-3 text-action" />
+                  <span>{countryName}</span>
+                </div>
+                <span className="text-themeline">•</span>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-active/60 border border-themeline text-txt-primary font-semibold">
+                  <Clock className="w-3 h-3 text-action" />
+                  <span>{currentTime}</span>
+                </div>
+              </div>
             </div>
-            <span className="text-themeline">•</span>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-active/60 border border-themeline text-txt-primary font-semibold">
-              <Clock className="w-3 h-3 text-action" />
-              <span>{currentTime}</span>
-            </div>
-          </div>
+          </footer>
+
         </div>
-      </footer>
+      </div>
 
       {/* Modals */}
       <UpdateModal

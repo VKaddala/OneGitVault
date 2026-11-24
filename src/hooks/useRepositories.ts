@@ -25,11 +25,11 @@ export function useRepositories(perPage: number = 40) {
   const [isOfflineFallback, setIsOfflineFallback] = useState<boolean>(false);
   const [searchCooldownSec, setSearchCooldownSec] = useState<number>(0);
 
-  // Debounce search query changes
+  // Debounce search query changes with 500ms throttle to prevent query exhaustion while typing
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedQuery(searchQuery);
-    }, 350);
+    }, 500);
     return () => clearTimeout(handler);
   }, [searchQuery]);
 

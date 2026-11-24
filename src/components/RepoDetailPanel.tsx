@@ -9,7 +9,7 @@ import {
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { Repository, Release } from '../types';
-import { getStoredToken, fetchRepositoryReleases } from '../services/githubApi';
+import { getStoredToken, fetchRepositoryReleases, fetchRepoCompleteDetails } from '../services/githubApi';
 import { LANGUAGE_COLORS } from '../data/curatedProjects';
 import {
   translateMarkdownToEnglish,
@@ -182,6 +182,15 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
   const fetchReleases = useCallback(async (r: Repository) => {
     setReleasesLoading(true);
     try {
+      // 1. Grouped GraphQL Query: Try single-request aggregator first when token is connected
+      const complete = await fetchRepoCompleteDetails(r.full_name);
+      if (complete && complete.releases && complete.releases.length > 0) {
+        setReleases(complete.releases);
+        setSelectedReleaseIndex(0);
+        return;
+      }
+
+      // 2. Fall back to cached REST release loader
       const data = await fetchRepositoryReleases(r.full_name);
       setReleases(data);
       setSelectedReleaseIndex(0);

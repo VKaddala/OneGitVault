@@ -179,43 +179,67 @@ function updateRateLimitFromHeaders(headers: Headers): void {
   }
 }
 
+const inFlightRequests = new Map<string, Promise<any>>();
+
+export function deduplicatedFetch<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+  const existing = inFlightRequests.get(key);
+  if (existing) {
+    return existing as Promise<T>;
+  }
+  const promise = fetcher().finally(() => {
+    inFlightRequests.delete(key);
+  });
+  inFlightRequests.set(key, promise);
+  return promise;
+}
+
+let lastRateLimitCheck = 0;
+
 /**
- * Queries GitHub's /rate_limit endpoint.
+ * Queries GitHub's /rate_limit endpoint with 15s throttle and in-flight deduplication.
  * Note: Accessing this endpoint does NOT count against your rate limit.
  */
-export async function checkLiveRateLimit(): Promise<RateLimitInfo> {
-  const token = getStoredToken();
-  const headers: Record<string, string> = {
-    Accept: 'application/vnd.github.v3+json',
-  };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+export async function checkLiveRateLimit(force: boolean = false): Promise<RateLimitInfo> {
+  const now = Date.now();
+  if (!force && now - lastRateLimitCheck < 15000) {
+    return currentRateLimit;
   }
+  lastRateLimitCheck = now;
 
-  try {
-    const res = await fetch('https://api.github.com/rate_limit', { headers });
-    if (res.ok) {
-      const data = await res.json();
-      const core = data?.resources?.core || data?.rate;
-      const search = data?.resources?.search;
-      if (core) {
-        currentRateLimit = {
-          limit: core.limit ?? (token ? 5000 : 60),
-          remaining: core.remaining ?? 60,
-          resetTime: core.reset ? new Date(core.reset * 1000) : null,
-          searchLimit: search?.limit ?? (token ? 30 : 10),
-          searchRemaining: search?.remaining ?? (token ? 30 : 10),
-          searchResetTime: search?.reset ? new Date(search.reset * 1000) : null,
-        };
-        if (onRateLimitChange) {
-          onRateLimitChange(currentRateLimit);
+  return deduplicatedFetch('desktop_rate_limit', async () => {
+    const token = getStoredToken();
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github.v3+json',
+    };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    try {
+      const res = await fetch('https://api.github.com/rate_limit', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        const core = data?.resources?.core || data?.rate;
+        const search = data?.resources?.search;
+        if (core) {
+          currentRateLimit = {
+            limit: core.limit ?? (token ? 5000 : 60),
+            remaining: core.remaining ?? 60,
+            resetTime: core.reset ? new Date(core.reset * 1000) : null,
+            searchLimit: search?.limit ?? (token ? 30 : 10),
+            searchRemaining: search?.remaining ?? (token ? 30 : 10),
+            searchResetTime: search?.reset ? new Date(search.reset * 1000) : null,
+          };
+          if (onRateLimitChange) {
+            onRateLimitChange(currentRateLimit);
+          }
         }
       }
+    } catch (e) {
+      console.warn('Failed to query live GitHub rate limit', e);
     }
-  } catch (e) {
-    console.warn('Failed to query live GitHub rate limit', e);
-  }
-  return currentRateLimit;
+    return currentRateLimit;
+  });
 }
 
 export interface FetchResult {
@@ -229,9 +253,8 @@ export interface FetchResult {
 }
 
 /**
- * Builds valid GitHub Search API queries.
- * Note: GitHub Search syntax does NOT allow nested parentheses like (topic:a OR topic:b).
- * Each category uses a primary topic qualifier verified to return thousands of live repositories.
+ * Builds valid GitHub Search API queries with grouped boolean logic.
+ * Consolidates related topics and sub-genres into single queries.
  */
 export function buildSearchQuery(
   category: CategoryId,
@@ -246,34 +269,34 @@ export function buildSearchQuery(
     qParts.push(searchQuery.trim());
   }
 
-  // 2. Category Topic Qualifier
+  // 2. Category Topic Qualifier with grouped boolean logic
   switch (category) {
     case 'ai-ml':
-      qParts.push('topic:machine-learning');
+      qParts.push('ai machine-learning OR deep-learning OR llm');
       break;
     case 'web-frameworks':
-      qParts.push('topic:frontend');
+      qParts.push('web react OR vue OR svelte OR angular OR frontend');
       break;
     case 'devops-cloud':
-      qParts.push('topic:devops');
+      qParts.push('devops docker OR kubernetes OR cloud');
       break;
     case 'developer-tools':
-      qParts.push('topic:developer-tools');
+      qParts.push('developer-tools OR cli OR compiler OR debugger');
       break;
     case 'databases':
-      qParts.push('topic:database');
+      qParts.push('database sql OR nosql OR redis OR postgresql');
       break;
     case 'mobile-crossplatform':
-      qParts.push('topic:mobile');
+      qParts.push('mobile flutter OR react-native OR desktop OR kotlin');
       break;
     case 'cybersecurity':
-      qParts.push('topic:security');
+      qParts.push('security vpn OR privacy OR cryptography');
       break;
     case 'android-apks':
-      qParts.push('topic:android-app');
+      qParts.push('android (app OR apk OR client OR android-app)');
       break;
     case 'videography-media':
-      qParts.push('topic:video');
+      qParts.push('media video OR audio OR ffmpeg OR streaming');
       break;
     case 'all':
     default:
@@ -299,7 +322,7 @@ export function buildSearchQuery(
     qParts.push(`stars:>=${minStars}`);
   }
 
-  // 5. If query has no qualifiers, query open-source repos with stars:>=0 (all repositories with 0 or more stars)
+  // 5. If query has no qualifiers, query open-source repos with stars:>=0
   if (qParts.length === 0) {
     qParts.push('stars:>=0');
   }
@@ -524,6 +547,102 @@ function getFallbackResults(
 
 const desktopTrendingCache = new Map<string, { data: Repository[]; timestamp: number }>();
 const desktopReleasesCache = new Map<string, { data: Release[]; timestamp: number }>();
+
+export interface DesktopCompleteRepoDetails {
+  releases: Release[];
+  isStarred?: boolean;
+}
+
+/**
+ * GraphQL Query Aggregator: Groups releases, release assets, and star status
+ * into a SINGLE network request costing 1 point instead of multiple REST calls.
+ */
+export async function fetchRepoCompleteDetails(fullName: string): Promise<DesktopCompleteRepoDetails | null> {
+  const token = getStoredToken();
+  if (!token) return null;
+
+  const parts = fullName.split('/');
+  if (parts.length !== 2) return null;
+  const [owner, name] = parts;
+
+  return deduplicatedFetch(`desktop_gql_${fullName.toLowerCase()}`, async () => {
+    try {
+      const cleanToken = token.trim().replace(/^(Bearer|token)\s+/i, '');
+      const query = `
+        query DesktopRepoDetails($owner: String!, $name: String!) {
+          repository(owner: $owner, name: $name) {
+            viewerHasStarred
+            releases(first: 10, orderBy: {field: CREATED_AT, direction: DESC}) {
+              nodes {
+                id
+                name
+                tagName
+                publishedAt
+                description
+                isPrerelease
+                isDraft
+                releaseAssets(first: 30) {
+                  nodes {
+                    id
+                    name
+                    size
+                    downloadCount
+                    downloadUrl
+                    contentType
+                  }
+                }
+              }
+            }
+          }
+        }
+      `;
+
+      const res = await fetch('https://api.github.com/graphql', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${cleanToken}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ query, variables: { owner, name } }),
+      });
+
+      updateRateLimitFromHeaders(res.headers);
+      if (!res.ok) return null;
+
+      const body = await res.json();
+      const r = body?.data?.repository;
+      if (!r) return null;
+
+      const releases: Release[] = (r.releases?.nodes || []).map((node: any) => ({
+        id: node.id,
+        tag_name: node.tagName,
+        name: node.name || node.tagName,
+        published_at: node.publishedAt,
+        body: node.description || '',
+        prerelease: node.isPrerelease || false,
+        draft: node.isDraft || false,
+        assets: (node.releaseAssets?.nodes || []).map((a: any) => ({
+          id: a.id,
+          name: a.name,
+          size: a.size || 0,
+          download_count: a.downloadCount || 0,
+          browser_download_url: a.downloadUrl,
+          content_type: a.contentType || '',
+        })),
+      }));
+
+      desktopReleasesCache.set(fullName.toLowerCase().trim(), { data: releases, timestamp: Date.now() });
+
+      return {
+        releases,
+        isStarred: r.viewerHasStarred,
+      };
+    } catch {
+      return null;
+    }
+  });
+}
 
 /**
  * Fetches recent GitHub releases and their downloadable binary assets

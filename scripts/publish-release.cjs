@@ -68,7 +68,7 @@ const ANDROID_RELEASE_BODY = `## 🚀 What's New in OneGitVault Android v${ANDRO
 ---
 
 ### 📥 5. APK Download Permission Prompt & Native Updater Improvements
-- **Download Confirmation Dialog**: Clicking any **Download APK** button (or README `.apk` link) now prompts for explicit user confirmation (\`Allow & Download\`) showing filename and size before delegating to Android's native \`DownloadManager\`.
+- **Download Confirmation Dialog**: Clicking any **Download APK** button (or README \`.apk\` link) now prompts for explicit user confirmation (\`Allow & Download\`) showing filename and size before delegating to Android's native \`DownloadManager\`.
 - **Native Update Progress & Completion Flow**: Real-time \`DownloadManager.Query\` progress tracking in \`MainActivity.java\`; once finished, the updater displays **"Download Successful!"** with instructions to close the app and install the APK plus a **Close App** button (eliminating accidental re-downloads from the old "Re-Open Installer" action).
 
 ---

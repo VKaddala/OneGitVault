@@ -102,10 +102,10 @@ export const CompactFilterBar = React.memo<CompactFilterBarProps>(({
         '&::-webkit-scrollbar': { display: 'none' },
         borderBottom: `1px solid ${alpha(theme.palette.divider, 0.7)}`,
         bgcolor: theme.palette.mode === 'dark'
-          ? alpha(theme.palette.background.default, 0.82)
-          : alpha(theme.palette.background.default, 0.88),
-        backdropFilter: 'blur(32px) saturate(200%)',
-        WebkitBackdropFilter: 'blur(32px) saturate(200%)',
+          ? alpha(theme.palette.background.default, 0.88)
+          : alpha(theme.palette.background.default, 0.92),
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
         boxShadow: theme.palette.mode === 'dark'
           ? '0 4px 16px rgba(0, 0, 0, 0.35)'
           : `0 2px 10px ${alpha(theme.palette.primary.main, 0.05)}`,
@@ -256,9 +256,9 @@ export const CompactFilterBar = React.memo<CompactFilterBarProps>(({
             borderRadius: '20px',
             minWidth: 210,
             maxHeight: 380,
-            bgcolor: alpha(theme.palette.background.paper, 0.94),
-            backdropFilter: 'blur(30px) saturate(190%)',
-            WebkitBackdropFilter: 'blur(30px) saturate(190%)',
+            bgcolor: alpha(theme.palette.background.paper, 0.96),
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
             border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
             boxShadow: '0 16px 40px rgba(0,0,0,0.35)',
             p: 0.5
@@ -318,9 +318,9 @@ export const CompactFilterBar = React.memo<CompactFilterBarProps>(({
             borderRadius: '20px',
             minWidth: 165,
             p: 0.5,
-            bgcolor: alpha(theme.palette.background.paper, 0.94),
-            backdropFilter: 'blur(30px) saturate(190%)',
-            WebkitBackdropFilter: 'blur(30px) saturate(190%)',
+            bgcolor: alpha(theme.palette.background.paper, 0.96),
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
             border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
             boxShadow: '0 16px 40px rgba(0, 0, 0, 0.35)'
           }
@@ -372,9 +372,9 @@ export const CompactFilterBar = React.memo<CompactFilterBarProps>(({
             borderRadius: '20px',
             minWidth: 155,
             p: 0.5,
-            bgcolor: alpha(theme.palette.background.paper, 0.94),
-            backdropFilter: 'blur(30px) saturate(190%)',
-            WebkitBackdropFilter: 'blur(30px) saturate(190%)',
+            bgcolor: alpha(theme.palette.background.paper, 0.96),
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
             border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
             boxShadow: '0 16px 40px rgba(0, 0, 0, 0.35)'
           }

@@ -1,6 +1,6 @@
 import { getStoredToken } from './githubApi';
 
-export const CURRENT_ANDROID_VERSION = '1.2.0';
+export const CURRENT_ANDROID_VERSION = '1.3.0';
 const REPO_OWNER = 'VKaddala';
 const REPO_NAME = 'OneGitVault';
 
@@ -155,5 +155,6 @@ export function startAndroidUpdate(
   } else {
     // Fallback: browser / web preview
     window.open(apkUrl, '_blank');
+    if (onProgress) onProgress(100, 'Download started in browser');
   }
 }

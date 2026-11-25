@@ -9,7 +9,21 @@
  * 5. Code & Badge Protection: Preserves fenced code blocks, inline snippets, and image markdown tags.
  */
 
+import { registerMemoryCacheCleaner, setBoundedMapEntry } from './cacheManager';
+
 const memoryCache = new Map<string, string>();
+
+registerMemoryCacheCleaner((clearAll) => {
+  if (clearAll) {
+    memoryCache.clear();
+  } else if (memoryCache.size > 40) {
+    while (memoryCache.size > 40) {
+      const oldestKey = memoryCache.keys().next().value;
+      if (oldestKey === undefined) break;
+      memoryCache.delete(oldestKey);
+    }
+  }
+});
 
 function hashString(str: string): string {
   let hash = 0;
@@ -26,7 +40,7 @@ function getCachedTranslation(text: string): string | null {
   try {
     const stored = sessionStorage.getItem(key);
     if (stored) {
-      memoryCache.set(key, stored);
+      setBoundedMapEntry(memoryCache, key, stored, 40);
       return stored;
     }
   } catch {}
@@ -35,7 +49,7 @@ function getCachedTranslation(text: string): string | null {
 
 function setCachedTranslation(text: string, translated: string): void {
   const key = `ogv_tr_${hashString(text.slice(0, 100))}_${text.length}`;
-  memoryCache.set(key, translated);
+  setBoundedMapEntry(memoryCache, key, translated, 40);
   try {
     sessionStorage.setItem(key, translated);
   } catch {}

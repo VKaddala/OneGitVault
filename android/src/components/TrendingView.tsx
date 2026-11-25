@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -20,15 +20,17 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import { Repository, TimeRange } from '../types';
 import { RepoCard } from './RepoCard';
 import { fetchTrendingRepositories } from '../services/githubApi';
+import { isBookmarked as checkIsBookmarkedGlobal } from '../services/bookmarkStore';
 
 interface TrendingViewProps {
   onOpenDetail: (repo: Repository) => void;
-  isBookmarked: (id: number) => boolean;
+  isBookmarked: (repoOrId: any) => boolean;
   onToggleBookmark: (repo: Repository) => void;
   onCopyClone: (cloneUrl: string) => void;
   copiedId: number | null;
   refreshTrigger?: number;
   isCompact?: boolean;
+  isActive?: boolean;
 }
 
 type TrendingScope = 'all' | 'apk';
@@ -42,7 +44,8 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
   onCopyClone,
   copiedId,
   refreshTrigger = 0,
-  isCompact = false
+  isCompact = false,
+  isActive = true
 }) => {
   const theme = useTheme();
   const [scope, setScope] = useState<TrendingScope>('all');
@@ -51,6 +54,13 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [repos, setRepos] = useState<Repository[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [, setBookmarkTick] = useState(0);
+
+  useEffect(() => {
+    const handleBookmarkChange = () => setBookmarkTick((t) => t + 1);
+    window.addEventListener('ogv_bookmarks_changed', handleBookmarkChange);
+    return () => window.removeEventListener('ogv_bookmarks_changed', handleBookmarkChange);
+  }, []);
 
   const loadTrending = useCallback(async (forceRefresh = false) => {
     setLoading(true);
@@ -67,9 +77,26 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
     }
   }, [timeRange, scope, selectedLanguage]);
 
+  const hasActivatedRef = useRef<boolean>(false);
+  const prevLoadDepsRef = useRef({ loadTrending, refreshTrigger });
+
   useEffect(() => {
-    loadTrending(refreshTrigger > 0);
-  }, [loadTrending, refreshTrigger]);
+    const depsChanged =
+      prevLoadDepsRef.current.loadTrending !== loadTrending ||
+      prevLoadDepsRef.current.refreshTrigger !== refreshTrigger;
+    prevLoadDepsRef.current = { loadTrending, refreshTrigger };
+
+    if (!hasActivatedRef.current) {
+      if (!isActive) return;
+      hasActivatedRef.current = true;
+      loadTrending(refreshTrigger > 0);
+      return;
+    }
+
+    if (depsChanged) {
+      loadTrending(refreshTrigger > 0);
+    }
+  }, [isActive, loadTrending, refreshTrigger]);
 
   const getTimeRangeLabel = () => {
     if (timeRange === 'daily') return 'Today (Last 3 days)';
@@ -315,7 +342,7 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
             <Grid item xs={12} sm={isCompact ? 12 : 6} md={isCompact ? 6 : 4} key={repo.id}>
               <RepoCard
                 repo={repo}
-                isBookmarked={isBookmarked(repo.id)}
+                isBookmarked={isBookmarked ? isBookmarked(repo) : checkIsBookmarkedGlobal(repo)}
                 onToggleBookmark={onToggleBookmark}
                 onOpenDetail={onOpenDetail}
                 onCopyClone={onCopyClone}

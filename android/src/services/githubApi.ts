@@ -1,6 +1,7 @@
 import { Repository, ReleaseAsset, RateLimitInfo } from '../types';
 import { CURATED_ANDROID_APKS } from '../data/curatedAndroidApks';
 import { APK_CATEGORIES, EXPLORE_CATEGORIES } from '../data/categories';
+import { registerMemoryCacheCleaner, safeSetLocalCache, setBoundedMapEntry } from './cacheManager';
 
 const BASE_URL = 'https://api.github.com';
 const TOKEN_KEY = 'onegitvault_github_pat';
@@ -75,7 +76,7 @@ export async function setStoredToken(token: string): Promise<void> {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(LEGACY_TOKEN_KEY);
     }
-    await checkLiveRateLimit();
+    await checkLiveRateLimit(true);
   } catch (e) {
     console.error('Failed to store GitHub token', e);
   }
@@ -210,6 +211,62 @@ function updateRateLimitFromHeaders(headers: Headers): void {
   }
 }
 
+function markSearchRateLimitExhausted(headers: Headers): void {
+  updateRateLimitFromHeaders(headers);
+  const now = Date.now();
+  const existingReset = currentRateLimits.searchResetTime?.getTime() || 0;
+  if ((currentRateLimits.searchRemaining ?? 0) > 0 || existingReset <= now) {
+    const retryAfterSec = parseInt(headers.get('retry-after') || '60', 10);
+    const resetMs = now + (Number.isFinite(retryAfterSec) && retryAfterSec > 0 ? retryAfterSec * 1000 : 60_000);
+    currentRateLimits = {
+      ...currentRateLimits,
+      searchRemaining: 0,
+      searchResetTime: new Date(resetMs),
+    };
+    if (onRateLimitChange) onRateLimitChange(currentRateLimits);
+  }
+}
+
+function markCoreRateLimitExhausted(headers: Headers): void {
+  updateRateLimitFromHeaders(headers);
+  const now = Date.now();
+  const existingReset = currentRateLimits.resetTime?.getTime() || 0;
+  if (currentRateLimits.remaining > 0 || existingReset <= now) {
+    const retryAfterSec = parseInt(headers.get('retry-after') || '120', 10);
+    const resetMs = now + (Number.isFinite(retryAfterSec) && retryAfterSec > 0 ? retryAfterSec * 1000 : 120_000);
+    currentRateLimits = {
+      ...currentRateLimits,
+      remaining: 0,
+      resetTime: new Date(resetMs),
+    };
+    if (onRateLimitChange) onRateLimitChange(currentRateLimits);
+  }
+}
+
+function isSearchQuotaExhausted(): boolean {
+  const limits = getCurrentRateLimit();
+  return (
+    (limits.searchRemaining ?? 1) <= 0 &&
+    limits.searchResetTime != null &&
+    Date.now() < limits.searchResetTime.getTime()
+  );
+}
+
+function isCoreQuotaExhausted(): boolean {
+  const limits = getCurrentRateLimit();
+  return (
+    limits.remaining <= 0 &&
+    limits.resetTime != null &&
+    Date.now() < limits.resetTime.getTime()
+  );
+}
+
+function getSearchResetSeconds(): number {
+  const reset = currentRateLimits.searchResetTime?.getTime();
+  if (!reset) return 60;
+  return Math.max(1, Math.ceil((reset - Date.now()) / 1000));
+}
+
 // In-flight request deduplication map to prevent multiple concurrent identical queries
 const inFlightRequests = new Map<string, Promise<any>>();
 
@@ -283,6 +340,8 @@ export interface FetchRepositoriesResult {
   page: number;
   error?: string;
   isRateLimit?: boolean;
+  fromCache?: boolean;
+  rateLimitResetInSec?: number;
 }
 
 export function buildSearchQuery(
@@ -336,7 +395,158 @@ export function buildSearchQuery(
 }
 
 const repoSearchMemoryCache = new Map<string, { data: FetchRepositoriesResult; timestamp: number }>();
-const REPO_CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+const REPO_CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours freshness window
+
+function getStaleCachedSearchResult(cacheKey: string): FetchRepositoriesResult | null {
+  const mem = repoSearchMemoryCache.get(cacheKey);
+  if (mem?.data?.repositories?.length) return mem.data;
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed?.repositories) && parsed.repositories.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return null;
+}
+
+/**
+ * Collects unique repositories from all cached searches, trending feeds, starred list, and curated APKs,
+ * then filters and sorts them locally when GitHub rate limits are temporarily exhausted.
+ */
+function queryLocalCachedRepositories(
+  categoryId: string,
+  searchQuery: string,
+  sort: string,
+  minStars: number,
+  isApkTab: boolean
+): Repository[] {
+  const poolMap = new Map<number, Repository>();
+  const addItems = (items: Repository[] | undefined) => {
+    if (!Array.isArray(items)) return;
+    for (const r of items) {
+      if (r && typeof r.id === 'number' && !poolMap.has(r.id)) {
+        poolMap.set(r.id, r);
+      }
+    }
+  };
+
+  for (const entry of repoSearchMemoryCache.values()) addItems(entry.data?.repositories);
+  for (const entry of trendingMemoryCache.values()) addItems(entry.data);
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (k.startsWith('ogv_repo_cache_') || k.startsWith('ogv_trending_') || k.startsWith('ogv_cached_starred_repos_')) {
+        const raw = localStorage.getItem(k);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw);
+        addItems(parsed.repositories || parsed.data);
+      }
+    }
+  } catch {}
+  if (isApkTab || searchQuery.trim()) addItems(CURATED_ANDROID_APKS);
+
+  let items = Array.from(poolMap.values());
+
+  if (isApkTab) {
+    items = items.filter(
+      (r) =>
+        r.has_apks ||
+        (r.topics && r.topics.some((t) => /android|apk/i.test(t))) ||
+        /android|apk/i.test(r.description || '')
+    );
+  }
+
+  if (minStars > 0) {
+    items = items.filter((r) => (r.stargazers_count || 0) >= minStars);
+  }
+
+  const trimmed = searchQuery.trim().toLowerCase();
+  if (trimmed) {
+    // Strip GitHub search qualifiers (in:..., stars:..., pushed:..., created:..., forks:...)
+    const tokens = trimmed
+      .split(/\s+/)
+      .filter((t) => t && !/^(in:|stars:|forks:|pushed:|created:|topic:|language:)/.test(t) && t !== 'or' && t !== 'and');
+    if (tokens.length > 0) {
+      items = items.filter((r) => {
+        const hay = `${r.name} ${r.full_name} ${r.description || ''} ${r.language || ''} ${(r.topics || []).join(' ')}`.toLowerCase();
+        return tokens.some((tok) => hay.includes(tok));
+      });
+    }
+  } else if (categoryId && categoryId !== 'all' && categoryId !== 'android-apks') {
+    const cat = [...APK_CATEGORIES, ...EXPLORE_CATEGORIES].find((c) => c.id === categoryId);
+    const catWords = (cat?.label || categoryId)
+      .toLowerCase()
+      .split(/[\s,&/+-]+/)
+      .filter((w) => w.length > 2 && w !== 'and' && w !== 'apps');
+    if (catWords.length > 0) {
+      const catFiltered = items.filter((r) => {
+        const hay = `${r.name} ${r.description || ''} ${r.language || ''} ${(r.topics || []).join(' ')}`.toLowerCase();
+        return catWords.some((w) => hay.includes(w));
+      });
+      if (catFiltered.length > 0) items = catFiltered;
+    }
+  }
+
+  items.sort((a, b) => {
+    if (sort === 'forks') return (b.forks_count || 0) - (a.forks_count || 0);
+    if (sort === 'newest') return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+    if (sort === 'updated') return new Date(b.pushed_at || b.updated_at || 0).getTime() - new Date(a.pushed_at || a.updated_at || 0).getTime();
+    return (b.stargazers_count || 0) - (a.stargazers_count || 0);
+  });
+
+  return items;
+}
+
+function buildRateLimitCachedFallback(
+  cacheKey: string,
+  categoryId: string,
+  searchQuery: string,
+  sort: string,
+  minStars: number,
+  page: number,
+  isApkTab: boolean
+): FetchRepositoriesResult {
+  const resetSec = getSearchResetSeconds();
+  const exactCached = getStaleCachedSearchResult(cacheKey);
+  if (exactCached && exactCached.repositories.length > 0) {
+    return {
+      ...exactCached,
+      page,
+      isRateLimit: true,
+      fromCache: true,
+      rateLimitResetInSec: resetSec,
+    };
+  }
+
+  if (page === 1) {
+    const localMatches = queryLocalCachedRepositories(categoryId, searchQuery, sort, minStars, isApkTab);
+    if (localMatches.length > 0) {
+      return {
+        repositories: localMatches.slice(0, 60),
+        totalCount: localMatches.length,
+        hasMore: false,
+        page: 1,
+        isRateLimit: true,
+        fromCache: true,
+        rateLimitResetInSec: resetSec,
+      };
+    }
+  }
+
+  return {
+    repositories: [],
+    totalCount: 0,
+    hasMore: true,
+    page,
+    error: `GitHub search quota exhausted. Resets in ~${resetSec}s — tap Retry or add a GitHub token.`,
+    isRateLimit: true,
+    rateLimitResetInSec: resetSec,
+  };
+}
 
 export async function fetchRepositories(
   categoryId: string = 'android-apks',
@@ -344,15 +554,15 @@ export async function fetchRepositories(
   sort: string = 'stars',
   minStars: number = 0,
   page: number = 1,
-  perPage: number = 30,
+  perPage: number = 60,
   isApkTab: boolean = false,
   forceRefresh: boolean = false
 ): Promise<FetchRepositoriesResult> {
   const q = buildSearchQuery(categoryId, searchQuery, minStars, isApkTab);
   const sortParam = sort === 'stars' ? 'stars' : sort === 'forks' ? 'forks' : sort === 'newest' ? 'created' : 'updated';
-  const cacheKey = `ogv_repo_cache_${q}_${sortParam}_${page}`;
+  const cacheKey = `ogv_repo_cache_${q}_${sortParam}_${page}_${perPage}`;
 
-  // 1. Check in-memory and persistent localStorage cache first before burning API quota
+  // 1. Check fresh in-memory and persistent localStorage cache first before burning API quota
   if (!forceRefresh) {
     const memCached = repoSearchMemoryCache.get(cacheKey);
     if (memCached && Date.now() - memCached.timestamp < REPO_CACHE_TTL_MS) {
@@ -365,11 +575,16 @@ export async function fetchRepositories(
         const parsed = JSON.parse(localStr);
         const ts = parsed.timestamp || 0;
         if (Date.now() - ts < REPO_CACHE_TTL_MS && Array.isArray(parsed.repositories) && parsed.repositories.length > 0) {
-          repoSearchMemoryCache.set(cacheKey, { data: parsed, timestamp: ts });
+          setBoundedMapEntry(repoSearchMemoryCache, cacheKey, { data: parsed, timestamp: ts }, 30);
           return parsed;
         }
       }
     } catch {}
+  }
+
+  // 2. If search rate limit is already exhausted, serve cached items directly until reset time
+  if (isSearchQuotaExhausted()) {
+    return buildRateLimitCachedFallback(cacheKey, categoryId, searchQuery, sortParam, minStars, page, isApkTab);
   }
 
   return deduplicatedFetch(cacheKey, async () => {
@@ -380,50 +595,32 @@ export async function fetchRepositories(
 
       if (!res.ok) {
         console.warn(`GitHub API returned ${res.status}, attempting cached fallback`);
-        try {
-          const cached = localStorage.getItem(cacheKey);
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            return parsed;
-          }
-        } catch {}
+        const isQuotaErr = res.status === 403 || res.status === 429;
+        if (isQuotaErr) {
+          markSearchRateLimitExhausted(res.headers);
+          return buildRateLimitCachedFallback(cacheKey, categoryId, searchQuery, sortParam, minStars, page, isApkTab);
+        }
 
-        if (searchQuery.trim()) {
-          const qLower = searchQuery.toLowerCase().trim();
-          const matches = CURATED_ANDROID_APKS.filter(
-            (r) =>
-              r.name.toLowerCase().includes(qLower) ||
-              r.full_name.toLowerCase().includes(qLower) ||
-              (r.description && r.description.toLowerCase().includes(qLower)) ||
-              (r.topics && r.topics.some((t) => t.toLowerCase().includes(qLower)))
-          );
-          if (matches.length > 0) {
+        const staleExact = getStaleCachedSearchResult(cacheKey);
+        if (staleExact) {
+          return { ...staleExact, fromCache: true };
+        }
+
+        if (res.status === 422) {
+          return { repositories: [], totalCount: 1000, hasMore: false, page };
+        }
+
+        if (page === 1) {
+          const localMatches = queryLocalCachedRepositories(categoryId, searchQuery, sortParam, minStars, isApkTab);
+          if (localMatches.length > 0) {
             return {
-              repositories: matches,
-              totalCount: matches.length,
+              repositories: localMatches.slice(0, 60),
+              totalCount: localMatches.length,
               hasMore: false,
               page: 1,
-              error: res.status === 403 ? 'Search rate limit active. Showing matching curated repositories.' : undefined,
-              isRateLimit: res.status === 403,
+              fromCache: true,
             };
           }
-        }
-
-        if (page === 1 && isApkTab) {
-          return {
-            repositories: CURATED_ANDROID_APKS,
-            totalCount: CURATED_ANDROID_APKS.length,
-            hasMore: false,
-            page: 1
-          };
-        }
-
-        const isRateLimit = res.status === 403;
-        let errorMsg = 'Failed to load repositories.';
-        if (isRateLimit) {
-          errorMsg = 'GitHub search rate limit reached (10 req/min unauthenticated). Tap Retry or add a GitHub token in the key icon.';
-        } else if (res.status === 422) {
-          return { repositories: [], totalCount: 1000, hasMore: false, page };
         }
 
         return {
@@ -431,8 +628,7 @@ export async function fetchRepositories(
           totalCount: 0,
           hasMore: true,
           page,
-          error: errorMsg,
-          isRateLimit
+          error: 'Failed to load repositories.',
         };
       }
 
@@ -454,10 +650,8 @@ export async function fetchRepositories(
       };
 
       const cachePayload = { ...result, timestamp: Date.now() };
-      repoSearchMemoryCache.set(cacheKey, { data: result, timestamp: Date.now() });
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(cachePayload));
-      } catch {}
+      setBoundedMapEntry(repoSearchMemoryCache, cacheKey, { data: result, timestamp: Date.now() }, 30);
+      safeSetLocalCache(cacheKey, JSON.stringify(cachePayload));
 
       return result;
     } catch (err: any) {
@@ -511,6 +705,7 @@ const releasesCache = new Map<string, { data: ReleaseAsset[]; timestamp: number 
 export interface CompleteRepoDetails {
   releases: ReleaseAsset[];
   isStarred?: boolean;
+  readme?: string;
   specs?: {
     stars: number;
     forks: number;
@@ -528,7 +723,7 @@ export interface CompleteRepoDetails {
 
 /**
  * GraphQL Query Aggregator: Groups repository specs, latest releases,
- * release assets, and star status into a SINGLE network request.
+ * release assets, README blob, and star status into a SINGLE network request.
  * Costs only 1 point of rate limit instead of 3-4 separate REST requests.
  */
 export async function fetchRepoCompleteDetails(fullName: string): Promise<CompleteRepoDetails | null> {
@@ -546,11 +741,15 @@ export async function fetchRepoCompleteDetails(fullName: string): Promise<Comple
     const rawLocal = localStorage.getItem(cacheKey);
     if (rawLocal) {
       const parsed = JSON.parse(rawLocal);
-      if (Date.now() - (parsed.timestamp || 0) < 60 * 60 * 1000) {
+      if (isCoreQuotaExhausted() || Date.now() - (parsed.timestamp || 0) < 60 * 60 * 1000) {
         return parsed.data;
       }
     }
   } catch {}
+
+  if (isCoreQuotaExhausted()) {
+    return null;
+  }
 
   return deduplicatedFetch(`gql_${normKey}`, async () => {
     try {
@@ -571,6 +770,11 @@ export async function fetchRepoCompleteDetails(fullName: string): Promise<Comple
             pushedAt
             updatedAt
             viewerHasStarred
+            readme: object(expression: "HEAD:README.md") {
+              ... on Blob {
+                text
+              }
+            }
             releases(first: 10, orderBy: {field: CREATED_AT, direction: DESC}) {
               nodes {
                 id
@@ -603,7 +807,10 @@ export async function fetchRepoCompleteDetails(fullName: string): Promise<Comple
       });
 
       updateRateLimitFromHeaders(res.headers);
-      if (!res.ok) return null;
+      if (!res.ok) {
+        if (res.status === 403 || res.status === 429) markCoreRateLimitExhausted(res.headers);
+        return null;
+      }
 
       const body = await res.json();
       const r = body?.data?.repository;
@@ -633,9 +840,15 @@ export async function fetchRepoCompleteDetails(fullName: string): Promise<Comple
         }
       }
 
+      const readmeText = typeof r.readme?.text === 'string' && r.readme.text.length > 0 ? r.readme.text : undefined;
+      if (readmeText) {
+        safeSetLocalCache(`ogv_readme_${normKey}`, JSON.stringify({ data: readmeText, timestamp: Date.now() }));
+      }
+
       const result: CompleteRepoDetails = {
         releases: assets,
         isStarred: r.viewerHasStarred,
+        readme: readmeText,
         specs: {
           stars: r.stargazerCount || 0,
           forks: r.forkCount || 0,
@@ -657,9 +870,7 @@ export async function fetchRepoCompleteDetails(fullName: string): Promise<Comple
         },
       };
 
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify({ data: result, timestamp: Date.now() }));
-      } catch {}
+      safeSetLocalCache(cacheKey, JSON.stringify({ data: result, timestamp: Date.now() }));
 
       return result;
     } catch (e) {
@@ -686,7 +897,7 @@ export async function fetchReleases(repoFullName: string): Promise<ReleaseAsset[
       const parsed = JSON.parse(rawLocal);
       if (Array.isArray(parsed.data) && parsed.data.length > 0) {
         if (Date.now() - parsed.timestamp < 12 * 60 * 60 * 1000) {
-          releasesCache.set(normKey, parsed);
+          setBoundedMapEntry(releasesCache, normKey, parsed, 40);
           return parsed.data;
         }
       }
@@ -699,6 +910,19 @@ export async function fetchReleases(repoFullName: string): Promise<ReleaseAsset[
   );
   const curatedAssets = curatedMatch?.latest_release?.assets || [];
 
+  // If Core quota is exhausted, serve stale cached releases immediately until reset
+  if (isCoreQuotaExhausted()) {
+    if (memCached?.data?.length) return memCached.data;
+    try {
+      const rawLocal = localStorage.getItem(cacheKey);
+      if (rawLocal) {
+        const parsed = JSON.parse(rawLocal);
+        if (Array.isArray(parsed.data) && parsed.data.length > 0) return parsed.data;
+      }
+    } catch {}
+    return curatedAssets;
+  }
+
   return deduplicatedFetch(`releases_${normKey}`, async () => {
     try {
       const url = `${BASE_URL}/repos/${repoFullName}/releases?per_page=10`;
@@ -706,6 +930,7 @@ export async function fetchReleases(repoFullName: string): Promise<ReleaseAsset[
       updateRateLimitFromHeaders(res.headers);
 
       if (!res.ok) {
+        if (res.status === 403 || res.status === 429) markCoreRateLimitExhausted(res.headers);
         console.warn(`fetchReleases failed (${res.status}) for ${repoFullName}, checking cached fallback`);
         try {
           const rawLocal = localStorage.getItem(cacheKey);
@@ -755,10 +980,8 @@ export async function fetchReleases(repoFullName: string): Promise<ReleaseAsset[
 
       if (finalAssets.length > 0) {
         const cacheObj = { data: finalAssets, timestamp: Date.now() };
-        releasesCache.set(normKey, cacheObj);
-        try {
-          localStorage.setItem(cacheKey, JSON.stringify(cacheObj));
-        } catch {}
+        setBoundedMapEntry(releasesCache, normKey, cacheObj, 40);
+        safeSetLocalCache(cacheKey, JSON.stringify(cacheObj));
       }
 
       return finalAssets;
@@ -780,7 +1003,7 @@ export async function fetchReleases(repoFullName: string): Promise<ReleaseAsset[
   });
 }
 
-export async function fetchReadme(repoFullName: string): Promise<string> {
+export async function fetchReadme(repoFullName: string, preferredBranch?: string): Promise<string> {
   const normKey = repoFullName.toLowerCase().trim();
   const cacheKey = `ogv_readme_${normKey}`;
 
@@ -797,23 +1020,31 @@ export async function fetchReadme(repoFullName: string): Promise<string> {
 
   return deduplicatedFetch(`readme_${normKey}`, async () => {
     // 1. Try public raw GitHub CDN first (FAST and NO API RATE LIMIT!)
-    const branches = ['HEAD', 'main', 'master'];
+    const branches = Array.from(
+      new Set(['HEAD', ...(preferredBranch ? [preferredBranch] : []), 'main', 'master'])
+    );
     for (const branch of branches) {
       try {
         const rawRes = await fetch(`https://raw.githubusercontent.com/${repoFullName}/${branch}/README.md`);
         if (rawRes.ok) {
           const text = await rawRes.text();
           if (text && text.length > 20) {
-            try {
-              localStorage.setItem(cacheKey, JSON.stringify({ data: text, timestamp: Date.now() }));
-            } catch {}
+            safeSetLocalCache(cacheKey, JSON.stringify({ data: text, timestamp: Date.now() }));
             return text;
           }
         }
       } catch {}
     }
 
-    // 2. Fall back to GitHub API endpoint
+    // 2. Fall back to GitHub API endpoint (skip if Core quota is exhausted and return stale cache)
+    if (isCoreQuotaExhausted()) {
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) return JSON.parse(cached).data;
+      } catch {}
+      return '# No README cached while GitHub rate limit is resetting.';
+    }
+
     try {
       const url = `${BASE_URL}/repos/${repoFullName}/readme`;
       const res = await fetch(url, {
@@ -824,6 +1055,7 @@ export async function fetchReadme(repoFullName: string): Promise<string> {
       });
       updateRateLimitFromHeaders(res.headers);
       if (!res.ok) {
+        if (res.status === 403 || res.status === 429) markCoreRateLimitExhausted(res.headers);
         try {
           const cached = localStorage.getItem(cacheKey);
           if (cached) return JSON.parse(cached).data;
@@ -831,9 +1063,7 @@ export async function fetchReadme(repoFullName: string): Promise<string> {
         return '# No README found for this repository.';
       }
       const text = await res.text();
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify({ data: text, timestamp: Date.now() }));
-      } catch {}
+      safeSetLocalCache(cacheKey, JSON.stringify({ data: text, timestamp: Date.now() }));
       return text;
     } catch {
       try {
@@ -847,6 +1077,25 @@ export async function fetchReadme(repoFullName: string): Promise<string> {
 
 const trendingMemoryCache = new Map<string, { data: Repository[]; timestamp: number }>();
 const TRENDING_CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+registerMemoryCacheCleaner((clearAll) => {
+  if (clearAll) {
+    repoSearchMemoryCache.clear();
+    releasesCache.clear();
+    trendingMemoryCache.clear();
+    return;
+  }
+  const now = Date.now();
+  for (const [k, v] of repoSearchMemoryCache.entries()) {
+    if (now - v.timestamp >= REPO_CACHE_TTL_MS) repoSearchMemoryCache.delete(k);
+  }
+  for (const [k, v] of releasesCache.entries()) {
+    if (now - v.timestamp >= 60 * 60 * 1000) releasesCache.delete(k);
+  }
+  for (const [k, v] of trendingMemoryCache.entries()) {
+    if (now - v.timestamp >= TRENDING_CACHE_TTL_MS) trendingMemoryCache.delete(k);
+  }
+});
 
 export async function fetchTrendingRepositories(
   period: 'daily' | 'weekly' | 'monthly' = 'daily',
@@ -867,11 +1116,31 @@ export async function fetchTrendingRepositories(
       if (rawLocal) {
         const parsed = JSON.parse(rawLocal);
         if (Date.now() - (parsed.timestamp || 0) < TRENDING_CACHE_TTL_MS && Array.isArray(parsed.data)) {
-          trendingMemoryCache.set(cacheKey, parsed);
+          setBoundedMapEntry(trendingMemoryCache, cacheKey, parsed, 20);
           return parsed.data;
         }
       }
     } catch {}
+  }
+
+  const getTrendingCachedFallback = (): Repository[] => {
+    const mem = trendingMemoryCache.get(cacheKey);
+    if (mem?.data?.length) return mem.data;
+    try {
+      const rawLocal = localStorage.getItem(cacheKey);
+      if (rawLocal) {
+        const parsed = JSON.parse(rawLocal);
+        if (Array.isArray(parsed.data) && parsed.data.length > 0) return parsed.data;
+      }
+    } catch {}
+    const localPool = queryLocalCachedRepositories('all', '', 'stars', 0, scope === 'apk');
+    if (localPool.length > 0) return localPool.slice(0, 60);
+    if (scope === 'apk') return CURATED_ANDROID_APKS;
+    return [];
+  };
+
+  if (isSearchQuotaExhausted()) {
+    return getTrendingCachedFallback();
   }
 
   return deduplicatedFetch(cacheKey, async () => {
@@ -894,14 +1163,14 @@ export async function fetchTrendingRepositories(
       query += ` language:${language.trim()}`;
     }
 
-    const url = `${BASE_URL}/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=30`;
+    const url = `${BASE_URL}/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=60`;
 
     try {
       const res = await fetch(url, { headers: getHeaders() });
       updateRateLimitFromHeaders(res.headers);
       if (!res.ok) {
-        if (scope === 'apk') return CURATED_ANDROID_APKS;
-        return [];
+        if (res.status === 403 || res.status === 429) markSearchRateLimitExhausted(res.headers);
+        return getTrendingCachedFallback();
       }
 
       const data = await res.json();
@@ -941,16 +1210,13 @@ export async function fetchTrendingRepositories(
       }));
 
       const cachePayload = { data: mapped, timestamp: Date.now() };
-      trendingMemoryCache.set(cacheKey, cachePayload);
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(cachePayload));
-      } catch {}
+      setBoundedMapEntry(trendingMemoryCache, cacheKey, cachePayload, 20);
+      safeSetLocalCache(cacheKey, JSON.stringify(cachePayload));
 
       return mapped;
     } catch (err) {
       console.warn('Failed to fetch trending repositories:', err);
-      if (scope === 'apk') return CURATED_ANDROID_APKS;
-      return [];
+      return getTrendingCachedFallback();
     }
   });
 }

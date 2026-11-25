@@ -85,6 +85,13 @@ export const VaultView: React.FC<VaultViewProps> = ({
   const [selectedRepoIds, setSelectedRepoIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
+    const handleSync = () => setBookmarks(getBookmarks());
+    handleSync();
+    window.addEventListener('ogv_bookmarks_changed', handleSync);
+    return () => window.removeEventListener('ogv_bookmarks_changed', handleSync);
+  }, []);
+
+  useEffect(() => {
     setBookmarks(getBookmarks());
   }, [subSection]);
 

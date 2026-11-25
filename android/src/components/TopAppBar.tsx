@@ -65,10 +65,10 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
         right: 0,
         zIndex: 1200,
         bgcolor: theme.palette.mode === 'dark'
-          ? alpha(theme.palette.background.default, 0.82)
-          : alpha(theme.palette.background.default, 0.88),
-        backdropFilter: 'blur(35px) saturate(210%)',
-        WebkitBackdropFilter: 'blur(35px) saturate(210%)',
+          ? alpha(theme.palette.background.default, 0.88)
+          : alpha(theme.palette.background.default, 0.92),
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
         borderBottom: `1px solid ${alpha(theme.palette.divider, 0.7)}`,
         pt: 'calc(max(env(safe-area-inset-top, 0px), var(--status-bar-height, 44px)) + 6px)',
         px: { xs: 1.5, sm: 2 },
@@ -88,9 +88,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
           borderRadius: '24px',
           bgcolor: theme.palette.mode === 'dark'
             ? alpha(theme.palette.common.white, 0.06)
-            : alpha(theme.palette.common.white, 0.65),
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
+            : alpha(theme.palette.common.white, 0.72),
           border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
           boxShadow: theme.palette.mode === 'dark'
             ? '0 4px 16px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.08)'
@@ -131,8 +129,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
                 fontSize: '0.66rem',
                 fontWeight: 800,
                 cursor: 'pointer',
-                borderRadius: '12px',
-                animation: 'pulse 2s infinite'
+                borderRadius: '12px'
               }}
             />
           )}

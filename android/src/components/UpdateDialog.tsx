@@ -58,8 +58,9 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
     }
 
     setDownloading(true);
+    setCompleted(false);
     setProgress(5);
-    setStatusText('Starting background download...');
+    setStatusText('Downloading APK...');
     setErrorText(null);
 
     startAndroidUpdate(
@@ -74,10 +75,24 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
       },
       (err) => {
         setDownloading(false);
+        setCompleted(false);
         setErrorText(err);
       }
     );
   };
+
+  const handleCloseApp = async () => {
+    try {
+      const { App: CapApp } = await import('@capacitor/app');
+      await CapApp.exitApp();
+    } catch {
+      // Fallback for non-native preview
+    } finally {
+      onClose();
+    }
+  };
+
+  const targetApkName = `OneGitVault-v${updateInfo.latestVersion}.apk`;
 
   const formattedSize = updateInfo.apkSize
     ? `${(updateInfo.apkSize / (1024 * 1024)).toFixed(1)} MB`
@@ -90,7 +105,7 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={downloading ? undefined : onClose}
+      onClose={downloading && !completed ? undefined : onClose}
       maxWidth="sm"
       fullWidth
       PaperProps={{
@@ -156,7 +171,7 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
             </Box>
           </Box>
         </Box>
-        {!downloading && (
+        {(!downloading || completed) && (
           <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
             <CloseIcon fontSize="small" />
           </IconButton>
@@ -173,27 +188,50 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
         {downloading ? (
           <Box sx={{ py: 3, textAlign: 'center' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                {statusText || 'Downloading APK in background...'}
+              <Typography variant="body2" sx={{ fontWeight: 700, color: completed ? 'success.main' : 'text.primary' }}>
+                {completed ? 'Download successful!' : (statusText || 'Downloading APK in background...')}
               </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 800, color: 'primary.main' }}>
+              <Typography variant="body2" sx={{ fontWeight: 800, color: completed ? 'success.main' : 'primary.main' }}>
                 {progress}%
               </Typography>
             </Box>
             <LinearProgress
               variant="determinate"
+              color={completed ? 'success' : 'primary'}
               value={progress}
               sx={{
                 height: 8,
                 borderRadius: 4,
-                bgcolor: alpha(theme.palette.primary.main, 0.12),
+                bgcolor: alpha(completed ? theme.palette.success.main : theme.palette.primary.main, 0.12),
               }}
             />
-            <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1.5, display: 'block' }}>
-              {completed
-                ? 'Launching native package installer...'
-                : 'Downloading update directly from GitHub release.'}
-            </Typography>
+            {completed ? (
+              <Box
+                sx={{
+                  mt: 2.5,
+                  p: 2,
+                  borderRadius: 2.5,
+                  bgcolor: alpha(theme.palette.success.main, 0.1),
+                  border: `1px solid ${alpha(theme.palette.success.main, 0.3)}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 0.8
+                }}
+              >
+                <CheckCircleIcon sx={{ fontSize: 36, color: 'success.main' }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'success.main' }}>
+                  Download Successful!
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600, textAlign: 'center', lineHeight: 1.45 }}>
+                  Close the app and install the APK ({targetApkName}) from your notification bar or Downloads folder.
+                </Typography>
+              </Box>
+            ) : (
+              <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1.5, display: 'block' }}>
+                Downloading update directly from GitHub release.
+              </Typography>
+            )}
           </Box>
         ) : (
           <Box>
@@ -265,18 +303,23 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
             </Button>
           </>
         ) : completed ? (
-          <Button
-            onClick={handleStartUpdate}
-            variant="contained"
-            color="success"
-            startIcon={<CheckCircleIcon />}
-            sx={{ fontWeight: 700, textTransform: 'none', borderRadius: 2 }}
-          >
-            Re-Open Installer
-          </Button>
+          <>
+            <Button onClick={onClose} color="inherit" sx={{ fontWeight: 600, textTransform: 'none' }}>
+              Dismiss
+            </Button>
+            <Button
+              onClick={handleCloseApp}
+              variant="contained"
+              color="success"
+              startIcon={<CheckCircleIcon />}
+              sx={{ fontWeight: 700, textTransform: 'none', borderRadius: 2, px: 2.5 }}
+            >
+              Close App
+            </Button>
+          </>
         ) : (
           <Button disabled sx={{ textTransform: 'none', fontWeight: 600 }}>
-            Installing in background...
+            Downloading APK...
           </Button>
         )}
       </DialogActions>

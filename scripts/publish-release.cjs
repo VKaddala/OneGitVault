@@ -29,12 +29,59 @@ if (!token) {
 const REPO_OWNER = 'VKaddala';
 const REPO_NAME = 'OneGitVault';
 const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
+const androidPkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../android/package.json'), 'utf8'));
 const VERSION = pkg.version;
-const ANDROID_VERSION = '1.2.0';
-const TAG_NAME = `v${VERSION}`;
-const RELEASE_NAME = `v${VERSION} (Desktop) / v${ANDROID_VERSION} (Android) — Full-Screen Settings, List View, Modal Elimination & Native Status Bar`;
+const ANDROID_VERSION = androidPkg.version;
+const IS_ANDROID_ONLY = process.argv.includes('--android');
 
-const RELEASE_BODY = `## 🚀 What's New in Desktop v${VERSION} & Android v${ANDROID_VERSION}
+const TAG_NAME = IS_ANDROID_ONLY ? `v${ANDROID_VERSION}` : `v${VERSION}`;
+const RELEASE_NAME = IS_ANDROID_ONLY
+  ? `v${ANDROID_VERSION} (Android) — Spotlight Reels Observatory, Offline Quota Cache, 30-Day Cache Engine & Download Prompt`
+  : `v${VERSION} (Desktop) / v${ANDROID_VERSION} (Android) — Full-Screen Settings, List View, Modal Elimination & Native Status Bar`;
+
+const ANDROID_RELEASE_BODY = `## 🚀 What's New in OneGitVault Android v${ANDROID_VERSION}
+
+### ✨ 1. Spotlight Fullscreen Reels Observatory
+- **Vertical Snap-Scroll Discovery Feed**: Added a new **Spotlight** tab in the bottom navigation bar styled like full-screen vertical reels, distilling repository READMEs into clean, scannable cards with an **Elevator Pitch ("What It Is & Solves")**, **Key Highlights**, language/stars badges, and hero demo screenshots.
+- **Fullscreen Pinch-to-Zoom Media Viewer**: Tap any project screenshot or preview image to expand full-screen with two-finger pinch zoom, pan/drag, double-tap zoom reset, and Android universal edge-swipe dismissal.
+- **Focused Search & Icon-Only Filter Bar**: Includes a padded top search bar with collapsible trending tech keyword pills (visible only while focused; closes & blurs cleanly on submit) and an icon-only filter selector (\`More Stars\`, \`Trending\`, \`Newest\`, \`More Forks\`, \`All Projects\`).
+- **Bottom-Right Quick Actions Button & Expandable Dock**: Replaced the fixed side icon rail with a compact bottom-right trigger button (\`⋯\`) that expands a translucent horizontal action dock (\`Star\`, \`Vault\`, \`Readme\`, \`Share\`, \`GitHub\`) and auto-closes on tapping outside.
+
+---
+
+### 🛡️ 2. Bookmark & Vault Reliability Fixes
+- **App-Wide Bookmark State Sync**: Fixed reactive Vault bookmark synchronization across **RepoCard**, **Trending**, **SearchFlyout**, **RepoDetailSheet** (new Vault toggle chip), **Spotlight**, and **VaultView** using unified ID + repository name matching and quota-safe storage writes.
+
+---
+
+### ⚡ 3. Offline & Rate-Limit Resilience + Request Optimization
+- **Zero-Downtime Cached Fallback**: When GitHub Search or Core API request quotas are exhausted before reset time, OneGitVault automatically serves exact cached pages and locally filters previously cached repositories (\`ogv_repo_cache_*\`, \`ogv_trending_*\`, \`ogv_cached_starred_repos_*\`, and curated Android APKs) with a non-blocking reset countdown notice until quota recovers.
+- **Cold-Launch & Roundtrip Optimizations**: Deferred background \`Trending\` and \`Spotlight\` fetches until visited (cutting startup searches from 3 to 1), raised default feed batch size to **60 repositories per request**, enabled GraphQL \`HEAD:README.md\` + releases aggregation in **RepoDetailSheet**, and fixed Spotlight's \`forceRefresh\` cache bypass.
+
+---
+
+### 🧹 4. Smart 30-Day / 250 MB Cache Engine & Performance Polish
+- **Unified Auto-Clear Policy**: Automatically purges temporary Web Storage and Android native WebView disk caches every **30 days** or when total cache reaches **250 MB** (whichever comes first) while strictly preserving bookmarks, GitHub PAT tokens, themes, and search history.
+- **Storage & Cache Controls in Settings**: Displays live combined cache usage (\`KB/MB of 250 MB\`), the scheduled **Next clear** date (updating +30 days automatically on manual clear), and a 1-tap **Clear Cache** action.
+- **Memory & GPU Efficiency**: Capped in-memory LRU caches, eliminated async Capacitor \`backButton\` listener leaks and redundant \`VaultView\` remounts, fixed zoom \`history.state\` cleanup, and replaced stacked heavy WebView \`backdrop-filter\` / \`blur(80px)\` layers for smoother 60/120Hz scrolling.
+
+---
+
+### 📥 5. APK Download Permission Prompt & Native Updater Improvements
+- **Download Confirmation Dialog**: Clicking any **Download APK** button (or README `.apk` link) now prompts for explicit user confirmation (\`Allow & Download\`) showing filename and size before delegating to Android's native \`DownloadManager\`.
+- **Native Update Progress & Completion Flow**: Real-time \`DownloadManager.Query\` progress tracking in \`MainActivity.java\`; once finished, the updater displays **"Download Successful!"** with instructions to close the app and install the APK plus a **Close App** button (eliminating accidental re-downloads from the old "Re-Open Installer" action).
+
+---
+
+### 📦 Official Android Download
+| Platform | Binary | Version | Size | Verification |
+|---|---|---|---|---|
+| **Android** | **\`OneGitVault-Android-${ANDROID_VERSION}.apk\`** | v${ANDROID_VERSION} | ~3.5 MB | Release APK (v1 + v2 signature scheme, \`allowBackup=false\`) |
+
+*Built with Capacitor 8, React 18, TypeScript, Material UI 5, and Vite.*
+`;
+
+const RELEASE_BODY = IS_ANDROID_ONLY ? ANDROID_RELEASE_BODY : `## 🚀 What's New in Desktop v${VERSION} & Android v${ANDROID_VERSION}
 
 ### 🖥️ Desktop v${VERSION}: Teams-Style Architecture & Modal Elimination
 - **Integrated Full-Page Viewports**: Eliminated floating popup modals for Settings and Repository Details. Settings and Details now render as dedicated full-screen views with native keyboard (\`Esc\`) and toolbar back navigation.
@@ -218,16 +265,23 @@ function uploadAsset(uploadUrlTemplate, filePath, fileName, retries = 3) {
 async function main() {
   try {
     const release = await createRelease();
-    const assetsToUpload = [
-      {
-        fileName: `OneGitVault-Android-${ANDROID_VERSION}.apk`,
-        filePath: path.resolve(__dirname, `../release/setup/OneGitVault-Android-${ANDROID_VERSION}.apk`)
-      },
-      {
-        fileName: `OneGitVault-Setup-${VERSION}.exe`,
-        filePath: path.resolve(__dirname, `../release/setup/OneGitVault-Setup-${VERSION}.exe`)
-      }
-    ];
+    const assetsToUpload = IS_ANDROID_ONLY
+      ? [
+          {
+            fileName: `OneGitVault-Android-${ANDROID_VERSION}.apk`,
+            filePath: path.resolve(__dirname, `../release/setup/OneGitVault-Android-${ANDROID_VERSION}.apk`)
+          }
+        ]
+      : [
+          {
+            fileName: `OneGitVault-Android-${ANDROID_VERSION}.apk`,
+            filePath: path.resolve(__dirname, `../release/setup/OneGitVault-Android-${ANDROID_VERSION}.apk`)
+          },
+          {
+            fileName: `OneGitVault-Setup-${VERSION}.exe`,
+            filePath: path.resolve(__dirname, `../release/setup/OneGitVault-Setup-${VERSION}.exe`)
+          }
+        ];
 
     for (const asset of assetsToUpload) {
       if (!fs.existsSync(asset.filePath)) {

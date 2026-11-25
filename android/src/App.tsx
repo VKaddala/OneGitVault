@@ -28,7 +28,7 @@ import {
   starRepository,
   unstarRepository
 } from './services/githubApi';
-import { getBookmarks, saveBookmarks, toggleBookmark, isBookmarked } from './services/bookmarkStore';
+import { getBookmarks, saveBookmarks, toggleBookmark } from './services/bookmarkStore';
 import {
   pullBookmarksFromGist,
   pushBookmarksToGist,
@@ -46,9 +46,12 @@ import { TokenDialog } from './components/TokenDialog';
 import { SearchFlyout } from './components/SearchFlyout';
 import { BottomNav } from './components/BottomNav';
 import { UpdateDialog } from './components/UpdateDialog';
+import { ApkDownloadDialog } from './components/ApkDownloadDialog';
 import { SettingsPage } from './components/SettingsPage';
+import { ReelsView } from './components/ReelsView';
 import { checkForAndroidUpdates, AndroidUpdateInfo } from './services/updateService';
 import { OneGitVaultLogo } from './components/OneGitVaultLogo';
+import { startPeriodicCacheMaintenance } from './services/cacheManager';
 
 export const App: React.FC = () => {
   // Theme Management
@@ -203,13 +206,61 @@ export const App: React.FC = () => {
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>('');
-  const [vaultVersion, setVaultVersion] = useState<number>(0);
   const [trendingRefreshKey, setTrendingRefreshKey] = useState<number>(0);
   const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
+
+  // Reactive Bookmark State across all tabs
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(() => new Set(getBookmarks().map((r) => r.id)));
+  const [bookmarkedNames, setBookmarkedNames] = useState<Set<string>>(
+    () => new Set(getBookmarks().map((r) => r.full_name?.toLowerCase()).filter(Boolean) as string[])
+  );
+
+  useEffect(() => {
+    const handleBookmarkChange = (e: any) => {
+      const list: Repository[] = e.detail || getBookmarks();
+      setBookmarkedIds(new Set(list.map((r) => r.id)));
+      setBookmarkedNames(new Set(list.map((r) => r.full_name?.toLowerCase()).filter(Boolean) as string[]));
+    };
+    window.addEventListener('ogv_bookmarks_changed', handleBookmarkChange);
+    return () => window.removeEventListener('ogv_bookmarks_changed', handleBookmarkChange);
+  }, []);
+
+  const checkIsBookmarked = useCallback(
+    (repoOrId: number | string | Repository): boolean => {
+      if (repoOrId === null || repoOrId === undefined) return false;
+      if (typeof repoOrId === 'number') {
+        return bookmarkedIds.has(repoOrId) || bookmarkedIds.has(Number(repoOrId));
+      }
+      if (typeof repoOrId === 'string') {
+        const num = Number(repoOrId);
+        return (!isNaN(num) && bookmarkedIds.has(num)) || bookmarkedNames.has(repoOrId.toLowerCase());
+      }
+      const numId = Number(repoOrId.id);
+      const nameLower = repoOrId.full_name?.toLowerCase();
+      return Boolean(
+        (!isNaN(numId) && bookmarkedIds.has(numId)) ||
+        (nameLower && bookmarkedNames.has(nameLower))
+      );
+    },
+    [bookmarkedIds, bookmarkedNames]
+  );
+
+  // Start periodic cache maintenance (startup sweep + every 10 minutes)
+  useEffect(() => {
+    return startPeriodicCacheMaintenance(10 * 60 * 1000);
+  }, []);
 
   // Universal Android Back Gesture & Hardware Back Button Handling (Edge Swipe)
   useEffect(() => {
     (window as any).__handleAndroidBack = () => {
+      if ((window as any).__onActiveDownloadDialogClose) {
+        const handled = (window as any).__onActiveDownloadDialogClose();
+        if (handled) return true;
+      }
+      if ((window as any).__onActiveZoomClose) {
+        const handled = (window as any).__onActiveZoomClose();
+        if (handled) return true;
+      }
       if (tokenDialogOpen) {
         setTokenDialogOpen(false);
         return true;
@@ -234,27 +285,37 @@ export const App: React.FC = () => {
       }
       return false;
     };
+  }, [settingsOpen, detailOpen, tokenDialogOpen, isSearchActive, currentTab]);
 
+  // Register Capacitor native back listener once with unmount cancellation guard
+  useEffect(() => {
+    let cancelled = false;
     let backListener: any = null;
     const setupCapacitorBack = async () => {
       try {
         const { App: CapApp } = await import('@capacitor/app');
-        backListener = await CapApp.addListener('backButton', () => {
+        const listener = await CapApp.addListener('backButton', () => {
           const handled = (window as any).__handleAndroidBack?.();
           if (!handled) {
             CapApp.exitApp();
           }
         });
+        if (cancelled) {
+          listener?.remove?.();
+        } else {
+          backListener = listener;
+        }
       } catch {}
     };
     setupCapacitorBack();
 
     return () => {
+      cancelled = true;
       if (backListener && backListener.remove) {
         backListener.remove();
       }
     };
-  }, [settingsOpen, detailOpen, tokenDialogOpen, isSearchActive, currentTab]);
+  }, []);
 
   // Visual Viewport & Keyboard Detection (Lightweight: only listen to resize, not scroll)
   useEffect(() => {
@@ -294,7 +355,6 @@ export const App: React.FC = () => {
             }
             if (hasNew) {
               saveBookmarks(Array.from(localMap.values()));
-              setVaultVersion((v) => v + 1);
             }
           }
         })
@@ -333,7 +393,7 @@ export const App: React.FC = () => {
         sortOption,
         minStars,
         1,
-        30,
+        60,
         true,
         forceRefresh
       );
@@ -342,6 +402,9 @@ export const App: React.FC = () => {
       setApkHasMore(data.hasMore);
       if (data.error && data.repositories.length === 0) {
         setApkLoadMoreError(data.error);
+      } else if (data.isRateLimit && data.fromCache && data.repositories.length > 0) {
+        setSnackbarMessage(`Search quota exhausted — showing cached items (resets in ~${data.rateLimitResetInSec || 60}s)`);
+        setSnackbarOpen(true);
       }
     } catch (err) {
       console.warn('Failed to load APK repositories:', err);
@@ -365,7 +428,7 @@ export const App: React.FC = () => {
         sortOption,
         minStars,
         1,
-        30,
+        60,
         false,
         forceRefresh
       );
@@ -374,6 +437,9 @@ export const App: React.FC = () => {
       setExploreHasMore(data.hasMore);
       if (data.error && data.repositories.length === 0) {
         setExploreLoadMoreError(data.error);
+      } else if (data.isRateLimit && data.fromCache && data.repositories.length > 0) {
+        setSnackbarMessage(`Search quota exhausted — showing cached items (resets in ~${data.rateLimitResetInSec || 60}s)`);
+        setSnackbarOpen(true);
       }
     } catch (err) {
       console.warn('Failed to load explore repositories:', err);
@@ -409,7 +475,7 @@ export const App: React.FC = () => {
         sortOption,
         minStars,
         nextPage,
-        30,
+        60,
         true
       );
       if (data.error) {
@@ -451,7 +517,7 @@ export const App: React.FC = () => {
         sortOption,
         minStars,
         nextPage,
-        30,
+        60,
         false
       );
       if (data.error) {
@@ -505,8 +571,11 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [currentTab, loadMoreApk, loadMoreExplore]);
 
-  const handleOpenDetail = (repo: Repository) => {
+  const [detailInitialTab, setDetailInitialTab] = useState<'info' | 'readme' | 'releases'>('info');
+
+  const handleOpenDetail = (repo: Repository, initialTab: 'info' | 'readme' | 'releases' = 'info') => {
     setActiveRepo(repo);
+    setDetailInitialTab(initialTab);
     setDetailOpen(true);
   };
 
@@ -521,7 +590,9 @@ export const App: React.FC = () => {
 
   const handleToggleBookmark = (repo: Repository) => {
     const added = toggleBookmark(repo);
-    setVaultVersion((v) => v + 1);
+    const updated = getBookmarks();
+    setBookmarkedIds(new Set(updated.map((r) => r.id)));
+    setBookmarkedNames(new Set(updated.map((r) => r.full_name?.toLowerCase()).filter(Boolean) as string[]));
     setSnackbarMessage(added ? `Saved ${repo.name} to Vault` : `Removed ${repo.name} from Vault`);
     setSnackbarOpen(true);
     if (added && currentTab !== 'vault') {
@@ -627,7 +698,8 @@ export const App: React.FC = () => {
         setTrendingRefreshKey((k) => k + 1);
         await checkLiveRateLimit(true);
       } else if (currentTab === 'vault') {
-        setVaultVersion((v) => v + 1);
+        window.dispatchEvent(new CustomEvent('ogv_bookmarks_changed', { detail: getBookmarks() }));
+        await refreshStarredList();
         await checkLiveRateLimit(true);
       } else if (currentTab === 'apks') {
         await loadApkData(true);
@@ -648,7 +720,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const vaultCount = (hasVisitedVault || currentTab === 'vault') ? 0 : getBookmarks().length;
+  const vaultCount = (hasVisitedVault || currentTab === 'vault') ? 0 : bookmarkedIds.size;
   const isBottomNavVisible = !isSearchActive && !isKeyboardOpen;
 
   return (
@@ -657,40 +729,44 @@ export const App: React.FC = () => {
       <Box
         sx={{
           minHeight: '100vh',
-          pb: 14,
+          pb: currentTab === 'spotlight' ? 0 : 14,
           bgcolor: 'background.default',
           color: 'text.primary',
           overflowX: 'hidden'
         }}
       >
-        {/* Permanently Fixed Top App Bar with Integrated Search & View Density Toggle */}
-        <TopAppBar
-          onRefresh={handleTitleBarRefresh}
-          isRefreshing={isRefreshing || apkLoading || exploreLoading}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onOpenTokenDialog={() => setTokenDialogOpen(true)}
-          currentThemeId={themeId}
-          availableThemes={themeRegistry.getAll()}
-          onSelectTheme={handleSelectTheme}
-          coreRemaining={rateLimit.remaining}
-          isAuthenticated={!!getStoredToken()}
-          isSearchActive={isSearchActive}
-          onSearchActiveChange={(active) => {
-            if (active) setIsSearchActive(true);
-            else handleCloseSearch();
-          }}
-          isCompactView={isCompactView}
-          onToggleCompactView={handleToggleCompactView}
-          updateInfo={updateInfo}
-          onOpenUpdateDialog={() => setUpdateDialogOpen(true)}
-        />
+        {/* Permanently Fixed Top App Bar with Integrated Search & View Density Toggle (hidden in Spotlight) */}
+        {currentTab !== 'spotlight' && (
+          <TopAppBar
+            onRefresh={handleTitleBarRefresh}
+            isRefreshing={isRefreshing || apkLoading || exploreLoading}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onOpenTokenDialog={() => setTokenDialogOpen(true)}
+            currentThemeId={themeId}
+            availableThemes={themeRegistry.getAll()}
+            onSelectTheme={handleSelectTheme}
+            coreRemaining={rateLimit.remaining}
+            isAuthenticated={!!getStoredToken()}
+            isSearchActive={isSearchActive}
+            onSearchActiveChange={(active) => {
+              if (active) setIsSearchActive(true);
+              else handleCloseSearch();
+            }}
+            isCompactView={isCompactView}
+            onToggleCompactView={handleToggleCompactView}
+            updateInfo={updateInfo}
+            onOpenUpdateDialog={() => setUpdateDialogOpen(true)}
+          />
+        )}
 
         {/* Fixed Top App Bar Spacer to prevent content from scrolling under or into status bar */}
-        <Box
-          sx={{
-            height: 'calc(max(env(safe-area-inset-top, 0px), var(--status-bar-height, 44px)) + 64px)'
-          }}
-        />
+        {currentTab !== 'spotlight' && (
+          <Box
+            sx={{
+              height: 'calc(max(env(safe-area-inset-top, 0px), var(--status-bar-height, 44px)) + 64px)'
+            }}
+          />
+        )}
 
         {/* Tab 1: APKs (Exclusively Android Apps & APK Releases) */}
         <Box sx={{ display: currentTab === 'apks' ? 'block' : 'none' }}>
@@ -736,7 +812,7 @@ export const App: React.FC = () => {
                   <Grid item xs={12} sm={isCompactView ? 12 : 6} md={isCompactView ? 6 : 4} key={repo.id}>
                     <RepoCard
                       repo={repo}
-                      isBookmarked={isBookmarked(repo.id)}
+                      isBookmarked={checkIsBookmarked(repo)}
                       onToggleBookmark={handleToggleBookmark}
                       onOpenDetail={handleOpenDetail}
                       onCopyClone={handleCopyClone}
@@ -833,9 +909,10 @@ export const App: React.FC = () => {
         {/* Tab 2: Trending Explorer */}
         <Box sx={{ display: currentTab === 'trending' ? 'block' : 'none' }}>
           <TrendingView
+            isActive={currentTab === 'trending'}
             refreshTrigger={trendingRefreshKey}
             onOpenDetail={handleOpenDetail}
-            isBookmarked={isBookmarked}
+            isBookmarked={checkIsBookmarked}
             onToggleBookmark={handleToggleBookmark}
             onCopyClone={handleCopyClone}
             copiedId={copiedId}
@@ -846,13 +923,16 @@ export const App: React.FC = () => {
         {/* Tab 3: Vault Bookmarks & GitHub Starred Repositories */}
         <Box sx={{ display: currentTab === 'vault' ? 'block' : 'none' }}>
           <VaultView
-            key={vaultVersion}
             onOpenDetail={handleOpenDetail}
-            isBookmarked={isBookmarked}
+            isBookmarked={checkIsBookmarked}
             onToggleBookmark={handleToggleBookmark}
             onCopyClone={handleCopyClone}
             copiedId={copiedId}
-            onVaultUpdated={() => setVaultVersion((v) => v + 1)}
+            onVaultUpdated={() => {
+              const latest = getBookmarks();
+              setBookmarkedIds(new Set(latest.map((r) => r.id)));
+              setBookmarkedNames(new Set(latest.map((r) => r.full_name?.toLowerCase()).filter(Boolean) as string[]));
+            }}
             isCompact={isCompactView}
             starredRepos={starredRepos}
             starredList={starredReposList}
@@ -945,7 +1025,7 @@ export const App: React.FC = () => {
                   <Grid item xs={12} sm={isCompactView ? 12 : 6} md={isCompactView ? 6 : 4} key={repo.id}>
                     <RepoCard
                       repo={repo}
-                      isBookmarked={isBookmarked(repo.id)}
+                      isBookmarked={checkIsBookmarked(repo)}
                       onToggleBookmark={handleToggleBookmark}
                       onOpenDetail={handleOpenDetail}
                       onCopyClone={handleCopyClone}
@@ -1039,8 +1119,21 @@ export const App: React.FC = () => {
           </Container>
         </Box>
 
+        {/* Tab 5: Spotlight Fullscreen Discovery Observatory */}
+        <Box sx={{ display: currentTab === 'spotlight' ? 'block' : 'none' }}>
+          <ReelsView
+            isActive={currentTab === 'spotlight'}
+            onOpenDetail={handleOpenDetail}
+            isBookmarked={checkIsBookmarked}
+            onToggleBookmark={handleToggleBookmark}
+            isStarred={(fullName) => starredRepos.has(fullName)}
+            onToggleStar={handleToggleStar}
+            onShareMessage={handleShareMessage}
+          />
+        </Box>
+
         {/* Floating Action Button (Scroll to Top) — only visible after scrolling down > 300px */}
-        {isBottomNavVisible && showScrollTop && (
+        {isBottomNavVisible && showScrollTop && currentTab !== 'spotlight' && (
           <Zoom in={showScrollTop}>
             <Fab
               size="small"
@@ -1066,9 +1159,12 @@ export const App: React.FC = () => {
           onClose={() => setDetailOpen(false)}
           onCopyClone={handleCopyClone}
           copiedId={copiedId}
+          isBookmarked={activeRepo ? checkIsBookmarked(activeRepo) : false}
+          onToggleBookmark={handleToggleBookmark}
           isStarred={activeRepo ? starredRepos.has(activeRepo.full_name) : false}
           onToggleStar={handleToggleStar}
           onShareMessage={handleShareMessage}
+          initialTab={detailInitialTab}
         />
 
         {/* Full-Page Native Android Settings Screen */}
@@ -1086,6 +1182,10 @@ export const App: React.FC = () => {
           onSelectTheme={handleSelectTheme}
           updateInfo={updateInfo}
           onOpenUpdateDialog={() => setUpdateDialogOpen(true)}
+          onCacheCleared={(msg) => {
+            setSnackbarMessage(msg);
+            setSnackbarOpen(true);
+          }}
         />
 
         {/* WhatsApp / Instagram Style Translucent Search Flyout */}
@@ -1093,7 +1193,7 @@ export const App: React.FC = () => {
           open={isSearchActive}
           onClose={handleCloseSearch}
           onSelectRepo={handleSelectRepoFromSearch}
-          isBookmarked={isBookmarked}
+          isBookmarked={checkIsBookmarked}
           onToggleBookmark={handleToggleBookmark}
           onCopyClone={handleCopyClone}
           copiedId={copiedId}
@@ -1127,7 +1227,6 @@ export const App: React.FC = () => {
                     }
                     if (hasNew) {
                       saveBookmarks(Array.from(localMap.values()));
-                      setVaultVersion((v) => v + 1);
                     }
                   }
                 })
@@ -1169,6 +1268,9 @@ export const App: React.FC = () => {
           onClose={() => setUpdateDialogOpen(false)}
           updateInfo={updateInfo}
         />
+
+        {/* APK Download Confirmation Prompt */}
+        <ApkDownloadDialog />
 
         {/* Global Feedback Snackbar */}
         <Snackbar

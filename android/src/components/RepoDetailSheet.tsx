@@ -20,6 +20,8 @@ import {
 } from '@mui/material';
 import AndroidIcon from '@mui/icons-material/Android';
 import StarIcon from '@mui/icons-material/Star';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import CallSplitIcon from '@mui/icons-material/CallSplit';
 import DownloadIcon from '@mui/icons-material/Download';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -41,7 +43,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { Repository, ReleaseAsset } from '../types';
-import { fetchReadme, fetchReleases, fetchRepoCompleteDetails } from '../services/githubApi';
+import { fetchReadme, fetchReleases, fetchRepoCompleteDetails, getStoredToken } from '../services/githubApi';
 import { shareProject } from '../services/shareHelper';
 import { translateMarkdownToEnglish } from '../services/translateService';
 import { downloadApkFile } from '../services/downloadHelper';
@@ -54,7 +56,10 @@ interface RepoDetailSheetProps {
   copiedId: number | null;
   isStarred?: boolean;
   onToggleStar?: (repo: Repository) => void;
+  isBookmarked?: boolean;
+  onToggleBookmark?: (repo: Repository) => void;
   onShareMessage?: (msg: string) => void;
+  initialTab?: 'info' | 'readme' | 'releases';
 }
 
 export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
@@ -65,11 +70,14 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
   copiedId,
   isStarred = false,
   onToggleStar,
-  onShareMessage
+  isBookmarked = false,
+  onToggleBookmark,
+  onShareMessage,
+  initialTab = 'info'
 }) => {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
-  const [tabIndex, setTabIndex] = useState<number>(0);
+  const [tabIndex, setTabIndex] = useState<number>(() => (initialTab === 'readme' ? 1 : initialTab === 'releases' ? 2 : 0));
   const [rawReadme, setRawReadme] = useState<string>('');
   const [originalHtml, setOriginalHtml] = useState<string>('');
   const [translatedHtml, setTranslatedHtml] = useState<string>('');
@@ -82,7 +90,7 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
   useEffect(() => {
     let isMounted = true;
     if (repo && open) {
-      setTabIndex(0);
+      setTabIndex(initialTab === 'readme' ? 1 : initialTab === 'releases' ? 2 : 0);
       setLoadingReadme(true);
       setRawReadme('');
       setOriginalHtml('');
@@ -99,7 +107,7 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
         setLoadingReleases(true);
       }
 
-      fetchReadme(repo.full_name).then((raw) => {
+      const renderReadmeMarkdown = (raw: string) => {
         if (!isMounted) return;
         setRawReadme(raw);
         try {
@@ -112,55 +120,70 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
           setOriginalHtml('<p>Error rendering README.</p>');
         }
         setLoadingReadme(false);
-      });
+      };
 
-      // 1. Grouped GraphQL Query: Try to fetch complete details & releases in 1 single network request!
-      fetchRepoCompleteDetails(repo.full_name)
-        .then((complete) => {
-          if (!isMounted) return;
-          if (complete && complete.releases && complete.releases.length > 0) {
-            setReleases(complete.releases);
+      const loadReadmeViaRest = () => {
+        fetchReadme(repo.full_name, repo.default_branch)
+          .then(renderReadmeMarkdown)
+          .catch(() => {
+            if (!isMounted) return;
+            setOriginalHtml('<p>Error rendering README.</p>');
+            setLoadingReadme(false);
+          });
+      };
+
+      const loadReleasesViaRest = () => {
+        fetchReleases(repo.full_name)
+          .then((assets) => {
+            if (!isMounted) return;
+            if (assets && assets.length > 0) {
+              setReleases(assets);
+            } else if (repo.latest_release?.assets && repo.latest_release.assets.length > 0) {
+              setReleases(repo.latest_release.assets);
+            }
             setLoadingReleases(false);
-          } else {
-            // Fall back to multi-tier cached REST release loader
-            fetchReleases(repo.full_name)
-              .then((assets) => {
-                if (!isMounted) return;
-                if (assets && assets.length > 0) {
-                  setReleases(assets);
-                } else if (repo.latest_release?.assets && repo.latest_release.assets.length > 0) {
-                  setReleases(repo.latest_release.assets);
-                }
-                setLoadingReleases(false);
-              })
-              .catch(() => {
-                if (!isMounted) return;
-                if (repo.latest_release?.assets && repo.latest_release.assets.length > 0) {
-                  setReleases(repo.latest_release.assets);
-                }
-                setLoadingReleases(false);
-              });
-          }
-        })
-        .catch(() => {
-          fetchReleases(repo.full_name)
-            .then((assets) => {
-              if (!isMounted) return;
-              if (assets && assets.length > 0) {
-                setReleases(assets);
+          })
+          .catch(() => {
+            if (!isMounted) return;
+            if (repo.latest_release?.assets && repo.latest_release.assets.length > 0) {
+              setReleases(repo.latest_release.assets);
+            }
+            setLoadingReleases(false);
+          });
+      };
+
+      if (getStoredToken()) {
+        // Grouped GraphQL Query: fetches specs, releases, assets, star status, AND README.md in ONE request!
+        fetchRepoCompleteDetails(repo.full_name)
+          .then((complete) => {
+            if (!isMounted) return;
+            if (complete) {
+              if (complete.releases && complete.releases.length > 0) {
+                setReleases(complete.releases);
               } else if (repo.latest_release?.assets && repo.latest_release.assets.length > 0) {
                 setReleases(repo.latest_release.assets);
               }
               setLoadingReleases(false);
-            })
-            .catch(() => {
-              if (!isMounted) return;
-              if (repo.latest_release?.assets && repo.latest_release.assets.length > 0) {
-                setReleases(repo.latest_release.assets);
+
+              if (complete.readme) {
+                renderReadmeMarkdown(complete.readme);
+              } else {
+                loadReadmeViaRest();
               }
-              setLoadingReleases(false);
-            });
-        });
+            } else {
+              loadReadmeViaRest();
+              loadReleasesViaRest();
+            }
+          })
+          .catch(() => {
+            if (!isMounted) return;
+            loadReadmeViaRest();
+            loadReleasesViaRest();
+          });
+      } else {
+        loadReadmeViaRest();
+        loadReleasesViaRest();
+      }
     }
 
     return () => {
@@ -337,9 +360,9 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
           px: 2,
           pb: 1.25,
           borderBottom: `1px solid ${alpha(theme.palette.divider, 0.7)}`,
-          bgcolor: alpha(theme.palette.background.paper, 0.88),
-          backdropFilter: 'blur(30px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(30px) saturate(200%)',
+          bgcolor: alpha(theme.palette.background.paper, 0.92),
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
           zIndex: 10
         }}
       >
@@ -481,6 +504,24 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                       fontWeight: 700,
                       bgcolor: isStarred ? alpha('#e3b341', 0.18) : alpha(theme.palette.text.primary, 0.05),
                       border: `1px solid ${isStarred ? '#e3b341' : theme.palette.divider}`
+                    }}
+                  />
+                  <Chip
+                    size="small"
+                    clickable
+                    onClick={() => {
+                      try { navigator.vibrate?.(10); } catch {}
+                      onToggleBookmark && onToggleBookmark(repo);
+                    }}
+                    icon={isBookmarked ? <BookmarkIcon sx={{ fontSize: '13px !important', color: theme.palette.primary.main }} /> : <BookmarkBorderIcon sx={{ fontSize: '13px !important' }} />}
+                    label={isBookmarked ? 'In Vault' : 'Add to Vault'}
+                    sx={{
+                      height: 23,
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      bgcolor: isBookmarked ? alpha(theme.palette.primary.main, 0.18) : alpha(theme.palette.text.primary, 0.05),
+                      color: isBookmarked ? theme.palette.primary.main : 'text.primary',
+                      border: `1px solid ${isBookmarked ? theme.palette.primary.main : theme.palette.divider}`
                     }}
                   />
                   {repo.language && (
@@ -656,7 +697,7 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                     variant="contained"
                     startIcon={<DownloadIcon sx={{ fontSize: 15 }} />}
                     onClick={() => {
-                      if (latestApk) downloadApkFile(latestApk.browser_download_url, latestApk.name);
+                      if (latestApk) downloadApkFile(latestApk.browser_download_url, latestApk.name, latestApk.size);
                       else setTabIndex(2);
                     }}
                     sx={{
@@ -1062,7 +1103,7 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                           variant="contained"
                           color="primary"
                           startIcon={<DownloadIcon sx={{ fontSize: 14 }} />}
-                          onClick={() => downloadApkFile(asset.browser_download_url, asset.name)}
+                          onClick={() => downloadApkFile(asset.browser_download_url, asset.name, asset.size)}
                           sx={{
                             height: 28,
                             fontSize: '0.725rem',
@@ -1125,10 +1166,10 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
           height: 58,
           borderRadius: '29px',
           bgcolor: theme.palette.mode === 'dark'
-            ? alpha(theme.palette.background.paper, 0.78)
-            : alpha(theme.palette.background.paper, 0.86),
-          backdropFilter: 'blur(36px) saturate(210%)',
-          WebkitBackdropFilter: 'blur(36px) saturate(210%)',
+            ? alpha(theme.palette.background.paper, 0.88)
+            : alpha(theme.palette.background.paper, 0.92),
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
           border: theme.palette.mode === 'dark'
             ? `1px solid ${alpha(theme.palette.common.white, 0.12)}`
             : `1px solid ${alpha(theme.palette.common.white, 0.8)}`,
@@ -1248,7 +1289,7 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
             <Box
               onClick={() => {
                 try { navigator.vibrate?.(10); } catch {}
-                downloadApkFile(apkAssets[0].browser_download_url, apkAssets[0].name);
+                downloadApkFile(apkAssets[0].browser_download_url, apkAssets[0].name, apkAssets[0].size);
               }}
               sx={{
                 display: 'flex',

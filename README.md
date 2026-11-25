@@ -11,8 +11,8 @@
 <p align="center">
   <a href="https://github.com/VKaddala/OneGitVault"><img src="https://img.shields.io/badge/platform-Windows-blue?logo=windows&logoColor=white" alt="Windows" /></a>
   <a href="SETUP_ANDROID.md"><img src="https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white" alt="Android" /></a>
-  <a href="https://github.com/VKaddala/OneGitVault/releases/latest"><img src="https://img.shields.io/badge/desktop-v2.3.0-blue?logo=github" alt="Desktop v2.3.0" /></a>
-  <a href="https://github.com/VKaddala/OneGitVault/releases/latest"><img src="https://img.shields.io/badge/android-v1.2.0-3DDC84?logo=android" alt="Android v1.2.0" /></a>
+  <a href="https://github.com/VKaddala/OneGitVault/releases/tag/v2.3.0"><img src="https://img.shields.io/badge/desktop-v2.3.0-blue?logo=github" alt="Desktop v2.3.0" /></a>
+  <a href="https://github.com/VKaddala/OneGitVault/releases/tag/v1.3.0"><img src="https://img.shields.io/badge/android-v1.3.0-3DDC84?logo=android" alt="Android v1.3.0" /></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-blue?logo=react&logoColor=white" alt="React" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white" alt="TypeScript" /></a>
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-teal?logo=electron&logoColor=white" alt="Electron" /></a>
@@ -28,7 +28,7 @@
 | Platform | Latest Release | Binary | Direct Download |
 | :--- | :--- | :--- | :--- |
 | **Windows Desktop** | **v2.3.0** | `OneGitVault-Setup-2.3.0.exe` (~98 MB) | [Download Setup (.exe)](https://github.com/VKaddala/OneGitVault/releases/download/v2.3.0/OneGitVault-Setup-2.3.0.exe) |
-| **Android** | **v1.2.0** | `OneGitVault-Android-1.2.0.apk` (~3.5 MB) | [Download APK (.apk)](https://github.com/VKaddala/OneGitVault/releases/download/v2.3.0/OneGitVault-Android-1.2.0.apk) |
+| **Android** | **v1.3.0** | `OneGitVault-Android-1.3.0.apk` (~3.5 MB) | [Download APK (.apk)](https://github.com/VKaddala/OneGitVault/releases/download/v1.3.0/OneGitVault-Android-1.3.0.apk) |
 
 ---
 
@@ -107,7 +107,10 @@ Alongside the Windows desktop app, **OneGitVault for Android** brings the full o
 - **On-Demand README Translation**: Instant English translation of foreign documentation while safeguarding markdown syntax, code blocks, images, and badges.
 - **Internal Heading & Link Navigation**: Seamlessly navigate inside repository READMEs with smooth scrolling to heading anchors (`#overview`, `#installation`) and automatic resolution of relative documentation files.
 - **Native Android Share Sheet**: One-click sharing directly to native Android messaging and developer apps via `ACTION_SEND`.
-- **Ultra-Smooth 120Hz Scrolling & Vector Branding**: Zero-lag list virtualization, frame-throttled scroll listeners, and crisp infinite-resolution vector launch icons on all screen densities.
+- **Spotlight Fullscreen Reels Observatory (v1.3.0)**: Swipe-up vertical discovery feed rendering distilled README highlights, elevator pitches, and pinch-to-zoom preview media with edge-swipe dismissal and a bottom-right quick-actions dock (`Star`, `Vault`, `Readme`, `Share`, `GitHub`).
+- **Offline & Rate-Limit Resilience (v1.3.0)**: Automatically serves cached repositories, Trending feeds, releases, and READMEs until GitHub API quotas reset, backed by a **30-day or 250 MB** auto-clear cache engine with live storage inspection and manual reset in Settings.
+- **Explicit Download Confirmation & Native Updater (v1.3.0)**: Prompts for user permission before handing APK downloads to Android `DownloadManager`, and tracks real native update download progress cleanly with a **"Close App & Install"** flow.
+- **Ultra-Smooth 120Hz Scrolling & Vector Branding**: Zero-lag list virtualization, optimized glass surfaces, frame-throttled scroll listeners, and crisp vector launch icons on all screen densities.
 
 ---
 
@@ -155,7 +158,7 @@ OneGitVault/
 
 ### Option 2: Android Native APK Installation (Recommended for Android)
 
-1. Download the latest **`OneGitVault-Android-1.2.0.apk`** from [GitHub Releases](https://github.com/VKaddala/OneGitVault/releases/latest).
+1. Download the latest **`OneGitVault-Android-1.3.0.apk`** from [GitHub Releases](https://github.com/VKaddala/OneGitVault/releases/tag/v1.3.0).
 2. Open the `.apk` file on your Android device (Android 8.0+) and confirm installation.
 3. For building from source with Node.js, JDK 17, and Gradle, see the comprehensive [Android Setup Guide](SETUP_ANDROID.md).
 

@@ -4,6 +4,7 @@
 // This allows bookmarks to persist seamlessly across devices and reinstalls.
 
 import { Repository } from '../types';
+import { registerMemoryCacheCleaner, safeSetLocalCache, setBoundedMapEntry } from './cacheManager';
 
 const GIST_FILENAME = 'onegitvault-bookmarks.json';
 const GIST_DESCRIPTION = 'OneGitVault Bookmarks — synced automatically';
@@ -329,6 +330,17 @@ const starredCache = new Map<string, { data: Repository[]; timestamp: number }>(
 const STARRED_CACHE_KEY = 'ogv_cached_starred_repos';
 const STARRED_CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours persistent cache
 
+registerMemoryCacheCleaner((clearAll) => {
+  if (clearAll) {
+    starredCache.clear();
+    return;
+  }
+  const now = Date.now();
+  for (const [k, v] of starredCache.entries()) {
+    if (now - v.timestamp >= STARRED_CACHE_TTL) starredCache.delete(k);
+  }
+});
+
 /**
  * Fetch all repositories starred by the authenticated user with multi-tier caching.
  */
@@ -353,7 +365,7 @@ export async function fetchUserStarredRepositories(
       if (local) {
         const parsed = JSON.parse(local);
         if (Date.now() - (parsed.timestamp || 0) < STARRED_CACHE_TTL && Array.isArray(parsed.data)) {
-          starredCache.set(cacheKey, parsed);
+          setBoundedMapEntry(starredCache, cacheKey, parsed, 15);
           return parsed.data;
         }
       }
@@ -392,10 +404,8 @@ export async function fetchUserStarredRepositories(
     }));
 
     const cachePayload = { data: mapped, timestamp: Date.now() };
-    starredCache.set(cacheKey, cachePayload);
-    try {
-      localStorage.setItem(cacheKey, JSON.stringify(cachePayload));
-    } catch {}
+    setBoundedMapEntry(starredCache, cacheKey, cachePayload, 15);
+    safeSetLocalCache(cacheKey, JSON.stringify(cachePayload));
 
     return mapped;
   } catch (e) {

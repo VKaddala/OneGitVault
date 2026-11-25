@@ -225,7 +225,7 @@ export const RepoCard = React.memo<RepoCardProps>(({
                 startIcon={<DownloadIcon sx={{ fontSize: 11 }} />}
                 onClick={(e) => {
                   e.stopPropagation();
-                  downloadApkFile(primaryApkAsset.browser_download_url, primaryApkAsset.name);
+                  downloadApkFile(primaryApkAsset.browser_download_url, primaryApkAsset.name, primaryApkAsset.size);
                 }}
                 sx={{
                   height: 24,
@@ -398,7 +398,7 @@ export const RepoCard = React.memo<RepoCardProps>(({
                 startIcon={<DownloadIcon sx={{ fontSize: isCompact ? 11 : 12 }} />}
                 onClick={(e) => {
                   e.stopPropagation();
-                  downloadApkFile(primaryApkAsset.browser_download_url, primaryApkAsset.name);
+                  downloadApkFile(primaryApkAsset.browser_download_url, primaryApkAsset.name, primaryApkAsset.size);
                 }}
                 sx={{
                   height: isCompact ? 20 : 22,

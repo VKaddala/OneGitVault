@@ -205,9 +205,9 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
         zIndex: 1400,
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: theme.palette.mode === 'dark' ? 'rgba(13, 17, 23, 0.94)' : 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(32px) saturate(190%)',
-        WebkitBackdropFilter: 'blur(32px) saturate(190%)',
+        bgcolor: theme.palette.mode === 'dark' ? 'rgba(13, 17, 23, 0.96)' : 'rgba(255, 255, 255, 0.97)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
         animation: 'flyoutFadeIn 0.2s cubic-bezier(0.2, 0, 0, 1)',
         '@keyframes flyoutFadeIn': {
           from: { opacity: 0, transform: 'translateY(-10px)' },

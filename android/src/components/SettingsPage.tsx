@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Typography,
   Box,
@@ -22,9 +22,12 @@ import TableRowsIcon from '@mui/icons-material/TableRows';
 import PaletteIcon from '@mui/icons-material/Palette';
 import SpeedIcon from '@mui/icons-material/Speed';
 import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
+import StorageIcon from '@mui/icons-material/Storage';
 import { ThemePlugin } from '../themes/types';
 import { OneGitVaultLogo } from './OneGitVaultLogo';
 import { AndroidUpdateInfo, CURRENT_ANDROID_VERSION } from '../services/updateService';
+import { getCacheStats, clearAllAppCache, CacheStats } from '../services/cacheManager';
 
 interface SettingsPageProps {
   open: boolean;
@@ -40,6 +43,7 @@ interface SettingsPageProps {
   onSelectTheme: (themeId: string) => void;
   updateInfo?: AndroidUpdateInfo | null;
   onOpenUpdateDialog?: () => void;
+  onCacheCleared?: (msg: string) => void;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -55,9 +59,34 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   availableThemes,
   onSelectTheme,
   updateInfo,
-  onOpenUpdateDialog
+  onOpenUpdateDialog,
+  onCacheCleared
 }) => {
   const theme = useTheme();
+  const [cacheStats, setCacheStats] = useState<CacheStats>(() => getCacheStats());
+
+  useEffect(() => {
+    if (open) {
+      setCacheStats(getCacheStats());
+    }
+  }, [open]);
+
+  const handleClearCache = () => {
+    const count = clearAllAppCache();
+    const updatedStats = getCacheStats();
+    setCacheStats({
+      ...updatedStats,
+      entryCount: 0,
+      totalBytes: 0,
+      formattedSize: '0 KB'
+    });
+    try { navigator.vibrate?.(10); } catch {}
+    onCacheCleared?.(
+      count > 0
+        ? `Cleared ${count} cached ${count === 1 ? 'entry' : 'entries'} cleanly`
+        : 'App cache cleared cleanly'
+    );
+  };
 
   // Intercept Android hardware back button and edge-swipe gesture
   useEffect(() => {
@@ -105,9 +134,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           px: 2,
           pb: 1.5,
           borderBottom: `1px solid ${alpha(theme.palette.divider, 0.7)}`,
-          bgcolor: alpha(theme.palette.background.default, 0.92),
-          backdropFilter: 'blur(30px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(30px) saturate(200%)',
+          bgcolor: alpha(theme.palette.background.default, 0.94),
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
           zIndex: 10
         }}
       >
@@ -490,6 +519,50 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               ))}
             </Select>
           </FormControl>
+        </Box>
+
+        {/* Card 3.5: Storage & Cache Maintenance */}
+        <Box
+          sx={{
+            p: 2,
+            borderRadius: '24px',
+            bgcolor: alpha(theme.palette.text.primary, 0.03),
+            border: `1px solid ${theme.palette.divider}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1.5
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
+            <StorageIcon sx={{ fontSize: 20, color: 'primary.main', flexShrink: 0 }} />
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                Storage &amp; Cache
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }}>
+                {cacheStats.formattedSize} / 250 MB • Auto-clears at 250 MB or 30 days
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 700, display: 'block', mt: 0.25 }}>
+                Next clear: {cacheStats.nextClearDateLabel}
+              </Typography>
+            </Box>
+          </Box>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<DeleteSweepIcon sx={{ fontSize: 16 }} />}
+            onClick={handleClearCache}
+            sx={{
+              borderRadius: '12px',
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: '0.75rem',
+              flexShrink: 0
+            }}
+          >
+            Clear Cache
+          </Button>
         </Box>
 
         {/* Card 4: Updates & Maintenance */}

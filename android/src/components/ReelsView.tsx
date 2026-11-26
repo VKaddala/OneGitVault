@@ -35,9 +35,12 @@ import PublicIcon from '@mui/icons-material/Public';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import CheckIcon from '@mui/icons-material/Check';
 import MoreHorizRoundedIcon from '@mui/icons-material/MoreHorizRounded';
+import StyleIcon from '@mui/icons-material/Style';
 import { Repository } from '../types';
 import { fetchRepositories, fetchReadme } from '../services/githubApi';
 import { parseReadmeToSummary, createSyntheticSummary, ReadmeSummary } from '../services/readmeSummaryParser';
+import { shareVisualCard } from '../utils/visualCardGenerator';
+import { shareProject } from '../services/shareHelper';
 import {
   getCachedSpotlightSuggestions,
   refreshSpotlightSuggestionsIfDue,
@@ -202,6 +205,13 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
   const [actionsExpanded, setActionsExpanded] = useState<boolean>(false);
   const actionsExpandedRef = useRef<boolean>(false);
   actionsExpandedRef.current = actionsExpanded;
+
+  // Collapse actions menu immediately when switching away to another tab
+  useEffect(() => {
+    if (!isActive) {
+      setActionsExpanded(false);
+    }
+  }, [isActive]);
   const dockOpenedAtRef = useRef<number>(0);
   const touchScrollStartYRef = useRef<number | null>(null);
 
@@ -519,22 +529,42 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
   const activeIsBookmarked = activeRepo ? isBookmarked(activeRepo) : false;
   const activeIsStarred = activeRepo ? isStarred(activeRepo.full_name) : false;
 
-  const handleShareActive = (e: React.MouseEvent) => {
+  const handleShareActive = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!activeRepo) return;
     const shareUrl = activeRepo.html_url;
     const shareTitle = `${activeRepo.name} — ${activeRepo.description || 'Open Source Project'}`;
-    if (navigator.share) {
-      navigator.share({
-        title: activeRepo.name,
-        text: `Check out ${activeRepo.name} on OneGitVault: ${shareTitle}`,
-        url: shareUrl
-      }).catch(() => {});
-    } else {
-      navigator.clipboard?.writeText(shareUrl);
+    const result = await shareProject(
+      activeRepo.name,
+      `Check out ${activeRepo.name} on OneGitVault: ${activeRepo.description || shareTitle}`,
+      shareUrl
+    );
+    if (result === 'copied') {
       onShareMessage?.('Repository link copied to clipboard!');
     }
   };
+
+  const [isGeneratingCard, setIsGeneratingCard] = useState<boolean>(false);
+
+  const handleGenerateCard = useCallback(async () => {
+    if (isGeneratingCard || !activeRepo) return;
+    triggerHaptic(15);
+    setIsGeneratingCard(true);
+    onShareMessage?.('Generating visual card...');
+
+    // Yield 40ms to event loop so browser immediately renders button active state & loading spinner
+    await new Promise((resolve) => setTimeout(resolve, 40));
+
+    try {
+      const activeSummary = summariesRef.current[activeRepo.full_name] || createSyntheticSummary(activeRepo);
+      await shareVisualCard(activeRepo, activeSummary, onShareMessage);
+    } catch (err) {
+      console.warn('Card share error:', err);
+      onShareMessage?.('Could not generate card');
+    } finally {
+      setIsGeneratingCard(false);
+    }
+  }, [activeRepo, isGeneratingCard, onShareMessage]);
 
   return (
     <Box
@@ -561,7 +591,7 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
           left: 0,
           right: 0,
           zIndex: 1100,
-          pt: 'calc(max(env(safe-area-inset-top, 0px), 48px) + 16px)',
+          pt: 'calc(max(env(safe-area-inset-top, 0px), var(--status-bar-height, 44px)) + 8px)',
           pb: 1.2,
           px: { xs: 2, sm: 2.8 },
           bgcolor: 'var(--bg-header)',
@@ -998,6 +1028,32 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
                     </IconButton>
                     <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 800, mt: 0.3, color: 'text.secondary' }}>
                       Share
+                    </Typography>
+                  </Box>
+
+                  {/* Shareable Visual Card */}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <IconButton
+                      onClick={handleGenerateCard}
+                      disabled={isGeneratingCard}
+                      sx={{
+                        width: 44,
+                        height: 44,
+                        bgcolor: isDark ? 'rgba(56, 189, 248, 0.12)' : 'rgba(37, 99, 235, 0.08)',
+                        border: `1.5px solid ${alpha(theme.palette.primary.main, 0.35)}`,
+                        color: theme.palette.primary.main,
+                        transition: 'all 0.15s ease',
+                        '&:active': { transform: 'scale(0.88)' }
+                      }}
+                    >
+                      {isGeneratingCard ? (
+                        <CircularProgress size={20} thickness={4.5} sx={{ color: theme.palette.primary.main }} />
+                      ) : (
+                        <StyleIcon sx={{ fontSize: 20 }} />
+                      )}
+                    </IconButton>
+                    <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 800, mt: 0.3, color: 'primary.main' }}>
+                      {isGeneratingCard ? 'Exporting...' : 'Card'}
                     </Typography>
                   </Box>
 

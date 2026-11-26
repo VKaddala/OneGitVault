@@ -60,6 +60,11 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+import androidx.work.Constraints;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.NetworkType;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.WebViewListener;
 
@@ -267,6 +272,49 @@ public class MainActivity extends BridgeActivity {
                 }
 
                 @JavascriptInterface
+                public void shareImage(final String base64Data, final String title, final String text) {
+                    if (base64Data == null || base64Data.isEmpty()) return;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                String cleanBase64 = base64Data;
+                                if (cleanBase64.contains(",")) {
+                                    cleanBase64 = cleanBase64.substring(cleanBase64.indexOf(",") + 1);
+                                }
+                                byte[] decoded = Base64.decode(cleanBase64, Base64.DEFAULT);
+                                File cachePath = new File(getCacheDir(), "shared_cards");
+                                if (!cachePath.exists()) cachePath.mkdirs();
+                                File imageFile = new File(cachePath, "ogv_spotlight_card_" + System.currentTimeMillis() + ".png");
+                                try (OutputStream os = new java.io.FileOutputStream(imageFile)) {
+                                    os.write(decoded);
+                                    os.flush();
+                                }
+
+                                Uri contentUri = androidx.core.content.FileProvider.getUriForFile(
+                                    MainActivity.this,
+                                    getPackageName() + ".fileprovider",
+                                    imageFile
+                                );
+
+                                Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                                shareIntent.setType("image/png");
+                                shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
+                                shareIntent.putExtra(Intent.EXTRA_SUBJECT, title);
+                                shareIntent.putExtra(Intent.EXTRA_TEXT, text != null ? text : "");
+                                shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                                Intent chooser = Intent.createChooser(shareIntent, title);
+                                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                startActivity(chooser);
+                            } catch (Throwable e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+                }
+
+                @JavascriptInterface
                 public void downloadApk(final String downloadUrl, final String filename) {
                     if (!isTrustedWebOrigin()) return;
                     if (!isAllowedDownloadUrl(downloadUrl, false)) return;
@@ -354,14 +402,54 @@ public class MainActivity extends BridgeActivity {
                         }
                     });
                 }
+
+                @JavascriptInterface
+                public void updateNativeWidgets(final String trendingJson, final String vaultJson) {
+                    try {
+                        SharedPreferences sp = getSharedPreferences(TrendingWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE);
+                        SharedPreferences.Editor editor = sp.edit();
+                        if (trendingJson != null) {
+                            editor.putString(TrendingWidgetProvider.KEY_TRENDING_DATA, trendingJson);
+                        }
+                        if (vaultJson != null) {
+                            editor.putString(VaultReleaseWidgetProvider.KEY_VAULT_DATA, vaultJson);
+                        }
+                        editor.apply();
+
+                        TrendingWidgetProvider.updateAllWidgets(MainActivity.this);
+                        VaultReleaseWidgetProvider.updateAllWidgets(MainActivity.this);
+                    } catch (Throwable ignored) {}
+                }
             }, "AndroidThemeBridge");
         }
 
         enforceNativeCachePolicyAsync();
         refreshSystemAppearanceCache(false);
         registerSystemThemeObservers();
+        scheduleBackgroundReleaseWorker();
         int nightMaskInit = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
         applySystemBarAppearance(nightMaskInit == Configuration.UI_MODE_NIGHT_YES, true);
+    }
+
+    private void scheduleBackgroundReleaseWorker() {
+        try {
+            Constraints constraints = new Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build();
+
+            PeriodicWorkRequest releaseWork = new PeriodicWorkRequest.Builder(
+                VaultReleaseWorker.class,
+                6, TimeUnit.HOURS
+            )
+            .setConstraints(constraints)
+            .build();
+
+            WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                "ogv_vault_release_checker",
+                ExistingPeriodicWorkPolicy.KEEP,
+                releaseWork
+            );
+        } catch (Throwable ignored) {}
     }
 
     private void dispatchSystemThemeChanged() {
@@ -721,7 +809,10 @@ public class MainActivity extends BridgeActivity {
                         | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
                     wc.setSystemBarsAppearance(useDarkIcons ? mask : 0, mask);
                 }
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            }
+
+            // Fallback & direct flags for maximum OEM compatibility (OnePlus/Oppo/Xiaomi/Vivo)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 int currentFlags = decor.getSystemUiVisibility();
                 int targetFlags = currentFlags;
                 if (useDarkIcons) {

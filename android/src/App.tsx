@@ -49,6 +49,7 @@ import { checkForAndroidUpdates, AndroidUpdateInfo } from './services/updateServ
 import { OneGitVaultLogo } from './components/OneGitVaultLogo';
 import { startPeriodicCacheMaintenance } from './services/cacheManager';
 import { triggerHaptic } from './utils/haptics';
+import { syncNativeWidgets } from './services/widgetSync';
 
 const RepoDetailSheet = React.lazy(() =>
   import('./components/RepoDetailSheet').then((m) => ({ default: m.RepoDetailSheet }))
@@ -295,9 +296,18 @@ export const App: React.FC = () => {
     [bookmarkedIds, bookmarkedNames]
   );
 
-  // Start periodic cache maintenance (startup sweep + every 10 minutes)
+  // Start periodic cache maintenance (startup sweep + every 10 minutes) & initial widget sync
   useEffect(() => {
-    return startPeriodicCacheMaintenance(10 * 60 * 1000);
+    syncNativeWidgets();
+    const handleSync = () => syncNativeWidgets();
+    window.addEventListener('ogv_bookmarks_changed', handleSync);
+    window.addEventListener('ogv_annotations_updated', handleSync);
+    const cancelMaint = startPeriodicCacheMaintenance(10 * 60 * 1000);
+    return () => {
+      cancelMaint();
+      window.removeEventListener('ogv_bookmarks_changed', handleSync);
+      window.removeEventListener('ogv_annotations_updated', handleSync);
+    };
   }, []);
 
   // Optional First-Launch Topic Interests Onboarding
@@ -311,6 +321,10 @@ export const App: React.FC = () => {
   // Universal Android Back Gesture & Hardware Back Button Handling (Edge Swipe)
   useEffect(() => {
     (window as any).__handleAndroidBack = () => {
+      if ((window as any).__onActiveChangelogClose) {
+        const handled = (window as any).__onActiveChangelogClose();
+        if (handled) return true;
+      }
       if ((window as any).__onActiveDownloadDialogClose) {
         const handled = (window as any).__onActiveDownloadDialogClose();
         if (handled) return true;

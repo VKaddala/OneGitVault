@@ -6,4 +6,6 @@
     <string name="custom_url_scheme">io.onegitvault.app</string>
     <string name="app_publisher">VKaddala</string>
     <string name="app_author">VKaddala</string>
+    <string name="widget_trending_title">Trending Repositories</string>
+    <string name="widget_vault_title">Vault Release Tracker</string>
 </resources>

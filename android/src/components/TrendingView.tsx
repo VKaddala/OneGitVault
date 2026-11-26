@@ -21,6 +21,7 @@ import { Repository, TimeRange } from '../types';
 import { RepoCard } from './RepoCard';
 import { fetchTrendingRepositories } from '../services/githubApi';
 import { isBookmarked as checkIsBookmarkedGlobal } from '../services/bookmarkStore';
+import { syncNativeWidgets } from '../services/widgetSync';
 
 interface TrendingViewProps {
   onOpenDetail: (repo: Repository) => void;
@@ -76,6 +77,7 @@ export const TrendingView: React.FC<TrendingViewProps> = React.memo(({
       const data = await fetchTrendingRepositories(timeRange, scope, langParam, forceRefresh);
       if (reqId === fetchReqIdRef.current) {
         setRepos(data);
+        syncNativeWidgets(data);
       }
     } catch (err: any) {
       console.warn('Failed to load trending:', err);

@@ -103,6 +103,7 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = React.memo(({
           component="img"
           src={activeSrc}
           alt={login}
+          crossOrigin="anonymous"
           referrerPolicy="no-referrer"
           decoding="async"
           loading="lazy"

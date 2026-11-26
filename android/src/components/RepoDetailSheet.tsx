@@ -42,6 +42,15 @@ import TerminalIcon from '@mui/icons-material/Terminal';
 import StorageIcon from '@mui/icons-material/Storage';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CloseIcon from '@mui/icons-material/Close';
+import EditNoteIcon from '@mui/icons-material/EditNote';
+import AlarmIcon from '@mui/icons-material/Alarm';
+import AlarmOnIcon from '@mui/icons-material/AlarmOn';
+import StyleIcon from '@mui/icons-material/Style';
+import LabelIcon from '@mui/icons-material/Label';
+import AddIcon from '@mui/icons-material/Add';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import TextField from '@mui/material/TextField';
 import { Repository, ReleaseAsset } from '../types';
 import { fetchReadme, fetchReleases, fetchRepoCompleteDetails, getStoredToken } from '../services/githubApi';
 import { shareProject } from '../services/shareHelper';
@@ -51,6 +60,18 @@ import { registerMemoryCacheCleaner, setBoundedMapEntry } from '../services/cach
 import { OwnerAvatar } from './OwnerAvatar';
 import { renderMarkdownToSafeHtml, isSafeHttpUrl } from '../utils/sanitizeMarkdown';
 import { triggerHaptic } from '../utils/haptics';
+import { ImageViewerModal } from './ImageViewerModal';
+import { shareVisualCard } from '../utils/visualCardGenerator';
+import { createSyntheticSummary } from '../services/readmeSummaryParser';
+import {
+  getRepoAnnotation,
+  saveRepoNote,
+  addRepoTag,
+  removeRepoTag,
+  setRepoReminder,
+  clearRepoReminder,
+  RepoAnnotation,
+} from '../services/vaultAnnotationStore';
 
 const MAX_PARSED_README_CACHE = 25;
 const parsedReadmeHtmlCache = new Map<string, string>();
@@ -119,10 +140,21 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
   const [selectedReleaseAsset, setSelectedReleaseAsset] = useState<ReleaseAsset | null>(null);
   const [loadingReadme, setLoadingReadme] = useState<boolean>(false);
   const [loadingReleases, setLoadingReleases] = useState<boolean>(false);
+  const [viewerImage, setViewerImage] = useState<{ url: string; title: string } | null>(null);
+  const [annotation, setAnnotation] = useState<RepoAnnotation | null>(null);
+  const [isEditingNote, setIsEditingNote] = useState<boolean>(false);
+  const [noteDraft, setNoteDraft] = useState<string>('');
+  const [tagDraft, setTagDraft] = useState<string>('');
+  const [isAddingTag, setIsAddingTag] = useState<boolean>(false);
+  const [reminderAnchor, setReminderAnchor] = useState<null | HTMLElement>(null);
+  const [shareMenuAnchor, setShareMenuAnchor] = useState<null | HTMLElement>(null);
 
   useEffect(() => {
     let isMounted = true;
     if (repo && open) {
+      setAnnotation(getRepoAnnotation(repo.id));
+      setIsEditingNote(false);
+      setIsAddingTag(false);
       setTabIndex(initialTab === 'readme' ? 1 : initialTab === 'releases' ? 2 : 0);
       setLoadingReadme(true);
       setRawReadme('');
@@ -939,6 +971,283 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
               </IconButton>
             </Box>
 
+            {/* 6.5 Personal Notes, Workflow Tags & Smart Reminders */}
+            <Box
+              sx={{
+                p: 1.75,
+                borderRadius: '18px',
+                bgcolor: alpha(theme.palette.text.primary, 0.03),
+                border: `1px solid ${theme.palette.divider}`,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1.25
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <EditNoteIcon sx={{ fontSize: 18, color: theme.palette.primary.main }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                    Personal Notes & Tags
+                  </Typography>
+                </Box>
+                {/* Revisit Reminder Trigger */}
+                {annotation?.reminder ? (
+                  <Chip
+                    size="small"
+                    icon={<AlarmOnIcon sx={{ fontSize: '14px !important' }} />}
+                    label={`Revisit: ${annotation.reminder.label}`}
+                    onDelete={() => {
+                      triggerHaptic(8);
+                      clearRepoReminder(repo.id);
+                      setAnnotation(getRepoAnnotation(repo.id));
+                      onShareMessage?.('Reminder cleared');
+                    }}
+                    color="primary"
+                    sx={{ height: 24, fontSize: '0.68rem', fontWeight: 800 }}
+                  />
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<AlarmIcon sx={{ fontSize: 14 }} />}
+                    onClick={(e) => setReminderAnchor(e.currentTarget)}
+                    sx={{
+                      height: 24,
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      py: 0
+                    }}
+                  >
+                    Revisit Later
+                  </Button>
+                )}
+              </Box>
+
+              {/* Private Notes Display & Editor */}
+              {isEditingNote ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <TextField
+                    multiline
+                    minRows={2}
+                    maxRows={5}
+                    size="small"
+                    placeholder="Add private note (e.g. 'Use this auth library for the billing microservice')..."
+                    value={noteDraft}
+                    onChange={(e) => setNoteDraft(e.target.value)}
+                    sx={{
+                      fontSize: '0.8rem',
+                      '& .MuiInputBase-input': { fontSize: '0.8rem', lineHeight: 1.5 },
+                      '& fieldset': { borderRadius: '12px' }
+                    }}
+                  />
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                    <Button
+                      size="small"
+                      onClick={() => setIsEditingNote(false)}
+                      sx={{ textTransform: 'none', fontSize: '0.72rem', fontWeight: 600 }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => {
+                        triggerHaptic(8);
+                        saveRepoNote(repo.id, repo.full_name, noteDraft);
+                        setAnnotation(getRepoAnnotation(repo.id));
+                        setIsEditingNote(false);
+                        onShareMessage?.('Note saved to Vault');
+                      }}
+                      sx={{ textTransform: 'none', fontSize: '0.72rem', fontWeight: 800, borderRadius: '8px' }}
+                    >
+                      Save Note
+                    </Button>
+                  </Box>
+                </Box>
+              ) : annotation?.notes ? (
+                <Box
+                  onClick={() => {
+                    setNoteDraft(annotation.notes || '');
+                    setIsEditingNote(true);
+                  }}
+                  sx={{
+                    p: 1.25,
+                    borderRadius: '12px',
+                    bgcolor: alpha(theme.palette.primary.main, 0.06),
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontSize: '0.8rem', fontStyle: 'italic', color: 'text.primary', lineHeight: 1.5 }}>
+                    "{annotation.notes}"
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'primary.main', fontSize: '0.68rem', fontWeight: 700, mt: 0.5, display: 'block' }}>
+                    Tap to edit private note
+                  </Typography>
+                </Box>
+              ) : (
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<EditNoteIcon sx={{ fontSize: 16 }} />}
+                  onClick={() => {
+                    setNoteDraft('');
+                    setIsEditingNote(true);
+                  }}
+                  sx={{
+                    justifyContent: 'flex-start',
+                    color: 'text.secondary',
+                    fontSize: '0.75rem',
+                    textTransform: 'none',
+                    p: 0,
+                    fontWeight: 600
+                  }}
+                >
+                  + Add private note (use cases, ideas, implementation notes)...
+                </Button>
+              )}
+
+              {/* Custom Workflow Tags */}
+              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.6, pt: 0.5 }}>
+                <LabelIcon sx={{ fontSize: 14, color: 'text.secondary', mr: 0.25 }} />
+                {(annotation?.tags || []).map((tag) => (
+                  <Chip
+                    key={tag}
+                    label={`#${tag}`}
+                    size="small"
+                    onDelete={() => {
+                      triggerHaptic(8);
+                      removeRepoTag(repo.id, tag);
+                      setAnnotation(getRepoAnnotation(repo.id));
+                    }}
+                    sx={{
+                      height: 22,
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      borderRadius: '8px',
+                      bgcolor: alpha(theme.palette.secondary.main, 0.12),
+                      color: theme.palette.secondary.main,
+                      border: `1px solid ${alpha(theme.palette.secondary.main, 0.25)}`
+                    }}
+                  />
+                ))}
+
+                {isAddingTag ? (
+                  <Box component="form" onSubmit={(e) => {
+                    e.preventDefault();
+                    if (tagDraft.trim()) {
+                      triggerHaptic(8);
+                      addRepoTag(repo.id, repo.full_name, tagDraft);
+                      setAnnotation(getRepoAnnotation(repo.id));
+                      setTagDraft('');
+                      setIsAddingTag(false);
+                    }
+                  }} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                    <TextField
+                      autoFocus
+                      size="small"
+                      placeholder="e.g. billing"
+                      value={tagDraft}
+                      onChange={(e) => setTagDraft(e.target.value)}
+                      onBlur={() => {
+                        if (tagDraft.trim()) {
+                          addRepoTag(repo.id, repo.full_name, tagDraft);
+                          setAnnotation(getRepoAnnotation(repo.id));
+                        }
+                        setTagDraft('');
+                        setIsAddingTag(false);
+                      }}
+                      sx={{
+                        width: 90,
+                        '& input': { py: 0.3, px: 0.8, fontSize: '0.68rem', fontWeight: 700 }
+                      }}
+                    />
+                  </Box>
+                ) : (
+                  <Chip
+                    size="small"
+                    icon={<AddIcon sx={{ fontSize: '13px !important' }} />}
+                    label="Tag"
+                    onClick={() => setIsAddingTag(true)}
+                    sx={{
+                      height: 22,
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      bgcolor: alpha(theme.palette.text.primary, 0.05),
+                      border: `1px solid ${theme.palette.divider}`
+                    }}
+                  />
+                )}
+              </Box>
+
+              {/* Revisit Reminder Menu */}
+              <Menu
+                anchorEl={reminderAnchor}
+                open={Boolean(reminderAnchor)}
+                onClose={() => setReminderAnchor(null)}
+                PaperProps={{
+                  sx: {
+                    borderRadius: '16px',
+                    bgcolor: 'var(--bg-menu)',
+                    backgroundImage: 'none',
+                    border: `1px solid ${theme.palette.divider}`,
+                    p: 0.5
+                  }
+                }}
+              >
+                <MenuItem
+                  onClick={() => {
+                    const sat = new Date();
+                    sat.setDate(sat.getDate() + ((6 - sat.getDay() + 7) % 7 || 7));
+                    sat.setHours(10, 0, 0, 0);
+                    setRepoReminder(repo.id, repo.full_name, sat.toISOString(), 'This Weekend');
+                    setAnnotation(getRepoAnnotation(repo.id));
+                    setReminderAnchor(null);
+                    triggerHaptic(10);
+                    onShareMessage?.('Reminder set for Saturday morning');
+                  }}
+                  sx={{ fontSize: '0.78rem', fontWeight: 700, py: 1 }}
+                >
+                  This Weekend (Saturday 10:00 AM)
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    const tmrw = new Date();
+                    tmrw.setDate(tmrw.getDate() + 1);
+                    tmrw.setHours(9, 0, 0, 0);
+                    setRepoReminder(repo.id, repo.full_name, tmrw.toISOString(), 'Tomorrow');
+                    setAnnotation(getRepoAnnotation(repo.id));
+                    setReminderAnchor(null);
+                    triggerHaptic(10);
+                    onShareMessage?.('Reminder set for tomorrow morning');
+                  }}
+                  sx={{ fontSize: '0.78rem', fontWeight: 700, py: 1 }}
+                >
+                  Tomorrow Morning (09:00 AM)
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    const nextWeek = new Date();
+                    nextWeek.setDate(nextWeek.getDate() + ((1 + 7 - nextWeek.getDay()) % 7 || 7));
+                    nextWeek.setHours(10, 0, 0, 0);
+                    setRepoReminder(repo.id, repo.full_name, nextWeek.toISOString(), 'Next Week');
+                    setAnnotation(getRepoAnnotation(repo.id));
+                    setReminderAnchor(null);
+                    triggerHaptic(10);
+                    onShareMessage?.('Reminder set for next Monday');
+                  }}
+                  sx={{ fontSize: '0.78rem', fontWeight: 700, py: 1 }}
+                >
+                  Next Week (Monday 10:00 AM)
+                </MenuItem>
+              </Menu>
+            </Box>
+
             {/* 7. Topics & Keywords */}
             {repo.topics && repo.topics.length > 0 && (
               <Box sx={{ p: 1.75, borderRadius: '18px', bgcolor: alpha(theme.palette.text.primary, 0.03), border: `1px solid ${theme.palette.divider}` }}>
@@ -979,7 +1288,21 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
               </Box>
             ) : (
               <Box
-                onClick={handleReadmeLinkClick}
+                onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+                  const target = e.target as HTMLElement;
+                  if (target && target.tagName === 'IMG') {
+                    const imgEl = target as HTMLImageElement;
+                    const src = imgEl.currentSrc || imgEl.src;
+                    const alt = imgEl.alt || `${repo.name} Preview`;
+                    if (src && !src.includes('badge') && !src.includes('shields.io') && !src.includes('travis-ci')) {
+                      e.preventDefault();
+                      triggerHaptic(8);
+                      setViewerImage({ url: src, title: alt });
+                      return;
+                    }
+                  }
+                  handleReadmeLinkClick(e);
+                }}
                 onErrorCapture={(e: React.SyntheticEvent<HTMLDivElement>) => {
                   const target = e.target as HTMLElement | null;
                   if (!target || target.tagName !== 'IMG') return;
@@ -1046,7 +1369,16 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                     fontFamily: '"JetBrains Mono", "Roboto Mono", Consolas, monospace',
                     fontWeight: 600
                   },
-                  '& img': { maxWidth: '100%', height: 'auto', borderRadius: '14px', my: 1.5, boxShadow: '0 4px 16px rgba(0,0,0,0.15)' },
+                  '& img': {
+                    maxWidth: '100%',
+                    height: 'auto',
+                    borderRadius: '14px',
+                    my: 1.5,
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                    cursor: 'zoom-in',
+                    transition: 'transform 0.15s ease',
+                    '&:active': { transform: 'scale(0.97)' }
+                  },
                   '& blockquote': {
                     borderLeft: `4px solid ${theme.palette.primary.main}`,
                     bgcolor: alpha(theme.palette.primary.main, 0.06),
@@ -1057,20 +1389,41 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                     color: 'text.secondary',
                     my: 1.75
                   },
-                  '& table': {
+                  '& .ogv-table-wrapper': {
                     width: '100%',
-                    borderCollapse: 'collapse',
+                    maxWidth: '100%',
+                    overflowX: 'auto',
+                    WebkitOverflowScrolling: 'touch',
                     my: 2,
                     borderRadius: '12px',
-                    overflow: 'hidden',
                     border: `1px solid ${theme.palette.divider}`,
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                  },
+                  '& table': {
+                    width: '100%',
+                    minWidth: 420,
+                    borderCollapse: 'collapse',
+                    textAlign: 'left',
                     '& th, & td': {
-                      border: `1px solid ${theme.palette.divider}`,
+                      borderBottom: `1px solid ${theme.palette.divider}`,
+                      borderRight: `1px solid ${alpha(theme.palette.divider, 0.4)}`,
                       p: 1.25,
-                      textAlign: 'left',
-                      fontSize: '0.82rem'
+                      fontSize: '0.80rem',
+                      wordBreak: 'break-word',
+                      '&:last-child': { borderRight: 'none' },
                     },
-                    '& th': { bgcolor: alpha(theme.palette.primary.main, 0.12), fontWeight: 800 }
+                    '& th': {
+                      bgcolor: alpha(theme.palette.primary.main, 0.12),
+                      color: theme.palette.primary.main,
+                      fontWeight: 800,
+                      whiteSpace: 'nowrap',
+                    },
+                    '& tr:last-child td': {
+                      borderBottom: 'none',
+                    },
+                    '& tr:nth-of-type(even)': {
+                      bgcolor: alpha(theme.palette.action.hover, 0.03),
+                    },
                   }
                 }}
               />
@@ -1458,9 +1811,9 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
         {/* Action 6: Share */}
         <Tooltip title="Share repository">
           <Box
-            onClick={() => {
-              try { navigator.vibrate?.(10); } catch {}
-              handleShareRepo();
+            onClick={(e) => {
+              triggerHaptic(8);
+              setShareMenuAnchor(e.currentTarget);
             }}
             sx={{
               display: 'flex',
@@ -1492,6 +1845,65 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
           </Box>
         </Tooltip>
       </Box>
+
+      {/* Share Options Menu */}
+      <Menu
+        anchorEl={shareMenuAnchor}
+        open={Boolean(shareMenuAnchor)}
+        onClose={() => setShareMenuAnchor(null)}
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            bgcolor: 'var(--bg-menu)',
+            backgroundImage: 'none',
+            border: `1px solid ${theme.palette.divider}`,
+            p: 0.5
+          }
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            setShareMenuAnchor(null);
+            triggerHaptic(10);
+            const cardSummary = createSyntheticSummary(repo);
+            shareVisualCard(repo, cardSummary, onShareMessage);
+          }}
+          sx={{ fontSize: '0.78rem', fontWeight: 700, py: 1, gap: 1 }}
+        >
+          <StyleIcon sx={{ fontSize: 18, color: theme.palette.primary.main }} />
+          Share as Visual Card (Image)
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setShareMenuAnchor(null);
+            triggerHaptic(8);
+            handleShareRepo();
+          }}
+          sx={{ fontSize: '0.78rem', fontWeight: 700, py: 1, gap: 1 }}
+        >
+          <ShareIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+          Share Repository Link
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setShareMenuAnchor(null);
+            triggerHaptic(8);
+            onCopyClone(repo.clone_url);
+          }}
+          sx={{ fontSize: '0.78rem', fontWeight: 700, py: 1, gap: 1 }}
+        >
+          <ContentCopyIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+          Copy Git Clone Command
+        </MenuItem>
+      </Menu>
+
+      {/* Zoomable Image Viewer Modal for README Media */}
+      <ImageViewerModal
+        open={Boolean(viewerImage)}
+        imageUrl={viewerImage?.url || null}
+        title={viewerImage?.title || `${repo.name} Preview`}
+        onClose={() => setViewerImage(null)}
+      />
 
       {/* Release Asset / Tag Info Modal */}
       <Dialog

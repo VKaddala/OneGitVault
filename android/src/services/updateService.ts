@@ -1,22 +1,29 @@
 import { getStoredToken } from './githubApi';
 import { isTrustedReleaseAssetUrl } from '../utils/sanitizeMarkdown';
 
-export const CURRENT_ANDROID_VERSION = '1.3.0';
+export const CURRENT_ANDROID_VERSION = '2.0.0';
 const REPO_OWNER = 'VKaddala';
 const REPO_NAME = 'OneGitVault';
 
-export const BUNDLED_RELEASE_NOTES = `## OneGitVault Android v${CURRENT_ANDROID_VERSION}
+export const BUNDLED_RELEASE_NOTES = `## OneGitVault Android v${CURRENT_ANDROID_VERSION} — Feature Launch
 
-### Spotlight Fullscreen Observatory
-- Vertical snap-scroll README reels with distilled **What It Is & Solves** pitches, key highlights, and interactive pinch-to-zoom preview media with edge-swipe dismiss.
-- Smart topic search with **10-day rotating trending suggestions**, **Today** added filter, and automatic non-English summary translation.
-- Bottom-right Quick Actions button (\`⋯\`) expanding an action dock (\`Star\`, \`Vault\`, \`Readme\`, \`Share\`, \`GitHub\`) that auto-closes when scrolling or tapping outside.
+### ⚡ Spotlight: Reels for Developers
+- Vertical swipe-up discovery feed featuring instant 5-second elevator pitches (**What It Is & Solves**) and 3 key architectural highlights.
+- Interactive pinch-to-zoom (up to 4×) media viewer with smooth pan and edge-swipe dismissal.
+- Double-tap gesture bookmarking with haptic vibration and animated heart pop.
 
-### Offline Resilience, Caching & Downloads
-- Automatic offline & rate-limit cached pool fallback across feeds, Trending, Spotlight, releases, and READMEs until quota resets.
-- **30-day or 250 MB** auto-clear cache policy with Settings inspection, next-clear date countdown, and instant manual reset.
-- Intelligent Global Search supporting repository, \`owner/repo\`, and \`@user\` developer lookup.
-- Explicit **Allow APK Download?** permission dialog before Android \`DownloadManager\` handoff and native in-app update progress tracking.
+### 🖼️ Pure OLED Black Visual Social Cards
+- One-tap "Share as Card" generates a high-DPI, pure black OLED card for WhatsApp, X (Twitter), and LinkedIn.
+- Zero-blink offscreen headless rendering with immediate UI feedback and native Android FileProvider sharing.
+
+### 🛡️ The Living Vault & Changelog Radar
+- Background WorkManager scans for releases, tags, and major updates on bookmarked repos with an unread badge counter.
+- Full-screen Changelog Dashboard with dismiss-all and per-repo update radar filtering.
+- Private developer notes and custom tags on bookmarked repositories.
+
+### 📲 Home Screen Widgets & Native Haptics
+- 4×2 Trending Repository Widget and Vault Release Tracker Widget for your Android home screen.
+- Universal haptic engine with Settings toggle and refined GitHub Dark/Light default themes.
 `;
 
 export interface AndroidUpdateInfo {

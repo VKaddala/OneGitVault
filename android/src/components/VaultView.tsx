@@ -42,6 +42,15 @@ import DriveFileMoveIcon from '@mui/icons-material/DriveFileMove';
 import TuneIcon from '@mui/icons-material/Tune';
 import GridViewRoundedIcon from '@mui/icons-material/GridViewRounded';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import AlarmOnIcon from '@mui/icons-material/AlarmOn';
+import LabelIcon from '@mui/icons-material/Label';
+import DownloadIcon from '@mui/icons-material/Download';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { Repository } from '../types';
 import { RepoCard } from './RepoCard';
 import {
@@ -55,6 +64,7 @@ import {
   getVaultRadarResults,
   checkVaultReleaseRadar,
   VaultRadarEntry,
+  ignoreRepoRadar,
 } from '../services/bookmarkStore';
 import { getStoredToken } from '../services/githubApi';
 import {
@@ -65,6 +75,13 @@ import {
 } from '../services/gistSync';
 import { isSafeHttpUrl } from '../utils/sanitizeMarkdown';
 import { triggerHaptic } from '../utils/haptics';
+import { downloadApkFile } from '../services/downloadHelper';
+import {
+  getAllAnnotations,
+  getAllCustomTags,
+  getRevisitQueue,
+  RepoAnnotation,
+} from '../services/vaultAnnotationStore';
 
 export type VaultSubSection = 'gist' | 'starred' | 'watching';
 
@@ -130,6 +147,42 @@ export const VaultView: React.FC<VaultViewProps> = React.memo(({
   const [backupMenuAnchor, setBackupMenuAnchor] = useState<null | HTMLElement>(null);
   const [isGistSyncing, setIsGistSyncing] = useState<boolean>(false);
   const [gistSyncStatus, setGistSyncStatus] = useState<string>('');
+
+  // Living Dashboard Annotations, Custom Tags & Smart Reminders
+  const [annotations, setAnnotations] = useState<Record<number, RepoAnnotation>>(getAllAnnotations);
+  const [customTags, setCustomTags] = useState<string[]>(getAllCustomTags);
+  const [revisitQueue, setRevisitQueue] = useState<RepoAnnotation[]>(getRevisitQueue);
+  const [selectedCustomTag, setSelectedCustomTag] = useState<string | null>(null);
+  const [showRevisitOnly, setShowRevisitOnly] = useState<boolean>(false);
+  const [changelogFeedOpen, setChangelogFeedOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleAnnotationsUpdated = () => {
+      setAnnotations(getAllAnnotations());
+      setCustomTags(getAllCustomTags());
+      setRevisitQueue(getRevisitQueue());
+    };
+    const handleRadarUpdated = () => {
+      setRadarMap(getVaultRadarResults());
+    };
+    window.addEventListener('ogv_annotations_updated', handleAnnotationsUpdated);
+    window.addEventListener('ogv_radar_updated', handleRadarUpdated);
+    return () => {
+      window.removeEventListener('ogv_annotations_updated', handleAnnotationsUpdated);
+      window.removeEventListener('ogv_radar_updated', handleRadarUpdated);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!changelogFeedOpen) return;
+    (window as any).__onActiveChangelogClose = () => {
+      setChangelogFeedOpen(false);
+      return true;
+    };
+    return () => {
+      (window as any).__onActiveChangelogClose = null;
+    };
+  }, [changelogFeedOpen]);
 
   // Batch Select & Unbookmark State
   const [isSelectMode, setIsSelectMode] = useState<boolean>(false);
@@ -355,8 +408,18 @@ export const VaultView: React.FC<VaultViewProps> = React.memo(({
     if (showUpdatesOnly) {
       list = list.filter((r) => radarMap[(r.full_name || '').toLowerCase()]?.hasUpdate);
     }
+    if (showRevisitOnly) {
+      const revisitIds = new Set(revisitQueue.map((item) => item.repoId));
+      list = list.filter((r) => revisitIds.has(r.id));
+    }
+    if (selectedCustomTag) {
+      list = list.filter((r) => {
+        const ann = annotations[r.id];
+        return ann?.tags?.includes(selectedCustomTag);
+      });
+    }
     return list;
-  }, [bookmarks, activeFolder, folders, showUpdatesOnly, radarMap]);
+  }, [bookmarks, activeFolder, folders, showUpdatesOnly, radarMap, showRevisitOnly, revisitQueue, selectedCustomTag, annotations]);
 
   const handleToggleSelect = (repoId: number) => {
     setSelectedRepoIds((prev) => {
@@ -534,6 +597,71 @@ export const VaultView: React.FC<VaultViewProps> = React.memo(({
         })}
       </Box>
 
+      {/* ── Living Dashboard "What Changed" Banner ── */}
+      {subSection === 'gist' && radarUpdatesCount > 0 && (
+        <Box
+          onClick={() => {
+            triggerHaptic(8);
+            setChangelogFeedOpen(true);
+          }}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            p: 1.1,
+            px: 1.4,
+            mb: 1.25,
+            borderRadius: '16px',
+            bgcolor: alpha(theme.palette.success.main, theme.palette.mode === 'dark' ? 0.14 : 0.08),
+            border: `1px solid ${alpha(theme.palette.success.main, 0.3)}`,
+            cursor: 'pointer',
+            transition: 'transform 0.15s ease',
+            '&:active': { transform: 'scale(0.99)' }
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.1, minWidth: 0 }}>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                bgcolor: alpha(theme.palette.success.main, 0.2),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <AutoAwesomeIcon sx={{ fontSize: 17, color: theme.palette.success.main }} />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ fontSize: '0.82rem', fontWeight: 800, color: 'text.primary', lineHeight: 1.2 }}>
+                {radarUpdatesCount} of your Vault repos shipped updates!
+              </Typography>
+              <Typography noWrap sx={{ fontSize: '0.68rem', color: 'text.secondary' }}>
+                Tap to explore changelog feed & download latest APKs
+              </Typography>
+            </Box>
+          </Box>
+          <Button
+            size="small"
+            variant="contained"
+            color="success"
+            sx={{
+              fontSize: '0.68rem',
+              fontWeight: 800,
+              height: 26,
+              borderRadius: '8px',
+              textTransform: 'none',
+              flexShrink: 0,
+              boxShadow: 'none'
+            }}
+          >
+            Changelog
+          </Button>
+        </Box>
+      )}
+
       {/* ── Row 2 (Saved): Single Compact Filter Row + One All-Settings Icon ── */}
       {subSection === 'gist' && (
         <Box
@@ -574,6 +702,8 @@ export const VaultView: React.FC<VaultViewProps> = React.memo(({
               onClick={() => {
                 setUiShowUpdatesOnly(false);
                 setUiActiveFolder('ALL');
+                setShowRevisitOnly(false);
+                setSelectedCustomTag(null);
                 startTransition(() => {
                   setShowUpdatesOnly(false);
                   setActiveFolder('ALL');
@@ -583,17 +713,17 @@ export const VaultView: React.FC<VaultViewProps> = React.memo(({
                 height: 30,
                 borderRadius: '15px',
                 fontSize: '0.73rem',
-                fontWeight: uiActiveFolder === 'ALL' && !uiShowUpdatesOnly ? 800 : 600,
+                fontWeight: uiActiveFolder === 'ALL' && !uiShowUpdatesOnly && !showRevisitOnly && !selectedCustomTag ? 800 : 600,
                 flexShrink: 0,
                 cursor: 'pointer',
-                bgcolor: uiActiveFolder === 'ALL' && !uiShowUpdatesOnly
+                bgcolor: uiActiveFolder === 'ALL' && !uiShowUpdatesOnly && !showRevisitOnly && !selectedCustomTag
                   ? theme.palette.primary.main
                   : alpha(theme.palette.text.primary, 0.05),
-                color: uiActiveFolder === 'ALL' && !uiShowUpdatesOnly
+                color: uiActiveFolder === 'ALL' && !uiShowUpdatesOnly && !showRevisitOnly && !selectedCustomTag
                   ? theme.palette.primary.contrastText
                   : 'text.secondary',
                 border: `1px solid ${
-                  uiActiveFolder === 'ALL' && !uiShowUpdatesOnly
+                  uiActiveFolder === 'ALL' && !uiShowUpdatesOnly && !showRevisitOnly && !selectedCustomTag
                     ? theme.palette.primary.main
                     : theme.palette.divider
                 }`,
@@ -618,6 +748,8 @@ export const VaultView: React.FC<VaultViewProps> = React.memo(({
                   if (radarUpdatesCount > 0) {
                     const nextVal = !uiShowUpdatesOnly;
                     setUiShowUpdatesOnly(nextVal);
+                    setShowRevisitOnly(false);
+                    setSelectedCustomTag(null);
                     startTransition(() => setShowUpdatesOnly(nextVal));
                   } else {
                     handleManualRadarCheck();
@@ -652,6 +784,70 @@ export const VaultView: React.FC<VaultViewProps> = React.memo(({
               />
             )}
 
+            {/* Smart Revisit Later Queue Filter */}
+            {revisitQueue.length > 0 && (
+              <Chip
+                size="small"
+                icon={<AlarmOnIcon sx={{ fontSize: '14px !important' }} />}
+                label={`Revisit (${revisitQueue.length})`}
+                onClick={() => {
+                  setShowRevisitOnly((prev) => !prev);
+                  setUiShowUpdatesOnly(false);
+                  setSelectedCustomTag(null);
+                }}
+                sx={{
+                  height: 30,
+                  borderRadius: '15px',
+                  fontSize: '0.73rem',
+                  fontWeight: showRevisitOnly ? 800 : 600,
+                  flexShrink: 0,
+                  cursor: 'pointer',
+                  bgcolor: showRevisitOnly
+                    ? '#f59e0b'
+                    : alpha('#f59e0b', theme.palette.mode === 'dark' ? 0.2 : 0.12),
+                  color: showRevisitOnly ? '#000000' : '#f59e0b',
+                  border: `1px solid ${showRevisitOnly ? '#f59e0b' : alpha('#f59e0b', 0.4)}`,
+                  '& .MuiChip-icon': {
+                    color: 'inherit',
+                  },
+                }}
+              />
+            )}
+
+            {/* Custom Workflow Tags */}
+            {customTags.map((tag) => {
+              const active = selectedCustomTag === tag;
+              return (
+                <Chip
+                  key={tag}
+                  size="small"
+                  icon={<LabelIcon sx={{ fontSize: '13px !important' }} />}
+                  label={`#${tag}`}
+                  onClick={() => {
+                    setSelectedCustomTag((prev) => (prev === tag ? null : tag));
+                    setShowRevisitOnly(false);
+                    setUiShowUpdatesOnly(false);
+                  }}
+                  sx={{
+                    height: 30,
+                    borderRadius: '15px',
+                    fontSize: '0.73rem',
+                    fontWeight: active ? 800 : 600,
+                    flexShrink: 0,
+                    cursor: 'pointer',
+                    bgcolor: active
+                      ? theme.palette.primary.main
+                      : alpha(theme.palette.text.primary, 0.05),
+                    color: active ? theme.palette.primary.contrastText : 'text.secondary',
+                    border: `1px solid ${active ? theme.palette.primary.main : theme.palette.divider}`,
+                    '& .MuiChip-icon': {
+                      color: 'inherit',
+                    },
+                  }}
+                />
+              );
+            })}
+
             {folderNames.map((fname) => {
               const count = (folders[fname] || []).filter((id) => bookmarks.some((b) => b.id === id)).length;
               const selected = uiActiveFolder === fname;
@@ -664,6 +860,8 @@ export const VaultView: React.FC<VaultViewProps> = React.memo(({
                   onClick={() => {
                     const nextFolder = selected ? 'ALL' : fname;
                     setUiShowUpdatesOnly(false);
+                    setShowRevisitOnly(false);
+                    setSelectedCustomTag(null);
                     setUiActiveFolder(nextFolder);
                     startTransition(() => {
                       setShowUpdatesOnly(false);
@@ -1253,6 +1451,364 @@ export const VaultView: React.FC<VaultViewProps> = React.memo(({
                   </Button>
                 </DialogActions>
               </Dialog>
+
+              {/* Living Dashboard: Dedicated Fullscreen Changelog Page */}
+              {changelogFeedOpen && (
+                <Box
+                  sx={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 1300,
+                    bgcolor: 'background.default',
+                    color: 'text.primary',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    animation: 'fadeInChangelog 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                    '@keyframes fadeInChangelog': {
+                      '0%': { opacity: 0, transform: 'translateY(16px)' },
+                      '100%': { opacity: 1, transform: 'translateY(0)' }
+                    }
+                  }}
+                >
+                  {/* Top Bar with Physical Status Bar Inset */}
+                  <Box
+                    sx={{
+                      pt: 'calc(max(env(safe-area-inset-top, 0px), var(--status-bar-height, 44px)) + 8px)',
+                      pb: 1.2,
+                      px: { xs: 1.5, sm: 2.5 },
+                      bgcolor: 'var(--bg-header)',
+                      borderBottom: `1px solid ${alpha(theme.palette.divider, 0.4)}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 1
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                      <IconButton
+                        edge="start"
+                        onClick={() => {
+                          triggerHaptic(8);
+                          setChangelogFeedOpen(false);
+                        }}
+                        sx={{
+                          color: 'text.primary',
+                          p: 0.8,
+                          '&:active': { transform: 'scale(0.9)' }
+                        }}
+                      >
+                        <ArrowBackIcon sx={{ fontSize: 22 }} />
+                      </IconButton>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography sx={{ fontWeight: 800, fontSize: { xs: '1rem', sm: '1.12rem' } }} noWrap>
+                            What Changed in Your Vault
+                          </Typography>
+                          <Chip
+                            size="small"
+                            label={`${bookmarks.filter((r) => radarMap[(r.full_name || '').toLowerCase()]?.hasUpdate).length} New`}
+                            color="success"
+                            sx={{ height: 20, fontSize: '0.66rem', fontWeight: 800, borderRadius: '6px' }}
+                          />
+                        </Box>
+                        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }} noWrap>
+                          Living radar tracking releases & updates across saved repos
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                      <Tooltip title="Check for Updates">
+                        <IconButton
+                          size="small"
+                          onClick={handleManualRadarCheck}
+                          disabled={checkingRadar}
+                          sx={{ color: 'text.secondary' }}
+                        >
+                          {checkingRadar ? <CircularProgress size={16} /> : <RefreshIcon sx={{ fontSize: 20 }} />}
+                        </IconButton>
+                      </Tooltip>
+                      <IconButton
+                        size="small"
+                        onClick={() => setChangelogFeedOpen(false)}
+                        sx={{ color: 'text.secondary' }}
+                      >
+                        <CloseIcon sx={{ fontSize: 20 }} />
+                      </IconButton>
+                    </Box>
+                  </Box>
+
+                  {/* Subheader / Batch Controls */}
+                  {bookmarks.filter((r) => radarMap[(r.full_name || '').toLowerCase()]?.hasUpdate).length > 0 && (
+                    <Box
+                      sx={{
+                        px: { xs: 2, sm: 2.8 },
+                        py: 0.9,
+                        bgcolor: alpha(theme.palette.background.paper, 0.5),
+                        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 1
+                      }}
+                    >
+                      <Typography sx={{ fontSize: '0.74rem', color: 'text.secondary', fontWeight: 600 }}>
+                        Showing {bookmarks.filter((r) => radarMap[(r.full_name || '').toLowerCase()]?.hasUpdate).length} repository update{bookmarks.filter((r) => radarMap[(r.full_name || '').toLowerCase()]?.hasUpdate).length === 1 ? '' : 's'}
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="text"
+                        color="inherit"
+                        startIcon={<DoneAllIcon sx={{ fontSize: 15 }} />}
+                        onClick={() => {
+                          triggerHaptic(10);
+                          bookmarks.forEach((r) => {
+                            const radar = radarMap[(r.full_name || '').toLowerCase()];
+                            if (radar?.hasUpdate) {
+                              ignoreRepoRadar(r.full_name, radar.latestTag);
+                            }
+                          });
+                          onShareMessage?.('All updates dismissed');
+                        }}
+                        sx={{
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          textTransform: 'none',
+                          color: 'text.secondary',
+                          py: 0.2
+                        }}
+                      >
+                        Dismiss All
+                      </Button>
+                    </Box>
+                  )}
+
+                  {/* Content Area (Full-Width Scrollable List) */}
+                  <Box
+                    sx={{
+                      flex: 1,
+                      overflowY: 'auto',
+                      WebkitOverflowScrolling: 'touch',
+                      px: { xs: 1.6, sm: 3 },
+                      py: 2,
+                      pb: 'calc(max(env(safe-area-inset-bottom, 0px), 16px) + 32px)'
+                    }}
+                  >
+                    {bookmarks.filter((r) => radarMap[(r.full_name || '').toLowerCase()]?.hasUpdate).length === 0 ? (
+                      <Box sx={{ textAlign: 'center', py: 8, px: 2 }}>
+                        <CheckCircleOutlineIcon sx={{ fontSize: 60, color: 'success.main', opacity: 0.85, mb: 1.5 }} />
+                        <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', mb: 0.5 }}>
+                          All Vault Repositories Are Up to Date
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', maxWidth: 360, mx: 'auto', mb: 2.5 }}>
+                          You are completely caught up! When saved repositories publish new releases or APKs, they will automatically appear here.
+                        </Typography>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={handleManualRadarCheck}
+                          disabled={checkingRadar}
+                          startIcon={checkingRadar ? <CircularProgress size={14} /> : <RefreshIcon />}
+                          sx={{ textTransform: 'none', borderRadius: '12px', fontWeight: 700, px: 2 }}
+                        >
+                          Check for Updates Now
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 800, mx: 'auto' }}>
+                        {bookmarks
+                          .filter((r) => radarMap[(r.full_name || '').toLowerCase()]?.hasUpdate)
+                          .map((repo) => {
+                            const radar = radarMap[(repo.full_name || '').toLowerCase()];
+                            return (
+                              <Box
+                                key={repo.id}
+                                sx={{
+                                  p: { xs: 2, sm: 2.6 },
+                                  borderRadius: '20px',
+                                  bgcolor: 'background.paper',
+                                  border: `1.5px solid ${alpha(theme.palette.success.main, 0.35)}`,
+                                  boxShadow: theme.palette.mode === 'dark'
+                                    ? '0 6px 24px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.06)'
+                                    : '0 4px 16px rgba(0,0,0,0.04), inset 0 1px 1px #fff',
+                                  position: 'relative',
+                                  overflow: 'hidden'
+                                }}
+                              >
+                                {/* Top Accent Line */}
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: 3.5,
+                                    bgcolor: 'success.main'
+                                  }}
+                                />
+
+                                {/* Header: Avatar, Name, Version Badge, Release Date */}
+                                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1, mb: 1.4 }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, minWidth: 0 }}>
+                                    <Box
+                                      component="img"
+                                      src={repo.owner?.avatar_url}
+                                      alt={repo.owner?.login}
+                                      sx={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, border: `1.5px solid ${alpha(theme.palette.divider, 0.8)}` }}
+                                    />
+                                    <Box sx={{ minWidth: 0 }}>
+                                      <Typography sx={{ fontWeight: 800, fontSize: '1.02rem', lineHeight: 1.25 }} noWrap>
+                                        {repo.name}
+                                      </Typography>
+                                      <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }} noWrap>
+                                        @{repo.owner?.login}
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.3, flexShrink: 0 }}>
+                                    <Chip
+                                      size="small"
+                                      label={radar.latestTag}
+                                      color="success"
+                                      sx={{ height: 22, fontSize: '0.72rem', fontWeight: 800, borderRadius: '8px' }}
+                                    />
+                                    {radar.releasePublishedAt && (
+                                      <Typography sx={{ fontSize: '0.66rem', color: 'text.secondary' }}>
+                                        {new Date(radar.releasePublishedAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                </Box>
+
+                                {/* Action Buttons Row */}
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.8, mb: 1.5 }}>
+                                  {radar.apkAsset && (
+                                    <Button
+                                      size="small"
+                                      variant="contained"
+                                      color="success"
+                                      startIcon={<DownloadIcon sx={{ fontSize: 14 }} />}
+                                      onClick={() => {
+                                        downloadApkFile(
+                                          radar.apkAsset!.browser_download_url,
+                                          radar.apkAsset!.name,
+                                          radar.apkAsset!.size
+                                        );
+                                      }}
+                                      sx={{
+                                        height: 30,
+                                        fontSize: '0.72rem',
+                                        fontWeight: 800,
+                                        borderRadius: '9px',
+                                        textTransform: 'none',
+                                        px: 1.4
+                                      }}
+                                    >
+                                      Download APK ({(radar.apkAsset.size / (1024 * 1024)).toFixed(0)} MB)
+                                    </Button>
+                                  )}
+
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => {
+                                      setChangelogFeedOpen(false);
+                                      onOpenDetail(repo);
+                                    }}
+                                    sx={{
+                                      height: 30,
+                                      fontSize: '0.72rem',
+                                      fontWeight: 700,
+                                      borderRadius: '9px',
+                                      textTransform: 'none',
+                                      px: 1.2
+                                    }}
+                                  >
+                                    View Details
+                                  </Button>
+
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="inherit"
+                                    startIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
+                                    onClick={() => {
+                                      const url = radar.releaseUrl || repo.html_url;
+                                      window.open(url, '_blank');
+                                    }}
+                                    sx={{
+                                      height: 30,
+                                      fontSize: '0.72rem',
+                                      fontWeight: 600,
+                                      borderRadius: '9px',
+                                      textTransform: 'none',
+                                      color: 'text.secondary'
+                                    }}
+                                  >
+                                    GitHub
+                                  </Button>
+
+                                  {/* Ignore Changelog of this Repo Button */}
+                                  <Button
+                                    size="small"
+                                    variant="text"
+                                    color="inherit"
+                                    startIcon={<NotificationsOffIcon sx={{ fontSize: 14 }} />}
+                                    onClick={() => {
+                                      triggerHaptic(8);
+                                      ignoreRepoRadar(repo.full_name, radar.latestTag);
+                                      onShareMessage?.(`Ignored updates for ${repo.name}`);
+                                    }}
+                                    sx={{
+                                      height: 30,
+                                      fontSize: '0.7rem',
+                                      fontWeight: 700,
+                                      borderRadius: '9px',
+                                      textTransform: 'none',
+                                      color: 'text.secondary',
+                                      ml: 'auto',
+                                      '&:hover': { color: 'error.main', bgcolor: alpha(theme.palette.error.main, 0.08) }
+                                    }}
+                                  >
+                                    Ignore Updates
+                                  </Button>
+                                </Box>
+
+                                {/* Release Notes Preview */}
+                                {radar.releaseNotes ? (
+                                  <Box
+                                    sx={{
+                                      p: 1.5,
+                                      borderRadius: '12px',
+                                      bgcolor: alpha(theme.palette.background.default, 0.7),
+                                      border: `1px solid ${alpha(theme.palette.divider, 0.3)}`,
+                                      fontSize: '0.75rem',
+                                      color: 'text.secondary',
+                                      maxHeight: 220,
+                                      overflowY: 'auto',
+                                      fontFamily: 'monospace',
+                                      whiteSpace: 'pre-wrap',
+                                      wordBreak: 'break-word',
+                                      lineHeight: 1.6
+                                    }}
+                                  >
+                                    {radar.releaseNotes}
+                                  </Box>
+                                ) : (
+                                  <Typography sx={{ fontSize: '0.74rem', color: 'text.secondary', fontStyle: 'italic' }}>
+                                    No release notes published with this release tag.
+                                  </Typography>
+                                )}
+                              </Box>
+                            );
+                          })}
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
+              )}
             </>
           )}
         </>

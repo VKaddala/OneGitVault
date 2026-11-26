@@ -80,6 +80,12 @@ export function resolveGitHubMediaUrl(rawSrc: string, repoFullName: string, defa
   return `https://raw.githubusercontent.com/${repoFullName}/${branch}/${cleanRel}`;
 }
 
+// Ensure marked GFM tables and line parsing are enabled
+marked.use({
+  gfm: true,
+  breaks: false,
+});
+
 /**
  * Renders markdown to tightly sanitized HTML with DOM Clobbering protection,
  * safe external link enforcement, and optional GitHub README media URL resolution.
@@ -90,18 +96,33 @@ export function renderMarkdownToSafeHtml(
 ): string {
   if (!markdown) return '';
 
-  const parsed = marked.parse(markdown, { async: false });
+  // Pre-normalize GitHub markdown tables that lack preceding newlines
+  const normalizedMarkdown = markdown
+    .replace(/([^\n])\n(\|[^\n]+\|\r?\n\|[-:\s|]+\|)/g, '$1\n\n$2')
+    .replace(/\r\n/g, '\n');
+
+  const parsed = marked.parse(normalizedMarkdown, { async: false });
   const sanitized = DOMPurify.sanitize(typeof parsed === 'string' ? parsed : '', {
     SANITIZE_NAMED_PROPS: true,
     FORBID_TAGS: ['style', 'form', 'input', 'textarea', 'select', 'button', 'iframe', 'object', 'embed'],
     FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick', 'onmouseover', 'onfocus'],
-    ADD_TAGS: ['picture', 'source'],
-    ADD_ATTR: ['id', 'name', 'target', 'rel', 'srcset', 'media', 'referrerpolicy', 'loading', 'align'],
+    ADD_TAGS: ['picture', 'source', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td'],
+    ADD_ATTR: ['id', 'name', 'target', 'rel', 'srcset', 'media', 'referrerpolicy', 'loading', 'align', 'colspan', 'rowspan', 'valign'],
   });
 
   try {
     const template = document.createElement('template');
     template.innerHTML = sanitized;
+
+    // Wrap tables in responsive scroll containers so wide tables don't clip on mobile screens
+    const tables = template.content.querySelectorAll('table');
+    tables.forEach((table) => {
+      if (table.parentElement?.classList?.contains('ogv-table-wrapper')) return;
+      const wrapper = document.createElement('div');
+      wrapper.className = 'ogv-table-wrapper';
+      table.parentNode?.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+    });
 
     // Enforce noopener noreferrer and safe URI schemes on links
     const anchors = template.content.querySelectorAll('a[href]');

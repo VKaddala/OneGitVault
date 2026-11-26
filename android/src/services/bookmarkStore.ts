@@ -19,7 +19,10 @@ export interface VaultRadarEntry {
   hasUpdate: boolean;
   releaseUrl: string;
   apkAsset?: ReleaseAsset;
+  releaseNotes?: string;
+  releasePublishedAt?: string;
   checkedAt: number;
+  ignored?: boolean;
 }
 
 export function sanitizeRepository(raw: any): Repository | null {
@@ -331,6 +334,66 @@ function saveVaultRadarResults(results: Record<string, VaultRadarEntry>): void {
   safeSetLocalCache(VAULT_RADAR_CACHE_KEY, JSON.stringify(results));
 }
 
+const VAULT_IGNORED_RADAR_KEY = 'ogv_ignored_radar_v1';
+
+export function getIgnoredRadarRepos(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(VAULT_IGNORED_RADAR_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function ignoreRepoRadar(fullName: string, tagToIgnore?: string): void {
+  const key = fullName.toLowerCase();
+  const ignored = getIgnoredRadarRepos();
+  ignored[key] = tagToIgnore || '*';
+  try {
+    localStorage.setItem(VAULT_IGNORED_RADAR_KEY, JSON.stringify(ignored));
+  } catch {}
+
+  const radar = getVaultRadarResults();
+  if (radar[key]) {
+    radar[key].hasUpdate = false;
+    radar[key].ignored = true;
+    saveVaultRadarResults(radar);
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('ogv_radar_updated'));
+    window.dispatchEvent(new CustomEvent('ogv_bookmarks_changed'));
+  }
+}
+
+export function unignoreRepoRadar(fullName: string): void {
+  const key = fullName.toLowerCase();
+  const ignored = getIgnoredRadarRepos();
+  delete ignored[key];
+  try {
+    localStorage.setItem(VAULT_IGNORED_RADAR_KEY, JSON.stringify(ignored));
+  } catch {}
+
+  const radar = getVaultRadarResults();
+  if (radar[key]) {
+    radar[key].ignored = false;
+    radar[key].hasUpdate = isReleaseTagNewer(radar[key].latestTag, radar[key].savedTag);
+    saveVaultRadarResults(radar);
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('ogv_radar_updated'));
+    window.dispatchEvent(new CustomEvent('ogv_bookmarks_changed'));
+  }
+}
+
+export function isRepoRadarIgnored(fullName: string, currentTag?: string): boolean {
+  const key = fullName.toLowerCase();
+  const ignored = getIgnoredRadarRepos();
+  const val = ignored[key];
+  if (!val) return false;
+  if (val === '*') return true;
+  return !currentTag || val === currentTag;
+}
+
 function normalizeTagToSemver(tag?: string): string {
   if (!tag) return '';
   const match = tag.match(/(\d+(?:\.\d+){1,2})/);
@@ -400,6 +463,8 @@ export async function checkVaultReleaseRadar(
               nodes {
                 tagName
                 url
+                publishedAt
+                description
                 releaseAssets(first: 5) {
                   nodes { id name size downloadCount downloadUrl contentType }
                 }
@@ -437,14 +502,18 @@ export async function checkVaultReleaseRadar(
           const apkAsset = assets.find((a) => a.is_apk);
           const savedTag = repo.latest_release?.tag_name || '';
           const key = repo.full_name.toLowerCase();
+          const isIgnored = isRepoRadarIgnored(repo.full_name, node.tagName);
           nextResults[key] = {
             fullName: repo.full_name,
             savedTag,
             latestTag: node.tagName,
-            hasUpdate: isReleaseTagNewer(node.tagName, savedTag),
+            hasUpdate: !isIgnored && isReleaseTagNewer(node.tagName, savedTag),
             releaseUrl: node.url || `${repo.html_url}/releases`,
             apkAsset,
+            releaseNotes: node.description || '',
+            releasePublishedAt: node.publishedAt || '',
             checkedAt: now,
+            ignored: isIgnored,
           };
         });
         saveVaultRadarResults(nextResults);
@@ -475,14 +544,18 @@ export async function checkVaultReleaseRadar(
         }));
         const savedTag = repo.latest_release?.tag_name || '';
         const key = repo.full_name.toLowerCase();
+        const isIgnored = isRepoRadarIgnored(repo.full_name, rel.tag_name);
         nextResults[key] = {
           fullName: repo.full_name,
           savedTag,
           latestTag: rel.tag_name,
-          hasUpdate: isReleaseTagNewer(rel.tag_name, savedTag),
+          hasUpdate: !isIgnored && isReleaseTagNewer(rel.tag_name, savedTag),
           releaseUrl: rel.html_url || `${repo.html_url}/releases`,
           apkAsset: assets.find((a) => a.is_apk),
+          releaseNotes: rel.body || '',
+          releasePublishedAt: rel.published_at || '',
           checkedAt: now,
+          ignored: isIgnored,
         };
       } catch {}
     })

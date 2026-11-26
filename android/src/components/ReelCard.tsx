@@ -80,6 +80,12 @@ export const ReelCard: React.FC<ReelCardProps> = ({
     lastTapRef.current = now;
   };
 
+  // Track failed media images so broken/404 image URLs don't leave an empty box
+  const [heroImgFailed, setHeroImgFailed] = useState(false);
+  useEffect(() => {
+    setHeroImgFailed(false);
+  }, [summary.heroMediaUrl]);
+
   // Fullscreen Pinch-to-Zoom Image State & Universal Edge Swipe
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomScale, setZoomScale] = useState<number>(1);
@@ -302,6 +308,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
 
       {/* ── ONE ENTIRE COHESIVE CARD WITH SECTIONS IN MIDDLE ── */}
       <Box
+        id={`spotlight-card-${repo.id}`}
         sx={{
           width: '100%',
           maxWidth: 520,
@@ -323,15 +330,18 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           p: { xs: 2.2, sm: 2.8 }
         }}
       >
-        {/* Top Accent Stripe */}
+        {/* Top Accent Stripe: Curves with the 26px card rounded corners */}
         <Box
           sx={{
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
-            height: 3.5,
-            background: `linear-gradient(90deg, ${langColor}, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`
+            height: 4,
+            borderTopLeftRadius: '24px',
+            borderTopRightRadius: '24px',
+            background: `linear-gradient(90deg, ${langColor}, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+            zIndex: 2
           }}
         />
 
@@ -420,7 +430,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
         </Box>
 
         {/* ── SECTION 2: Working Screenshot / Demo Media (Click opens pinch zoom) ── */}
-        {summary.heroMediaUrl && (
+        {summary.heroMediaUrl && !heroImgFailed && (
           <Box
             onClick={(e) => {
               e.stopPropagation();
@@ -448,8 +458,9 @@ export const ReelCard: React.FC<ReelCardProps> = ({
               component="img"
               src={summary.heroMediaUrl}
               alt={`${repo.name} preview`}
-              onError={(e: any) => {
-                e.currentTarget.style.display = 'none';
+              crossOrigin="anonymous"
+              onError={() => {
+                setHeroImgFailed(true);
               }}
               sx={{
                 width: '100%',
@@ -559,6 +570,48 @@ export const ReelCard: React.FC<ReelCardProps> = ({
             </Box>
           </>
         )}
+
+        {/* Card Footer: Subtle Branding (Hidden in Spotlight reels, visible ONLY during card export/share) */}
+        <Box
+          id="spotlight-card-footer"
+          sx={{
+            display: 'none',
+            mt: 'auto',
+            pt: 1.6,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderTop: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+            gap: 1.5,
+            userSelect: 'none'
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'primary.main',
+              fontWeight: 800,
+              fontSize: '0.74rem',
+              letterSpacing: 0.2,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            github.com/{repo.full_name || repo.name}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              opacity: 0.65,
+              fontSize: '0.68rem',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              textAlign: 'right'
+            }}
+          >
+            OneGitVault Spotlight
+          </Typography>
+        </Box>
       </Box>
 
       {/* ── Fullscreen Interactive Pinch-To-Zoom & Universal Edge Swipe Dismiss Dialog ── */}

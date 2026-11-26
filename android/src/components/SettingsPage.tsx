@@ -13,6 +13,7 @@ import {
   useTheme,
   alpha,
   Divider,
+  Switch,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -29,10 +30,11 @@ import StorageIcon from '@mui/icons-material/Storage';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import VibrationIcon from '@mui/icons-material/Vibration';
 import { ThemePlugin } from '../themes/types';
 import { renderMarkdownToSafeHtml } from '../utils/sanitizeMarkdown';
 import { OneGitVaultLogo } from './OneGitVaultLogo';
-import { triggerHaptic } from '../utils/haptics';
+import { triggerHaptic, isHapticsEnabled, setHapticsEnabled } from '../utils/haptics';
 import {
   AndroidUpdateInfo,
   CURRENT_ANDROID_VERSION,
@@ -111,6 +113,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   );
   const [loadingAbout, setLoadingAbout] = useState<boolean>(false);
   const [cacheStats, setCacheStats] = useState<CacheStats>(() => getCacheStats());
+  const [hapticsOn, setHapticsOn] = useState<boolean>(() => isHapticsEnabled());
 
   const refreshCacheStats = useCallback(() => {
     setCacheStats(getCacheStats());
@@ -647,7 +650,41 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
                 <Divider sx={{ borderColor: hairline }} />
 
-                {/* Row 3: Quick Refresh */}
+                {/* Row 3: Haptic Feedback Switch */}
+                <Box sx={{ px: 1.65, py: 1.15, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.25 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
+                    <VibrationIcon sx={{ fontSize: 19, color: 'text.secondary', flexShrink: 0 }} />
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 700, fontSize: '0.88rem' }}>Haptic Feedback</Typography>
+                      <Typography variant="caption" noWrap sx={{ color: 'text.secondary', fontSize: '0.72rem', display: 'block' }}>
+                        {hapticsOn ? 'Vibrate on tap, tabs & gestures' : 'Haptics disabled'}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Switch
+                    size="small"
+                    checked={hapticsOn}
+                    onChange={(e) => {
+                      const next = e.target.checked;
+                      setHapticsEnabled(next);
+                      setHapticsOn(next);
+                      if (next) triggerHaptic(10);
+                    }}
+                    sx={{
+                      '& .MuiSwitch-switchBase.Mui-checked': {
+                        color: theme.palette.primary.main,
+                      },
+                      '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                        bgcolor: theme.palette.primary.main,
+                      },
+                    }}
+                  />
+                </Box>
+
+                <Divider sx={{ borderColor: hairline }} />
+
+                {/* Row 4: Quick Refresh */}
                 <Box
                   role="button"
                   tabIndex={0}

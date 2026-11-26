@@ -19,10 +19,13 @@ import BookmarkIcon from '@mui/icons-material/Bookmark';
 import DownloadIcon from '@mui/icons-material/Download';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import NoteAltOutlinedIcon from '@mui/icons-material/NoteAltOutlined';
+import AlarmOnIcon from '@mui/icons-material/AlarmOn';
 import { Repository } from '../types';
 import { downloadApkFile } from '../services/downloadHelper';
 import { OwnerAvatar } from './OwnerAvatar';
 import { triggerHaptic } from '../utils/haptics';
+import { getRepoAnnotation } from '../services/vaultAnnotationStore';
 
 interface RepoCardProps {
   repo: Repository;
@@ -68,6 +71,7 @@ export const RepoCard = React.memo<RepoCardProps>(({
   const ownerLogin = repo.owner?.login || repo.full_name?.split('/')[0] || 'unknown';
   const hasApk = repo.has_apks || (Array.isArray(repo.topics) && (repo.topics.includes('apk') || repo.topics.includes('android-app') || repo.topics.includes('android')));
   const primaryApkAsset = repo.latest_release?.assets?.find(a => a.is_apk || a.name.endsWith('.apk'));
+  const annotation = getRepoAnnotation(repo.id);
 
   const handleStarClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -231,6 +235,16 @@ export const RepoCard = React.memo<RepoCardProps>(({
                 >
                   • {repo.language}
                 </Typography>
+              )}
+              {annotation?.notes && (
+                <Tooltip title={`Note: ${annotation.notes}`}>
+                  <NoteAltOutlinedIcon sx={{ fontSize: 13, color: '#f59e0b', flexShrink: 0 }} />
+                </Tooltip>
+              )}
+              {annotation?.reminder && (
+                <Tooltip title={`Reminder: ${annotation.reminder.label}`}>
+                  <AlarmOnIcon sx={{ fontSize: 13, color: '#06b6d4', flexShrink: 0 }} />
+                </Tooltip>
               )}
               {updateBadge && (
                 <Chip
@@ -512,8 +526,71 @@ export const RepoCard = React.memo<RepoCardProps>(({
           {repo.description || 'No description provided.'}
         </Typography>
 
-        {/* Topic Tags */}
+        {/* Personal Note Snippet (Living Dashboard) */}
+        {annotation?.notes && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.6,
+              mb: isCompact ? 0.6 : 0.8,
+              p: 0.6,
+              px: 0.9,
+              borderRadius: '8px',
+              bgcolor: alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.12 : 0.08),
+              borderLeft: `3px solid ${theme.palette.warning.main}`
+            }}
+          >
+            <NoteAltOutlinedIcon sx={{ fontSize: 13, color: theme.palette.warning.main, flexShrink: 0 }} />
+            <Typography
+              noWrap
+              sx={{
+                fontSize: '0.7rem',
+                color: 'text.primary',
+                fontWeight: 600,
+                fontStyle: 'italic'
+              }}
+            >
+              "{annotation.notes}"
+            </Typography>
+          </Box>
+        )}
+
+        {/* Topic & Custom Workflow Tags */}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: isCompact ? 0.6 : 0.9 }}>
+          {annotation?.tags &&
+            annotation.tags.map((tag) => (
+              <Chip
+                key={tag}
+                label={`#${tag}`}
+                size="small"
+                sx={{
+                  height: isCompact ? 18 : 20,
+                  fontSize: isCompact ? '0.62rem' : '0.67rem',
+                  fontWeight: 700,
+                  bgcolor: alpha(theme.palette.primary.main, 0.18),
+                  color: theme.palette.primary.main,
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.4)}`,
+                  borderRadius: '6px'
+                }}
+              />
+            ))}
+          {annotation?.reminder && (
+            <Chip
+              icon={<AlarmOnIcon sx={{ fontSize: '11px !important' }} />}
+              label={annotation.reminder.label}
+              size="small"
+              sx={{
+                height: isCompact ? 18 : 20,
+                fontSize: isCompact ? '0.62rem' : '0.67rem',
+                fontWeight: 700,
+                bgcolor: alpha('#06b6d4', 0.15),
+                color: '#06b6d4',
+                border: `1px solid ${alpha('#06b6d4', 0.35)}`,
+                borderRadius: '6px'
+              }}
+            />
+          )}
           {repo.topics &&
             repo.topics.slice(0, isCompact ? 2 : 3).map((topic) => (
               <Chip

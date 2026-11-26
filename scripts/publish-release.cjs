@@ -36,49 +36,45 @@ const IS_ANDROID_ONLY = process.argv.includes('--android');
 
 const TAG_NAME = IS_ANDROID_ONLY ? `v${ANDROID_VERSION}` : `v${VERSION}`;
 const RELEASE_NAME = IS_ANDROID_ONLY
-  ? `v${ANDROID_VERSION} (Android) — Spotlight Reels Observatory, Offline Quota Cache, 30-Day Cache Engine & Download Prompt`
+  ? `v${ANDROID_VERSION} (Android Feature Launch) — Spotlight Reels for Developers, Living Vault Radar, Home Screen Widgets & OLED Visual Cards`
   : `v${VERSION} (Desktop) / v${ANDROID_VERSION} (Android) — Full-Screen Settings, List View, Modal Elimination & Native Status Bar`;
 
-const ANDROID_RELEASE_BODY = `## 🚀 What's New in OneGitVault Android v${ANDROID_VERSION}
+const ANDROID_RELEASE_BODY = `## 🚀 What's New in OneGitVault Android v${ANDROID_VERSION} (Feature Launch)
 
-### ✨ 1. Spotlight Fullscreen Reels Observatory
-- **Vertical Snap-Scroll Discovery Feed**: Added a new **Spotlight** tab in the bottom navigation bar styled like full-screen vertical reels, distilling repository READMEs into clean, scannable cards with an **Elevator Pitch ("What It Is & Solves")**, **Key Highlights**, language/stars badges, and hero demo screenshots.
-- **Fullscreen Pinch-to-Zoom Media Viewer**: Tap any project screenshot or preview image to expand full-screen with two-finger pinch zoom, pan/drag, double-tap zoom reset, and Android universal edge-swipe dismissal.
-- **Focused Search & Icon-Only Filter Bar**: Includes a padded top search bar with collapsible trending tech keyword pills (visible only while focused; closes & blurs cleanly on submit) and an icon-only filter selector (\`More Stars\`, \`Trending\`, \`Newest\`, \`More Forks\`, \`All Projects\`).
-- **Bottom-Right Quick Actions Button & Expandable Dock**: Replaced the fixed side icon rail with a compact bottom-right trigger button (\`⋯\`) that expands a translucent horizontal action dock (\`Star\`, \`Vault\`, \`Readme\`, \`Share\`, \`GitHub\`) and auto-closes on tapping outside.
+### 🎬 1. Spotlight: "Instagram Reels & TikTok for Developers"
+- **Vertical Snap-Scroll Discovery Feed**: Full-screen vertical reels, distilling repository READMEs into clean cards with an **Elevator Pitch ("What It Is & Solves")**, **3 Key Highlights**, language/stars telemetry, and demo screenshots.
+- **Pinch-to-Zoom Media Viewer**: Tap any project screenshot or architectural diagram to expand full-screen with 4× pinch zoom, smooth pan, double-tap reset, and Android edge-swipe dismissal.
+- **Double-Tap to Vault**: Double-tap any card for an instant haptic pulse and animated pop-heart bookmarking gesture.
+- **Floating Quick-Actions Dock**: Compact bottom-right trigger (\`⋯\`) expanding an action dock (\`Star\`, \`Vault\`, \`Readme\`, \`Share\`, \`Card\`, \`GitHub\`) that auto-closes when scrolling or switching tabs.
 
----
+### 🖼️ 2. Pure OLED Black Visual Social Cards
+- **One-Tap "Share as Card"**: Export a stunning, high-DPI social media card ready for WhatsApp, X (Twitter), and LinkedIn.
+- **Pure OLED Black (#000000) Aesthetic**: Clean, seamless pure black styling with zero grey halos or blurred shadows.
+- **Zero-Blink Headless Render**: Off-screen headless rendering via \`html2canvas\` \`onclone\` with immediate haptic response and non-blocking asynchronous event loop scheduling.
 
-### 🛡️ 2. Bookmark & Vault Reliability Fixes
-- **App-Wide Bookmark State Sync**: Fixed reactive Vault bookmark synchronization across **RepoCard**, **Trending**, **SearchFlyout**, **RepoDetailSheet** (new Vault toggle chip), **Spotlight**, and **VaultView** using unified ID + repository name matching and quota-safe storage writes.
+### 🛡️ 3. The Living Vault: "Never Forget What You Starred"
+- **"What Changed" Changelog Radar**: Background WorkManager periodically scans bookmarked repositories for new releases and tags with an unread badge counter.
+- **Full-Screen Changelog Dashboard**: Browse release notes with direct repo navigation, one-tap "Dismiss All", and per-repo "Ignore Updates" radar controls.
+- **Private Developer Notes & Tags**: Attach personal notes (e.g., *"Use this auth library for billing service"*) and custom tags to any bookmarked repo.
+- **Smart Reminders**: Schedule weekend revisit alerts so discovered tools become real software.
 
----
+### 📲 4. Native Android Home Screen Widgets
+- **Trending Repo Widget (4×2)**: Cycles through top daily and weekly trending repositories in preferred languages right on your Android home screen.
+- **Vault Release Tracker Widget**: Glances the latest release tags and changelogs from watched/starred projects directly from your home screen.
 
-### ⚡ 3. Offline & Rate-Limit Resilience + Request Optimization
-- **Zero-Downtime Cached Fallback**: When GitHub Search or Core API request quotas are exhausted before reset time, OneGitVault automatically serves exact cached pages and locally filters previously cached repositories (\`ogv_repo_cache_*\`, \`ogv_trending_*\`, \`ogv_cached_starred_repos_*\`, and curated Android APKs) with a non-blocking reset countdown notice until quota recovers.
-- **Cold-Launch & Roundtrip Optimizations**: Deferred background \`Trending\` and \`Spotlight\` fetches until visited (cutting startup searches from 3 to 1), raised default feed batch size to **60 repositories per request**, enabled GraphQL \`HEAD:README.md\` + releases aggregation in **RepoDetailSheet**, and fixed Spotlight's \`forceRefresh\` cache bypass.
-
----
-
-### 🧹 4. Smart 30-Day / 250 MB Cache Engine & Performance Polish
-- **Unified Auto-Clear Policy**: Automatically purges temporary Web Storage and Android native WebView disk caches every **30 days** or when total cache reaches **250 MB** (whichever comes first) while strictly preserving bookmarks, GitHub PAT tokens, themes, and search history.
-- **Storage & Cache Controls in Settings**: Displays live combined cache usage (\`KB/MB of 250 MB\`), the scheduled **Next clear** date (updating +30 days automatically on manual clear), and a 1-tap **Clear Cache** action.
-- **Memory & GPU Efficiency**: Capped in-memory LRU caches, eliminated async Capacitor \`backButton\` listener leaks and redundant \`VaultView\` remounts, fixed zoom \`history.state\` cleanup, and replaced stacked heavy WebView \`backdrop-filter\` / \`blur(80px)\` layers for smoother 60/120Hz scrolling.
-
----
-
-### 📥 5. APK Download Permission Prompt & Native Updater Improvements
-- **Download Confirmation Dialog**: Clicking any **Download APK** button (or README \`.apk\` link) now prompts for explicit user confirmation (\`Allow & Download\`) showing filename and size before delegating to Android's native \`DownloadManager\`.
-- **Native Update Progress & Completion Flow**: Real-time \`DownloadManager.Query\` progress tracking in \`MainActivity.java\`; once finished, the updater displays **"Download Successful!"** with instructions to close the app and install the APK plus a **Close App** button (eliminating accidental re-downloads from the old "Re-Open Installer" action).
+### 📳 5. Universal Micro-Haptics & GitHub Dark/Light Themes
+- **Native Haptics**: Subtle tactile vibrations across all tabs, buttons, gestures, and actions with a Settings toggle.
+- **GitHub Dark & Light Themes**: Pixel-perfect OLED contrast and automatic system night-mode tracking.
+- **PolyForm Noncommercial License 1.0.0**: Updated project license.
 
 ---
 
 ### 📦 Official Android Download
 | Platform | Binary | Version | Size | Verification |
 |---|---|---|---|---|
-| **Android** | **\`OneGitVault-Android-${ANDROID_VERSION}.apk\`** | v${ANDROID_VERSION} | ~3.5 MB | Release APK (v1 + v2 signature scheme, \`allowBackup=false\`) |
+| **Android** | **\`OneGitVault-Android-${ANDROID_VERSION}.apk\`** | v${ANDROID_VERSION} | ~1.76 MB | Release APK (v1 + v2 signature scheme, \`allowBackup=false\`) |
 
-*Built with Capacitor 8, React 18, TypeScript, Material UI 5, and Vite.*
+*Built with Capacitor 6, React 18, TypeScript, Material UI 5, and Vite.*
 `;
 
 const RELEASE_BODY = IS_ANDROID_ONLY ? ANDROID_RELEASE_BODY : `## 🚀 What's New in Desktop v${VERSION} & Android v${ANDROID_VERSION}

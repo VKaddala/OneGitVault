@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Instagram Reels & Spotlight for Developers. The Living Open-Source Observatory.</strong><br>
+  <strong>OneGitVault is a Spotlighter for Developers — Like Reels & Shorts Scroll for Open-Source Repositories.</strong><br>
   <em>Discover high-impact repositories in seconds, stay alive with your Vault, and build what you discover.</em>
 </p>
 
@@ -32,8 +32,8 @@
 > **The way developers discover open source is broken.**  
 > We search GitHub, star five interesting libraries at midnight, and promptly forget them forever. We drown in 10,000-word README files just to find out whether a library actually solves our problem.  
 > 
-> **OneGitVault changes the game.**  
-> Imagine **Instagram Reels, TikTok, and YouTube Shorts built exclusively for developers and open-source architects**. Swipe up through the world's most exciting repositories, digest 5-second elevator pitches, test-drive preview media, and save projects to a **Living Vault** that actually alerts you when new releases and breaking updates drop.
+> **OneGitVault is a spotlighter for developers — something like an Instagram Reels and YouTube Shorts scroll for open-source repositories.**  
+> Swipe up through the world's most exciting repositories, digest 5-second elevator pitches ("What It Is & Solves"), test-drive preview media, and save projects to a **Living Vault** that actually alerts you when new releases and breaking updates drop.
 
 ---
 
@@ -152,26 +152,51 @@ For desktop workstations, OneGitVault delivers an ultra-fast, native command cen
 
 ---
 
-## 🏗️ Architecture & Tech Stack
+## 🏗️ Architecture & Technology Stack
+
+OneGitVault is engineered as a unified dual-platform ecosystem: an ultra-responsive native **Android Mobile Companion** paired with a heavy-duty **Windows Desktop Workstation Observatory**.
 
 ```
 OneGitVault/
 ├── android/                 # Android Native Companion (Capacitor 6 + React + TypeScript + Java 17)
-│   ├── android/app/src/     # Android Studio Native Shell
+│   ├── android/app/src/     # Android Native Shell
 │   │   ├── java/.../app/    # MainActivity, TrendingWidgetProvider, VaultReleaseWidgetProvider, VaultReleaseWorker
-│   │   └── res/layout/      # Native Widget XML Layouts & Drawables
+│   │   └── res/layout/      # Native Widget XML RemoteViews Layouts & Drawables
 │   └── src/                 # Mobile Touch Components
 │       ├── components/      # ReelCard, ReelsView (Spotlight), VaultView (Living Dashboard), RepoDetailSheet
 │       ├── services/        # bookmarkStore (Radar & Notes), visualCardGenerator, widgetSync
 │       └── utils/           # haptics, sanitizeMarkdown, shareHelper
 ├── assets/                  # Multi-resolution icons (.ico, .png, vector xml)
 ├── electron/                # Desktop Shell (IPC, Window Lifecycle, Silent Updater)
+│   ├── main.js              # Main Process: Window lifecycle, native menu, shell IPC, silent updater
+│   └── preload.js           # Preload Bridge: Context-isolated electronAPI bridge
 ├── src/                     # Desktop React + Tailwind Architecture
 │   ├── components/          # TitleBar, CategoryNav, FilterBar, ProjectCard, TrendingModal, BookmarksModal
 │   ├── hooks/               # useRepositories, useBookmarks, useGitHubStars
 │   └── services/            # githubApi, rateLimit, gistSync, updateService
 └── SETUP_ANDROID.md         # Comprehensive Android Build & Run Guide
 ```
+
+### 🖥️ Desktop Application Tech Stack (Windows)
+- **Runtime & Desktop Shell**: **Electron 31** (Node.js 20 LTS + Chromium)
+- **Frontend Architecture**: **React 18** with **TypeScript 5**
+- **Styling & Design System**: **Tailwind CSS 3** with custom GitHub Dark / Light high-contrast tokens
+- **Build System & Bundler**: **Vite 5** (Lightning-fast HMR and tree-shaken production bundles)
+- **Process & IPC Architecture**:
+  - **Main Process (`electron/main.js`)**: Manages BrowserWindow lifecycle, hardware acceleration flags, secure deep linking, and silent automated background updates via GitHub Releases API.
+  - **Context-Isolated Preload Bridge (`electron/preload.js`)**: Exposes a zero-leak, type-safe `window.electronAPI` interface with `contextIsolation: true` and `nodeIntegration: false`.
+  - **Renderer Process (`src/`)**: Virtualized live repository streaming, non-blocking DOMPurify sanitized GitHub Flavored Markdown (GFM) reader, and dynamic API rate-limit quota managers.
+- **Packaging & Distribution**: **electron-builder** with **Inno Setup 6** (Generates production `.exe` installer with `/VERYSILENT` automated background upgrade support).
+
+### 📱 Android Mobile Tech Stack (Mobile Companion)
+- **Native Runtime Bridge**: **Capacitor 6** with **Java 17** / **Gradle 8.2**
+- **Frontend Architecture**: **React 18** with **TypeScript 5**
+- **UI Components & Touch Engine**: **Material UI 5 (Emotion)** + **Tailwind CSS** + Custom CSS Snap-Scroll Engine
+- **Visual Card Export Engine**: Headless **`html2canvas`** off-screen DOM cloning engine rendering zero-blink `#000000` pure OLED cards
+- **Android Native Services**:
+  - **Home Screen Widgets**: `AppWidgetProvider` (`TrendingWidgetProvider` 4×2 trending feed & `VaultReleaseWidgetProvider` release tracker)
+  - **Background WorkManager**: `VaultReleaseWorker` periodic background tasks scanning bookmarked repositories for release updates
+  - **Native Device Features**: `@capacitor/haptics` (micro-vibrations), `@capacitor/share`, `@capacitor/filesystem`, and custom `AndroidThemeBridge` status bar integration
 
 ---
 

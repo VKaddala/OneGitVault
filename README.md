@@ -253,5 +253,10 @@ OneGitVault functions out-of-the-box with unauthenticated public GitHub API acce
 ---
 
 ## 📜 License
+Copyright (c) 2026 VKaddala.
 
-Distributed under the **GPL-3.0 License**. Designed and developed by [VKaddala](https://github.com/VKaddala).
+This project is licensed under the PolyForm Noncommercial License 1.0.0 — see the [LICENSE.md](LICENSE.md) file for details.
+
+- ✅ Allowed: Viewing the source code, opening issues/discussions, and using or modifying the code for personal, educational, or non-commercial purposes.
+- ❌ Not Allowed: Commercial use, monetization, or publishing compiled builds/clones on the Google Play Store or other app stores without explicit written permission from the author.
+Designed and developed by [VKaddala](https://github.com/VKaddala).

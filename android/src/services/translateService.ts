@@ -56,14 +56,48 @@ function setCachedTranslation(text: string, translated: string): void {
 }
 
 /**
- * Checks whether text actually contains non-English / non-Latin characters.
- * Covers CJK, Cyrillic, Arabic, Devanagari, Thai, Hebrew, Greek, accented European Latin, etc.
+ * Checks whether text actually contains non-English script characters.
+ * Zero-cost ASCII fast-path skips English text in <0.1ms and avoids false positives on math/currency symbols.
  */
 export function needsTranslation(text: string | null | undefined): boolean {
   if (!text || text.length < 2) return false;
-  // Non-ASCII characters: CJK, Cyrillic, Arabic, Asian scripts, European accents
-  const nonEnglishRegex = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\u0400-\u04FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u00C0-\u00FF]/;
-  return nonEnglishRegex.test(text);
+  // Pure ASCII strings are always English / code — skip regex scan completely
+  if (/^[\x00-\x7F]*$/.test(text)) return false;
+
+  // Non-Latin scripts: Japanese, Chinese, Korean Hangul, Cyrillic, Arabic, Devanagari, Thai, Hebrew, Greek, Vietnamese
+  const nonLatinScriptRegex = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\u1100-\u11ff\u3130-\u318f\uac00-\ud7af\u0400-\u04ff\u0600-\u06ff\u0900-\u097f\u0e00-\u0e7f\u0590-\u05ff\u0370-\u03ff\u1e00-\u1eff]/;
+  if (nonLatinScriptRegex.test(text)) return true;
+
+  // Accented European Latin letters (exclude × \u00d7, ÷ \u00f7) — require 3+ accented chars to skip English loanwords
+  const latinExtendedMatches = text.match(/[\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u024F]/g);
+  return Boolean(latinExtendedMatches && latinExtendedMatches.length >= 3);
+}
+
+/**
+ * Translates an array of short strings to English ONLY for items that are genuinely non-English.
+ * If all items are English, performs zero network requests.
+ */
+export async function translateItemsToEnglish(
+  items: string[]
+): Promise<{ items: string[]; didTranslate: boolean }> {
+  if (!items || items.length === 0) return { items: [], didTranslate: false };
+
+  const flags = items.map((item) => needsTranslation(item));
+  if (!flags.some(Boolean)) {
+    return { items, didTranslate: false };
+  }
+
+  let didTranslate = false;
+  const translated = await Promise.all(
+    items.map(async (item, idx) => {
+      if (!flags[idx]) return item;
+      const res = await translateTextToEnglish(item);
+      if (res && res !== item) didTranslate = true;
+      return res;
+    })
+  );
+
+  return { items: translated, didTranslate };
 }
 
 /**

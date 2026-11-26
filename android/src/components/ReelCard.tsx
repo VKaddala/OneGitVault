@@ -16,6 +16,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CloseIcon from '@mui/icons-material/Close';
 import { Repository } from '../types';
 import { ReadmeSummary } from '../services/readmeSummaryParser';
+import { OwnerAvatar } from './OwnerAvatar';
 
 interface ReelCardProps {
   repo: Repository;
@@ -29,22 +30,22 @@ interface ReelCardProps {
 }
 
 const LANGUAGE_COLORS: Record<string, string> = {
-  TypeScript: '#3178c6',
+  TypeScript: '#3b82f6',
   JavaScript: '#f7df1e',
-  Python: '#3776ab',
-  Rust: '#dea584',
-  Go: '#00add8',
-  Kotlin: '#a97bff',
-  Java: '#b07219',
-  'C++': '#f34b7d',
-  C: '#555555',
-  Swift: '#f05138',
-  Dart: '#00b4ab',
-  PHP: '#4f5d95',
-  Ruby: '#701516',
-  HTML: '#e34c26',
-  CSS: '#563d7c',
-  Shell: '#89e051'
+  Python: '#38bdf8',
+  Rust: '#fb923c',
+  Go: '#06b6d4',
+  Kotlin: '#a855f7',
+  Java: '#f59e0b',
+  'C++': '#f43f5e',
+  C: '#60a5fa',
+  Swift: '#f97316',
+  Dart: '#14b8a6',
+  PHP: '#818cf8',
+  Ruby: '#fb7185',
+  HTML: '#ef4444',
+  CSS: '#c084fc',
+  Shell: '#4ade80'
 };
 
 export const ReelCard: React.FC<ReelCardProps> = ({
@@ -143,8 +144,8 @@ export const ReelCard: React.FC<ReelCardProps> = ({
       const startY = e.touches[0].clientY;
       touchStartPosRef.current = { x: startX, y: startY };
 
-      // Detect edge touch for universal swipe gesture (within 45px of screen edge)
-      if (startX < 45 || startX > window.innerWidth - 45) {
+      // Detect edge touch for swipe dismiss when not zoomed in
+      if (zoomScale <= 1.05 && (startX < 40 || startX > window.innerWidth - 40)) {
         isEdgeSwipeRef.current = true;
       } else {
         isEdgeSwipeRef.current = false;
@@ -162,19 +163,27 @@ export const ReelCard: React.FC<ReelCardProps> = ({
         const factor = dist / touchStartDistRef.current;
         const newScale = Math.min(Math.max(initialScaleRef.current * factor, 1), 4);
         setZoomScale(newScale);
+        if (newScale <= 1.02) {
+          setPanOffset({ x: 0, y: 0 });
+        }
       }
     } else if (e.touches.length === 1 && touchStartPosRef.current) {
       const deltaX = e.touches[0].clientX - touchStartPosRef.current.x;
       const deltaY = e.touches[0].clientY - touchStartPosRef.current.y;
 
-      // Inward horizontal edge swipe detection to dismiss
-      if (isEdgeSwipeRef.current && Math.abs(deltaX) > 40) {
+      // Inward horizontal edge swipe detection to dismiss (at 1x zoom)
+      if (isEdgeSwipeRef.current && zoomScale <= 1.05 && Math.abs(deltaX) > 40) {
         setZoomOpen(false);
         return;
       }
 
-      if (zoomScale > 1) {
-        setPanOffset((prev) => ({ x: prev.x + deltaX * 0.4, y: prev.y + deltaY * 0.4 }));
+      if (zoomScale > 1.02) {
+        const maxPanX = Math.max(80, Math.round(((zoomScale - 1) * window.innerWidth) / 2 + 60));
+        const maxPanY = Math.max(80, Math.round(((zoomScale - 1) * window.innerHeight * 0.45) + 60));
+        setPanOffset((prev) => ({
+          x: Math.min(maxPanX, Math.max(-maxPanX, prev.x + deltaX)),
+          y: Math.min(maxPanY, Math.max(-maxPanY, prev.y + deltaY)),
+        }));
         touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       } else if (deltaY > 0) {
         // Swipe down dismiss cue
@@ -186,6 +195,9 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (e.touches.length < 2) {
       isPinchingRef.current = false;
+    }
+    if (e.touches.length === 0) {
+      touchStartPosRef.current = null;
     }
     // Dismiss if dragged down > 80px at 1x zoom
     if (zoomScale <= 1.05 && panOffset.y > 80) {
@@ -224,7 +236,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
-        bgcolor: isDark ? '#06090e' : '#f8fafc',
+        bgcolor: 'transparent',
         boxSizing: 'border-box',
         px: { xs: 1.6, sm: 2.2 },
         pt: 'calc(max(env(safe-area-inset-top, 0px), 48px) + 78px)',
@@ -241,7 +253,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           width: 380,
           height: 380,
           borderRadius: '50%',
-          background: `radial-gradient(circle, ${alpha(langColor, isDark ? 0.16 : 0.09)} 0%, transparent 65%)`,
+          background: `radial-gradient(circle, ${alpha(langColor, isDark ? 0.22 : 0.13)} 0%, transparent 65%)`,
           pointerEvents: 'none',
           zIndex: 0
         }}
@@ -254,7 +266,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           width: 360,
           height: 360,
           borderRadius: '50%',
-          background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, isDark ? 0.13 : 0.08)} 0%, transparent 65%)`,
+          background: `radial-gradient(circle, ${alpha(theme.palette.secondary.main, isDark ? 0.18 : 0.10)} 0%, transparent 65%)`,
           pointerEvents: 'none',
           zIndex: 0
         }}
@@ -296,11 +308,11 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           height: '100%',
           maxHeight: '100%',
           borderRadius: '26px',
-          bgcolor: isDark ? 'rgba(13, 17, 23, 0.94)' : 'rgba(255, 255, 255, 0.96)',
-          border: `1.5px solid ${alpha(langColor, isDark ? 0.35 : 0.22)}`,
+          bgcolor: theme.palette.background.paper,
+          border: `1.5px solid ${alpha(theme.palette.primary.main, isDark ? 0.34 : 0.24)}`,
           boxShadow: isDark
-            ? `0 20px 50px rgba(0,0,0,0.65), 0 0 20px ${alpha(langColor, 0.15)}, inset 0 1px 1px rgba(255,255,255,0.12)`
-            : `0 14px 40px rgba(0,0,0,0.08), 0 0 20px ${alpha(langColor, 0.08)}, inset 0 1px 1px #fff`,
+            ? `0 20px 50px rgba(0,0,0,0.65), 0 0 22px ${alpha(theme.palette.primary.main, 0.14)}, inset 0 1px 1px rgba(255,255,255,0.12)`
+            : `0 14px 40px rgba(15,23,42,0.09), 0 0 20px ${alpha(theme.palette.primary.main, 0.09)}, inset 0 1px 1px #fff`,
           display: 'flex',
           flexDirection: 'column',
           overflowY: 'auto',
@@ -319,27 +331,19 @@ export const ReelCard: React.FC<ReelCardProps> = ({
             left: 0,
             right: 0,
             height: 3.5,
-            background: `linear-gradient(90deg, ${langColor}, ${theme.palette.primary.main})`
+            background: `linear-gradient(90deg, ${langColor}, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`
           }}
         />
 
         {/* ── SECTION 1: Identity Header ── */}
         <Box sx={{ mb: 1.8 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.8 }}>
-            <Box
-              component="img"
-              src={repo.owner?.avatar_url || `https://github.com/${repo.owner?.login}.png?size=80`}
-              alt={repo.owner?.login}
-              onError={(e: any) => {
-                e.currentTarget.style.display = 'none';
-              }}
-              sx={{
-                width: 34,
-                height: 34,
-                borderRadius: '50%',
-                border: `2px solid ${alpha(langColor, 0.5)}`,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.25)'
-              }}
+            <OwnerAvatar
+              owner={repo.owner}
+              size={34}
+              borderRadius="50%"
+              border={`2px solid ${alpha(langColor, 0.5)}`}
+              boxShadow="0 4px 12px rgba(0,0,0,0.25)"
             />
             <Typography
               variant="caption"
@@ -460,20 +464,35 @@ export const ReelCard: React.FC<ReelCardProps> = ({
 
         {/* ── SECTION 3: What It Is & Solves (The Elevator Pitch) ── */}
         <Box sx={{ my: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.8 }}>
-            <LightbulbIcon sx={{ fontSize: 17, color: theme.palette.primary.main }} />
-            <Typography
-              variant="caption"
-              sx={{
-                fontSize: '0.7rem',
-                fontWeight: 900,
-                textTransform: 'uppercase',
-                letterSpacing: 1.1,
-                color: theme.palette.primary.main
-              }}
-            >
-              What It Is & Solves
-            </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.8, mb: 0.8 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+              <LightbulbIcon sx={{ fontSize: 17, color: theme.palette.primary.main }} />
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: '0.7rem',
+                  fontWeight: 900,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1.1,
+                  color: theme.palette.primary.main
+                }}
+              >
+                What It Is & Solves
+              </Typography>
+            </Box>
+            {summary.isTranslated && (
+              <Chip
+                label="Translated"
+                size="small"
+                sx={{
+                  height: 18,
+                  fontSize: '0.6rem',
+                  fontWeight: 800,
+                  bgcolor: alpha(theme.palette.primary.main, 0.14),
+                  color: theme.palette.primary.main
+                }}
+              />
+            )}
           </Box>
 
           <Typography
@@ -497,7 +516,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
 
             <Box sx={{ mt: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 1 }}>
-                <RocketLaunchIcon sx={{ fontSize: 16, color: theme.palette.primary.main }} />
+                <RocketLaunchIcon sx={{ fontSize: 16, color: theme.palette.secondary.main }} />
                 <Typography
                   variant="caption"
                   sx={{
@@ -505,7 +524,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
                     fontWeight: 900,
                     textTransform: 'uppercase',
                     letterSpacing: 1.1,
-                    color: 'text.secondary'
+                    color: theme.palette.secondary.main
                   }}
                 >
                   Key Highlights
@@ -518,7 +537,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
                     <AutoAwesomeIcon
                       sx={{
                         fontSize: 14,
-                        color: theme.palette.primary.main,
+                        color: idx % 2 === 0 ? theme.palette.primary.main : theme.palette.secondary.main,
                         mt: '3px',
                         flexShrink: 0
                       }}
@@ -586,7 +605,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           </IconButton>
         </Box>
 
-        {/* Zoom Image Viewport with Pinch-to-Zoom & Edge-Swipe / Drag-down Support */}
+        {/* Zoom Image Viewport with Pinch-to-Zoom & Edge/Drag-down Support */}
         <Box
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -594,6 +613,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           onClick={handleImageDoubleTap}
           sx={{
             flex: 1,
+            width: '100%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -601,8 +621,6 @@ export const ReelCard: React.FC<ReelCardProps> = ({
             cursor: 'grab',
             userSelect: 'none',
             touchAction: 'none',
-            transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0)`,
-            transition: isPinchingRef.current ? 'none' : 'transform 0.15s ease-out'
           }}
         >
           {summary.heroMediaUrl && (
@@ -610,15 +628,19 @@ export const ReelCard: React.FC<ReelCardProps> = ({
               component="img"
               src={summary.heroMediaUrl}
               alt={`${repo.name} zoomed preview`}
+              referrerPolicy="no-referrer"
               sx={{
                 maxWidth: '96%',
                 maxHeight: '85vh',
                 objectFit: 'contain',
                 borderRadius: '16px',
                 boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
-                transform: `scale(${zoomScale})`,
+                transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${zoomScale})`,
                 transformOrigin: 'center center',
-                transition: isPinchingRef.current ? 'none' : 'transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
+                willChange: 'transform',
+                transition: isPinchingRef.current || zoomScale > 1.02
+                  ? 'none'
+                  : 'transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
                 pointerEvents: 'none'
               }}
             />
@@ -630,7 +652,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.65)', fontWeight: 600 }}>
             {zoomScale > 1
               ? `${zoomScale.toFixed(1)}x Zoom • Drag to pan • Double-tap to reset`
-              : 'Pinch to zoom • Universal edge swipe or swipe down to close'}
+              : 'Pinch to zoom • Swipe edge or down to close'}
           </Typography>
         </Box>
       </Dialog>

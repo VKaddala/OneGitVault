@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
 import {
   ThemeProvider,
   CssBaseline,
@@ -28,30 +28,46 @@ import {
   starRepository,
   unstarRepository
 } from './services/githubApi';
-import { getBookmarks, saveBookmarks, toggleBookmark } from './services/bookmarkStore';
+import { getBookmarks, saveBookmarks, toggleBookmark, hasCompletedOnboarding, sanitizeRepositoryList } from './services/bookmarkStore';
 import {
   pullBookmarksFromGist,
   pushBookmarksToGist,
-  fetchUserStarredRepositories
+  fetchUserStarredRepositories,
+  fetchUserWatchedRepositories
 } from './services/gistSync';
 import { APK_CATEGORIES, EXPLORE_CATEGORIES } from './data/categories';
 import { CURATED_ANDROID_APKS } from './data/curatedAndroidApks';
 import { TopAppBar } from './components/TopAppBar';
 import { CompactFilterBar } from './components/CompactFilterBar';
 import { RepoCard } from './components/RepoCard';
-import { RepoDetailSheet } from './components/RepoDetailSheet';
 import { TrendingView } from './components/TrendingView';
 import { VaultView } from './components/VaultView';
-import { TokenDialog } from './components/TokenDialog';
-import { SearchFlyout } from './components/SearchFlyout';
 import { BottomNav } from './components/BottomNav';
-import { UpdateDialog } from './components/UpdateDialog';
 import { ApkDownloadDialog } from './components/ApkDownloadDialog';
-import { SettingsPage } from './components/SettingsPage';
 import { ReelsView } from './components/ReelsView';
 import { checkForAndroidUpdates, AndroidUpdateInfo } from './services/updateService';
 import { OneGitVaultLogo } from './components/OneGitVaultLogo';
 import { startPeriodicCacheMaintenance } from './services/cacheManager';
+import { triggerHaptic } from './utils/haptics';
+
+const RepoDetailSheet = React.lazy(() =>
+  import('./components/RepoDetailSheet').then((m) => ({ default: m.RepoDetailSheet }))
+);
+const SettingsPage = React.lazy(() =>
+  import('./components/SettingsPage').then((m) => ({ default: m.SettingsPage }))
+);
+const SearchFlyout = React.lazy(() =>
+  import('./components/SearchFlyout').then((m) => ({ default: m.SearchFlyout }))
+);
+const TokenDialog = React.lazy(() =>
+  import('./components/TokenDialog').then((m) => ({ default: m.TokenDialog }))
+);
+const UpdateDialog = React.lazy(() =>
+  import('./components/UpdateDialog').then((m) => ({ default: m.UpdateDialog }))
+);
+const OnboardingInterestsModal = React.lazy(() =>
+  import('./components/OnboardingInterestsModal').then((m) => ({ default: m.OnboardingInterestsModal }))
+);
 
 export const App: React.FC = () => {
   // Theme Management
@@ -60,17 +76,43 @@ export const App: React.FC = () => {
       const explicit = localStorage.getItem('onegitvault_theme_user_explicit') === 'true';
       const saved = localStorage.getItem('onegitvault_active_theme_plugin');
       if (explicit && saved && themeRegistry.has(saved)) {
-        return saved;
+        return themeRegistry.normalizeThemeId(saved);
       }
-      return themeRegistry.getSystemThemeId();
+      return 'system';
     } catch {
-      return 'github-dark';
+      return 'system';
     }
   });
 
+  const [systemThemeTick, setSystemThemeTick] = useState<number>(0);
+
+  useEffect(() => {
+    const refreshSysTheme = () => {
+      themeRegistry.invalidateSystemAppearance();
+      setSystemThemeTick((t) => t + 1);
+      try {
+        const explicit = localStorage.getItem('onegitvault_theme_user_explicit') === 'true';
+        if (!explicit) {
+          setThemeId('system');
+        }
+      } catch {}
+    };
+    window.addEventListener('ogv_system_theme_changed', refreshSysTheme);
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
+    mq?.addEventListener?.('change', refreshSysTheme);
+    return () => {
+      window.removeEventListener('ogv_system_theme_changed', refreshSysTheme);
+      mq?.removeEventListener?.('change', refreshSysTheme);
+    };
+  }, []);
+
+  const availableThemes: ThemePlugin[] = useMemo(() => {
+    return themeRegistry.getAll();
+  }, [systemThemeTick]);
+
   const activeThemePlugin: ThemePlugin = useMemo(() => {
     return themeRegistry.get(themeId);
-  }, [themeId]);
+  }, [themeId, systemThemeTick]);
 
   const muiTheme = useMemo(() => {
     return createMuiThemeFromPlugin(activeThemePlugin);
@@ -81,13 +123,14 @@ export const App: React.FC = () => {
     themeRegistry.applyToDom(activeThemePlugin);
   }, [activeThemePlugin]);
 
-  const handleSelectTheme = (newThemeId: string) => {
-    setThemeId(newThemeId);
+  const handleSelectTheme = useCallback((newThemeId: string) => {
+    const normalized = themeRegistry.normalizeThemeId(newThemeId);
+    setThemeId(normalized);
     try {
-      localStorage.setItem('onegitvault_active_theme_plugin', newThemeId);
+      localStorage.setItem('onegitvault_active_theme_plugin', normalized);
       localStorage.setItem('onegitvault_theme_user_explicit', 'true');
     } catch {}
-  };
+  }, []);
 
   // Compact View Density State
   const [isCompactView, setIsCompactView] = useState<boolean>(() => {
@@ -98,7 +141,7 @@ export const App: React.FC = () => {
     }
   });
 
-  const handleToggleCompactView = () => {
+  const handleToggleCompactView = useCallback(() => {
     setIsCompactView((prev) => {
       const next = !prev;
       try {
@@ -106,26 +149,38 @@ export const App: React.FC = () => {
       } catch {}
       return next;
     });
-  };
+  }, []);
 
-  // Starred Repositories State (Synced with GitHub when PAT available)
+  // Starred & Watched Repositories State (Synced with GitHub when PAT/OAuth available)
   const [starredRepos, setStarredRepos] = useState<Set<string>>(new Set());
   const [starredReposList, setStarredReposList] = useState<Repository[]>([]);
   const [starredListLoaded, setStarredListLoaded] = useState<boolean>(false);
+  const [watchedReposList, setWatchedReposList] = useState<Repository[]>([]);
+  const [watchedListLoaded, setWatchedListLoaded] = useState<boolean>(false);
 
   // Function to refresh starred repositories from GitHub
   const refreshStarredList = useCallback(async () => {
     const token = getStoredToken();
     if (!token) return;
     try {
-      const starred = await fetchUserStarredRepositories(token, 1, 100, true);
-      if (starred && Array.isArray(starred)) {
-        setStarredReposList(starred);
-        setStarredRepos(new Set(starred.map((r) => r.full_name)));
-        setStarredListLoaded(true);
-      }
+      const starred = sanitizeRepositoryList(await fetchUserStarredRepositories(token, 1, 100, true));
+      setStarredReposList(starred);
+      setStarredRepos(new Set(starred.map((r) => r.full_name)));
+      setStarredListLoaded(true);
     } catch (e) {
       console.warn('Failed to refresh starred repos:', e);
+    }
+  }, []);
+
+  const refreshWatchedList = useCallback(async () => {
+    const token = getStoredToken();
+    if (!token) return;
+    try {
+      const watched = sanitizeRepositoryList(await fetchUserWatchedRepositories(token, 1, 100, true));
+      setWatchedReposList(watched);
+      setWatchedListLoaded(true);
+    } catch (e) {
+      console.warn('Failed to refresh watched repos:', e);
     }
   }, []);
 
@@ -142,8 +197,11 @@ export const App: React.FC = () => {
       .catch(() => {});
   }, []);
 
-  // Navigation: 'apks' | 'trending' | 'vault' | 'explore'
+  // Navigation: 'apks' | 'trending' | 'spotlight' | 'vault' | 'explore'
   const [currentTab, setCurrentTab] = useState<string>('apks');
+  const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>({ apks: true });
+  const visitedTabsRef = useRef<Record<string, boolean>>({ apks: true });
+  visitedTabsRef.current = visitedTabs;
   const [hasVisitedVault, setHasVisitedVault] = useState<boolean>(() => {
     try {
       return localStorage.getItem('onegitvault_vault_visited') === 'true';
@@ -151,15 +209,6 @@ export const App: React.FC = () => {
       return false;
     }
   });
-
-  useEffect(() => {
-    if (currentTab === 'vault') {
-      setHasVisitedVault(true);
-      try {
-        localStorage.setItem('onegitvault_vault_visited', 'true');
-      } catch {}
-    }
-  }, [currentTab]);
 
   // Search State
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -206,6 +255,7 @@ export const App: React.FC = () => {
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>('');
+  const [undoBookmarkRepo, setUndoBookmarkRepo] = useState<Repository | null>(null);
   const [trendingRefreshKey, setTrendingRefreshKey] = useState<number>(0);
   const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
 
@@ -248,6 +298,14 @@ export const App: React.FC = () => {
   // Start periodic cache maintenance (startup sweep + every 10 minutes)
   useEffect(() => {
     return startPeriodicCacheMaintenance(10 * 60 * 1000);
+  }, []);
+
+  // Optional First-Launch Topic Interests Onboarding
+  const [onboardingOpen, setOnboardingOpen] = useState<boolean>(false);
+  useEffect(() => {
+    if (hasCompletedOnboarding()) return;
+    const t = setTimeout(() => setOnboardingOpen(true), 750);
+    return () => clearTimeout(t);
   }, []);
 
   // Universal Android Back Gesture & Hardware Back Button Handling (Edge Swipe)
@@ -334,49 +392,62 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Sync Rate Limits & Auto-pull Gist and Starred repos if PAT present
+  const syncAuthenticatedAccountData = useCallback((token: string) => {
+    if (!token) return;
+    pullBookmarksFromGist(token)
+      .then((gistBookmarks) => {
+        const safeGist = sanitizeRepositoryList(gistBookmarks);
+        if (safeGist.length > 0) {
+          const local = getBookmarks();
+          const localMap = new Map(local.map((r) => [r.id, r]));
+          let hasNew = false;
+          for (const gb of safeGist) {
+            if (!localMap.has(gb.id)) {
+              localMap.set(gb.id, gb);
+              hasNew = true;
+            }
+          }
+          if (hasNew) {
+            saveBookmarks(Array.from(localMap.values()));
+          }
+        }
+      })
+      .catch(() => {});
+
+    fetchUserStarredRepositories(token, 1, 100)
+      .then((rawStarred) => {
+        const starred = sanitizeRepositoryList(rawStarred);
+        if (rawStarred && Array.isArray(rawStarred)) {
+          setStarredReposList(starred);
+          setStarredRepos(new Set(starred.map((r) => r.full_name)));
+          setStarredListLoaded(true);
+        }
+      })
+      .catch(() => {});
+
+    fetchUserWatchedRepositories(token, 1, 100)
+      .then((rawWatched) => {
+        const watched = sanitizeRepositoryList(rawWatched);
+        if (rawWatched && Array.isArray(rawWatched)) {
+          setWatchedReposList(watched);
+          setWatchedListLoaded(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Sync Rate Limits & Auto-pull Gist, Starred, and Watched repos if PAT/OAuth present
   useEffect(() => {
     setRateLimitListener((info) => setRateLimit(info));
     checkLiveRateLimit();
+    syncAuthenticatedAccountData(getStoredToken());
+  }, [syncAuthenticatedAccountData]);
 
-    const token = getStoredToken();
-    if (token) {
-      pullBookmarksFromGist(token)
-        .then((gistBookmarks) => {
-          if (gistBookmarks && Array.isArray(gistBookmarks) && gistBookmarks.length > 0) {
-            const local = getBookmarks();
-            const localMap = new Map(local.map((r) => [r.id, r]));
-            let hasNew = false;
-            for (const gb of gistBookmarks) {
-              if (!localMap.has(gb.id)) {
-                localMap.set(gb.id, gb);
-                hasNew = true;
-              }
-            }
-            if (hasNew) {
-              saveBookmarks(Array.from(localMap.values()));
-            }
-          }
-        })
-        .catch(() => {});
-
-      fetchUserStarredRepositories(token, 1, 100)
-        .then((starred) => {
-          if (starred && Array.isArray(starred)) {
-            setStarredReposList(starred);
-            setStarredRepos(new Set(starred.map((r) => r.full_name)));
-            setStarredListLoaded(true);
-          }
-        })
-        .catch(() => {});
-    }
-  }, []);
-
-  // Debounce search input with 500ms throttle
+  // Debounce search input with 280ms throttle for snappy response
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-    }, 500);
+    }, 280);
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
@@ -573,26 +644,30 @@ export const App: React.FC = () => {
 
   const [detailInitialTab, setDetailInitialTab] = useState<'info' | 'readme' | 'releases'>('info');
 
-  const handleOpenDetail = (repo: Repository, initialTab: 'info' | 'readme' | 'releases' = 'info') => {
+  const loadedReposRef = useRef<Repository[]>([]);
+  loadedReposRef.current = [...apkRepos, ...exploreRepos];
+
+  const handleOpenDetail = useCallback((repo: Repository, initialTab: 'info' | 'readme' | 'releases' = 'info') => {
     setActiveRepo(repo);
     setDetailInitialTab(initialTab);
     setDetailOpen(true);
-  };
+  }, []);
 
-  const handleCopyClone = (cloneUrl: string) => {
+  const handleCopyClone = useCallback((cloneUrl: string) => {
     navigator.clipboard.writeText(`git clone ${cloneUrl}`);
-    const found = apkRepos.find((r) => r.clone_url === cloneUrl) || exploreRepos.find((r) => r.clone_url === cloneUrl);
+    const found = loadedReposRef.current.find((r) => r.clone_url === cloneUrl);
     if (found) setCopiedId(found.id);
     setSnackbarMessage(`Copied: git clone ${cloneUrl}`);
     setSnackbarOpen(true);
     setTimeout(() => setCopiedId(null), 2500);
-  };
+  }, []);
 
-  const handleToggleBookmark = (repo: Repository) => {
+  const handleToggleBookmark = useCallback((repo: Repository) => {
     const added = toggleBookmark(repo);
     const updated = getBookmarks();
     setBookmarkedIds(new Set(updated.map((r) => r.id)));
     setBookmarkedNames(new Set(updated.map((r) => r.full_name?.toLowerCase()).filter(Boolean) as string[]));
+    setUndoBookmarkRepo(added ? null : repo);
     setSnackbarMessage(added ? `Saved ${repo.name} to Vault` : `Removed ${repo.name} from Vault`);
     setSnackbarOpen(true);
     if (added && currentTab !== 'vault') {
@@ -607,10 +682,26 @@ export const App: React.FC = () => {
     if (token) {
       setTimeout(() => pushBookmarksToGist(token, getBookmarks()), 300);
     }
-  };
+  }, [currentTab]);
+
+  const handleUndoRemoveBookmark = useCallback(() => {
+    if (!undoBookmarkRepo) return;
+    const repoToRestore = undoBookmarkRepo;
+    setUndoBookmarkRepo(null);
+    toggleBookmark(repoToRestore);
+    const updated = getBookmarks();
+    setBookmarkedIds(new Set(updated.map((r) => r.id)));
+    setBookmarkedNames(new Set(updated.map((r) => r.full_name?.toLowerCase()).filter(Boolean) as string[]));
+    setSnackbarMessage(`Restored ${repoToRestore.name} to Vault`);
+    setSnackbarOpen(true);
+    const token = getStoredToken();
+    if (token) {
+      setTimeout(() => pushBookmarksToGist(token, getBookmarks()), 300);
+    }
+  }, [undoBookmarkRepo]);
 
   // Direct Star / Unstar on GitHub with PAT
-  const handleToggleStar = async (repo: Repository) => {
+  const handleToggleStar = useCallback(async (repo: Repository) => {
     const token = getStoredToken();
     if (!token) {
       setSnackbarMessage('Add a Personal Access Token to star repositories directly');
@@ -654,12 +745,17 @@ export const App: React.FC = () => {
       }
     }
     setSnackbarOpen(true);
-  };
+  }, [starredRepos]);
 
-  const handleShareMessage = (msg: string) => {
+  const checkIsStarred = useCallback(
+    (fullName: string) => starredRepos.has(fullName),
+    [starredRepos]
+  );
+
+  const handleShareMessage = useCallback((msg: string) => {
     setSnackbarMessage(msg);
     setSnackbarOpen(true);
-  };
+  }, []);
 
   const handleScrollTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -699,7 +795,7 @@ export const App: React.FC = () => {
         await checkLiveRateLimit(true);
       } else if (currentTab === 'vault') {
         window.dispatchEvent(new CustomEvent('ogv_bookmarks_changed', { detail: getBookmarks() }));
-        await refreshStarredList();
+        await Promise.all([refreshStarredList(), refreshWatchedList()]);
         await checkLiveRateLimit(true);
       } else if (currentTab === 'apks') {
         await loadApkData(true);
@@ -723,11 +819,192 @@ export const App: React.FC = () => {
   const vaultCount = (hasVisitedVault || currentTab === 'vault') ? 0 : bookmarkedIds.size;
   const isBottomNavVisible = !isSearchActive && !isKeyboardOpen;
 
+  const TAB_ORDER = useMemo(() => ['apks', 'trending', 'spotlight', 'vault', 'explore'] as const, []);
+  const swipeStartRef = useRef<{ x: number; y: number; time: number; target: EventTarget | null } | null>(null);
+  const tabScrollPosRef = useRef<Record<string, number>>({});
+  const currentTabRef = useRef<string>(currentTab);
+  currentTabRef.current = currentTab;
+
+  const handleTabChange = useCallback(
+    (tab: string) => {
+      const prevTab = currentTabRef.current;
+      if (tab === prevTab) {
+        if (tab !== 'spotlight') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        return;
+      }
+      if (prevTab !== 'spotlight') {
+        tabScrollPosRef.current[prevTab] = window.scrollY;
+      }
+
+      // Shift to the target page immediately on this frame; mount/load heavy tab content right after paint
+      if (tab === 'vault') {
+        setHasVisitedVault(true);
+        try {
+          localStorage.setItem('onegitvault_vault_visited', 'true');
+        } catch {}
+      }
+      setCurrentTab(tab);
+
+      if (!visitedTabsRef.current[tab]) {
+        window.requestAnimationFrame(() => {
+          setTimeout(() => {
+            setVisitedTabs((prev) => (prev[tab] ? prev : { ...prev, [tab]: true }));
+            if (tab === 'explore' && !exploreLoadedOnceRef.current) {
+              loadExploreData();
+            }
+          }, 0);
+        });
+      } else if (tab === 'explore' && !exploreLoadedOnceRef.current) {
+        window.requestAnimationFrame(() => {
+          setTimeout(() => {
+            if (!exploreLoadedOnceRef.current) {
+              loadExploreData();
+            }
+          }, 0);
+        });
+      }
+
+      if (tab !== 'spotlight') {
+        const savedY = tabScrollPosRef.current[tab] ?? 0;
+        window.requestAnimationFrame(() => {
+          window.scrollTo({ top: savedY, behavior: 'auto' });
+        });
+      }
+    },
+    [loadExploreData]
+  );
+
+  const handleOpenSettings = useCallback(() => setSettingsOpen(true), []);
+  const handleCloseSettings = useCallback(() => setSettingsOpen(false), []);
+  const handleOpenTokenDialog = useCallback(() => setTokenDialogOpen(true), []);
+  const handleCloseTokenDialog = useCallback(() => setTokenDialogOpen(false), []);
+  const handleOpenUpdateDialog = useCallback(() => setUpdateDialogOpen(true), []);
+  const handleCloseUpdateDialog = useCallback(() => setUpdateDialogOpen(false), []);
+  const handleCloseDetail = useCallback(() => setDetailOpen(false), []);
+
+  const handleSearchActiveChange = useCallback((active: boolean) => {
+    if (active) {
+      setIsSearchActive(true);
+    } else {
+      setIsSearchActive(false);
+      setSearchQuery('');
+      setDebouncedSearchQuery('');
+    }
+  }, []);
+
+  const handleVaultUpdated = useCallback(() => {
+    const latest = getBookmarks();
+    setBookmarkedIds(new Set(latest.map((r) => r.id)));
+    setBookmarkedNames(new Set(latest.map((r) => r.full_name?.toLowerCase()).filter(Boolean) as string[]));
+  }, []);
+
+  const handleSelectApkCategory = useCallback((id: string) => setSelectedApkCategory(id), []);
+  const handleSelectExploreCategory = useCallback((id: string) => setSelectedExploreCategory(id), []);
+  const handleSelectSort = useCallback((sort: SortOption) => setSortOption(sort), []);
+  const handleSelectMinStars = useCallback((stars: number) => setMinStars(stars), []);
+  const handleCacheCleared = useCallback((msg: string) => {
+    setSnackbarMessage(msg);
+    setSnackbarOpen(true);
+  }, []);
+
+  const isOverlayBlockingSwipe = useCallback(
+    (): boolean =>
+      Boolean(
+        settingsOpen ||
+        detailOpen ||
+        tokenDialogOpen ||
+        isSearchActive ||
+        updateDialogOpen ||
+        (window as any).__onActiveZoomClose ||
+        (window as any).__onActiveDownloadDialogClose
+      ),
+    [settingsOpen, detailOpen, tokenDialogOpen, isSearchActive, updateDialogOpen]
+  );
+
+  const shouldIgnoreTabSwipeTarget = useCallback(
+    (target: EventTarget | null, boundaryEl: HTMLElement | null): boolean => {
+      if (isOverlayBlockingSwipe()) return true;
+      let node = target as HTMLElement | null;
+      while (node && node !== boundaryEl) {
+        const tag = node.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+        const role = node.getAttribute?.('role');
+        if (role === 'dialog' || role === 'slider' || node.classList?.contains('MuiModal-root')) {
+          return true;
+        }
+        if (node.scrollWidth > node.clientWidth + 6) {
+          const style = window.getComputedStyle(node);
+          if (style.overflowX === 'auto' || style.overflowX === 'scroll') {
+            return true;
+          }
+        }
+        node = node.parentElement;
+      }
+      return false;
+    },
+    [isOverlayBlockingSwipe]
+  );
+
+  const handleTabSwipeTouchStart = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      // Zero DOM layout or getComputedStyle queries on touchstart so button clicks never stall
+      if (e.touches.length !== 1 || isOverlayBlockingSwipe()) {
+        swipeStartRef.current = null;
+        return;
+      }
+      swipeStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        time: Date.now(),
+        target: e.target,
+      };
+    },
+    [isOverlayBlockingSwipe]
+  );
+
+  const handleTabSwipeTouchEnd = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      const start = swipeStartRef.current;
+      swipeStartRef.current = null;
+      if (!start || e.changedTouches.length === 0) {
+        return;
+      }
+
+      const dx = e.changedTouches[0].clientX - start.x;
+      const dy = e.changedTouches[0].clientY - start.y;
+      const dt = Date.now() - start.time;
+
+      // Short-circuit normal taps & vertical scrolls before inspecting any DOM geometry
+      if (dt > 550 || Math.abs(dx) < 68 || Math.abs(dx) <= Math.abs(dy) * 1.55) {
+        return;
+      }
+      if (shouldIgnoreTabSwipeTarget(start.target, e.currentTarget)) {
+        return;
+      }
+
+      const idx = TAB_ORDER.indexOf(currentTabRef.current as (typeof TAB_ORDER)[number]);
+      if (idx === -1) return;
+
+      const nextIdx = dx < 0 ? idx + 1 : idx - 1;
+      if (nextIdx >= 0 && nextIdx < TAB_ORDER.length) {
+        triggerHaptic(8);
+        handleTabChange(TAB_ORDER[nextIdx]);
+      }
+    },
+    [TAB_ORDER, shouldIgnoreTabSwipeTarget, handleTabChange]
+  );
+
   return (
     <ThemeProvider theme={muiTheme}>
       <CssBaseline />
       <Box
+        onTouchStart={handleTabSwipeTouchStart}
+        onTouchEnd={handleTabSwipeTouchEnd}
         sx={{
+          position: 'relative',
+          zIndex: 1,
           minHeight: '100vh',
           pb: currentTab === 'spotlight' ? 0 : 14,
           bgcolor: 'background.default',
@@ -740,22 +1017,19 @@ export const App: React.FC = () => {
           <TopAppBar
             onRefresh={handleTitleBarRefresh}
             isRefreshing={isRefreshing || apkLoading || exploreLoading}
-            onOpenSettings={() => setSettingsOpen(true)}
-            onOpenTokenDialog={() => setTokenDialogOpen(true)}
+            onOpenSettings={handleOpenSettings}
+            onOpenTokenDialog={handleOpenTokenDialog}
             currentThemeId={themeId}
-            availableThemes={themeRegistry.getAll()}
+            availableThemes={availableThemes}
             onSelectTheme={handleSelectTheme}
             coreRemaining={rateLimit.remaining}
             isAuthenticated={!!getStoredToken()}
             isSearchActive={isSearchActive}
-            onSearchActiveChange={(active) => {
-              if (active) setIsSearchActive(true);
-              else handleCloseSearch();
-            }}
+            onSearchActiveChange={handleSearchActiveChange}
             isCompactView={isCompactView}
             onToggleCompactView={handleToggleCompactView}
             updateInfo={updateInfo}
-            onOpenUpdateDialog={() => setUpdateDialogOpen(true)}
+            onOpenUpdateDialog={handleOpenUpdateDialog}
           />
         )}
 
@@ -774,11 +1048,11 @@ export const App: React.FC = () => {
           <Box sx={{ mb: 1 }}>
             <CompactFilterBar
               selectedCategoryId={selectedApkCategory}
-              onSelectCategory={(id) => setSelectedApkCategory(id)}
+              onSelectCategory={handleSelectApkCategory}
               sortOption={sortOption}
-              onSelectSort={(sort) => setSortOption(sort)}
+              onSelectSort={handleSelectSort}
               minStars={minStars}
-              onSelectMinStars={(stars) => setMinStars(stars)}
+              onSelectMinStars={handleSelectMinStars}
               totalCount={apkTotalCount}
               categories={APK_CATEGORIES}
             />
@@ -809,7 +1083,14 @@ export const App: React.FC = () => {
             ) : (
               <Grid container spacing={isCompactView ? 1 : 1.5}>
                 {apkRepos.map((repo) => (
-                  <Grid item xs={12} sm={isCompactView ? 12 : 6} md={isCompactView ? 6 : 4} key={repo.id}>
+                  <Grid
+                    item
+                    xs={12}
+                    sm={isCompactView ? 12 : 6}
+                    md={isCompactView ? 6 : 4}
+                    key={repo.id}
+                    sx={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 150px' }}
+                  >
                     <RepoCard
                       repo={repo}
                       isBookmarked={checkIsBookmarked(repo)}
@@ -906,59 +1187,64 @@ export const App: React.FC = () => {
           </Container>
         </Box>
 
-        {/* Tab 2: Trending Explorer */}
+        {/* Tab 2: Trending Explorer (lazy mounted on first visit) */}
         <Box sx={{ display: currentTab === 'trending' ? 'block' : 'none' }}>
-          <TrendingView
-            isActive={currentTab === 'trending'}
-            refreshTrigger={trendingRefreshKey}
-            onOpenDetail={handleOpenDetail}
-            isBookmarked={checkIsBookmarked}
-            onToggleBookmark={handleToggleBookmark}
-            onCopyClone={handleCopyClone}
-            copiedId={copiedId}
-            isCompact={isCompactView}
-          />
-        </Box>
-
-        {/* Tab 3: Vault Bookmarks & GitHub Starred Repositories */}
-        <Box sx={{ display: currentTab === 'vault' ? 'block' : 'none' }}>
-          <VaultView
-            onOpenDetail={handleOpenDetail}
-            isBookmarked={checkIsBookmarked}
-            onToggleBookmark={handleToggleBookmark}
-            onCopyClone={handleCopyClone}
-            copiedId={copiedId}
-            onVaultUpdated={() => {
-              const latest = getBookmarks();
-              setBookmarkedIds(new Set(latest.map((r) => r.id)));
-              setBookmarkedNames(new Set(latest.map((r) => r.full_name?.toLowerCase()).filter(Boolean) as string[]));
-            }}
-            isCompact={isCompactView}
-            starredRepos={starredRepos}
-            starredList={starredReposList}
-            starredLoaded={starredListLoaded}
-            onRefreshStarred={refreshStarredList}
-            onToggleStar={handleToggleStar}
-            onOpenTokenDialog={() => setTokenDialogOpen(true)}
-            onShareMessage={handleShareMessage}
-          />
-        </Box>
-
-        {/* Tab 4: Explore All Technology Sectors (Global Open Source Observatory) */}
-        <Box sx={{ display: currentTab === 'explore' ? 'block' : 'none' }}>
-          {/* Filter Bar with All Global Project Sectors with clean vertical spacing */}
-          <Box sx={{ mb: 1 }}>
-            <CompactFilterBar
-              selectedCategoryId={selectedExploreCategory}
-              onSelectCategory={(id) => setSelectedExploreCategory(id)}
-              sortOption={sortOption}
-              onSelectSort={(sort) => setSortOption(sort)}
-              minStars={minStars}
-              onSelectMinStars={(stars) => setMinStars(stars)}
-              totalCount={exploreTotalCount}
-              categories={EXPLORE_CATEGORIES}
+          {visitedTabs.trending && (
+            <TrendingView
+              isActive={currentTab === 'trending'}
+              refreshTrigger={trendingRefreshKey}
+              onOpenDetail={handleOpenDetail}
+              isBookmarked={checkIsBookmarked}
+              onToggleBookmark={handleToggleBookmark}
+              onCopyClone={handleCopyClone}
+              copiedId={copiedId}
+              isCompact={isCompactView}
             />
-          </Box>
+          )}
+        </Box>
+
+        {/* Tab 3: Vault Bookmarks & GitHub Starred Repositories (lazy mounted on first visit) */}
+        <Box sx={{ display: currentTab === 'vault' ? 'block' : 'none' }}>
+          {visitedTabs.vault && (
+            <VaultView
+              onOpenDetail={handleOpenDetail}
+              isBookmarked={checkIsBookmarked}
+              onToggleBookmark={handleToggleBookmark}
+              onCopyClone={handleCopyClone}
+              copiedId={copiedId}
+              onVaultUpdated={handleVaultUpdated}
+              isCompact={isCompactView}
+              starredRepos={starredRepos}
+              starredList={starredReposList}
+              starredLoaded={starredListLoaded}
+              onRefreshStarred={refreshStarredList}
+              watchedList={watchedReposList}
+              watchedLoaded={watchedListLoaded}
+              onRefreshWatched={refreshWatchedList}
+              onToggleStar={handleToggleStar}
+              onOpenTokenDialog={handleOpenTokenDialog}
+              onShareMessage={handleShareMessage}
+            />
+          )}
+        </Box>
+
+        {/* Tab 4: Explore All Technology Sectors (lazy mounted on first visit) */}
+        <Box sx={{ display: currentTab === 'explore' ? 'block' : 'none' }}>
+          {visitedTabs.explore && (
+            <>
+              {/* Filter Bar with All Global Project Sectors with clean vertical spacing */}
+              <Box sx={{ mb: 1 }}>
+                <CompactFilterBar
+                  selectedCategoryId={selectedExploreCategory}
+                  onSelectCategory={handleSelectExploreCategory}
+                  sortOption={sortOption}
+                  onSelectSort={handleSelectSort}
+                  minStars={minStars}
+                  onSelectMinStars={handleSelectMinStars}
+                  totalCount={exploreTotalCount}
+                  categories={EXPLORE_CATEGORIES}
+                />
+              </Box>
 
           {/* Global Search Status Banner in Explore */}
           {debouncedSearchQuery.trim() && (
@@ -1022,7 +1308,14 @@ export const App: React.FC = () => {
             ) : (
               <Grid container spacing={isCompactView ? 1 : 1.5}>
                 {exploreRepos.map((repo) => (
-                  <Grid item xs={12} sm={isCompactView ? 12 : 6} md={isCompactView ? 6 : 4} key={repo.id}>
+                  <Grid
+                    item
+                    xs={12}
+                    sm={isCompactView ? 12 : 6}
+                    md={isCompactView ? 6 : 4}
+                    key={repo.id}
+                    sx={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 150px' }}
+                  >
                     <RepoCard
                       repo={repo}
                       isBookmarked={checkIsBookmarked(repo)}
@@ -1117,19 +1410,23 @@ export const App: React.FC = () => {
               </Grid>
             )}
           </Container>
+            </>
+          )}
         </Box>
 
-        {/* Tab 5: Spotlight Fullscreen Discovery Observatory */}
+        {/* Tab 5: Spotlight Fullscreen Discovery Observatory (lazy mounted on first visit) */}
         <Box sx={{ display: currentTab === 'spotlight' ? 'block' : 'none' }}>
-          <ReelsView
-            isActive={currentTab === 'spotlight'}
-            onOpenDetail={handleOpenDetail}
-            isBookmarked={checkIsBookmarked}
-            onToggleBookmark={handleToggleBookmark}
-            isStarred={(fullName) => starredRepos.has(fullName)}
-            onToggleStar={handleToggleStar}
-            onShareMessage={handleShareMessage}
-          />
+          {visitedTabs.spotlight && (
+            <ReelsView
+              isActive={currentTab === 'spotlight'}
+              onOpenDetail={handleOpenDetail}
+              isBookmarked={checkIsBookmarked}
+              onToggleBookmark={handleToggleBookmark}
+              isStarred={checkIsStarred}
+              onToggleStar={handleToggleStar}
+              onShareMessage={handleShareMessage}
+            />
+          )}
         </Box>
 
         {/* Floating Action Button (Scroll to Top) — only visible after scrolling down > 300px */}
@@ -1152,121 +1449,98 @@ export const App: React.FC = () => {
           </Zoom>
         )}
 
-        {/* Repo Detail Bottom Sheet */}
-        <RepoDetailSheet
-          repo={activeRepo}
-          open={detailOpen}
-          onClose={() => setDetailOpen(false)}
-          onCopyClone={handleCopyClone}
-          copiedId={copiedId}
-          isBookmarked={activeRepo ? checkIsBookmarked(activeRepo) : false}
-          onToggleBookmark={handleToggleBookmark}
-          isStarred={activeRepo ? starredRepos.has(activeRepo.full_name) : false}
-          onToggleStar={handleToggleStar}
-          onShareMessage={handleShareMessage}
-          initialTab={detailInitialTab}
-        />
+        {/* Lazy-Loaded Overlays & Modal Sheets (Code-Split Chunks) */}
+        <Suspense fallback={null}>
+          {detailOpen && (
+            <RepoDetailSheet
+              repo={activeRepo}
+              open={detailOpen}
+              onClose={handleCloseDetail}
+              onCopyClone={handleCopyClone}
+              copiedId={copiedId}
+              isBookmarked={activeRepo ? checkIsBookmarked(activeRepo) : false}
+              onToggleBookmark={handleToggleBookmark}
+              isStarred={activeRepo ? starredRepos.has(activeRepo.full_name) : false}
+              onToggleStar={handleToggleStar}
+              onShareMessage={handleShareMessage}
+              initialTab={detailInitialTab}
+            />
+          )}
 
-        {/* Full-Page Native Android Settings Screen */}
-        <SettingsPage
-          open={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
-          coreRemaining={rateLimit.remaining}
-          isAuthenticated={!!getStoredToken()}
-          onOpenTokenDialog={() => setTokenDialogOpen(true)}
-          isCompactView={isCompactView}
-          onToggleCompactView={handleToggleCompactView}
-          onRefresh={handleTitleBarRefresh}
-          currentThemeId={themeId}
-          availableThemes={themeRegistry.getAll()}
-          onSelectTheme={handleSelectTheme}
-          updateInfo={updateInfo}
-          onOpenUpdateDialog={() => setUpdateDialogOpen(true)}
-          onCacheCleared={(msg) => {
-            setSnackbarMessage(msg);
-            setSnackbarOpen(true);
-          }}
-        />
+          {settingsOpen && (
+            <SettingsPage
+              open={settingsOpen}
+              onClose={handleCloseSettings}
+              coreRemaining={rateLimit.remaining}
+              isAuthenticated={!!getStoredToken()}
+              onOpenTokenDialog={handleOpenTokenDialog}
+              isCompactView={isCompactView}
+              onToggleCompactView={handleToggleCompactView}
+              onRefresh={handleTitleBarRefresh}
+              currentThemeId={themeId}
+              availableThemes={availableThemes}
+              onSelectTheme={handleSelectTheme}
+              updateInfo={updateInfo}
+              onOpenUpdateDialog={handleOpenUpdateDialog}
+              onCacheCleared={handleCacheCleared}
+            />
+          )}
 
-        {/* WhatsApp / Instagram Style Translucent Search Flyout */}
-        <SearchFlyout
-          open={isSearchActive}
-          onClose={handleCloseSearch}
-          onSelectRepo={handleSelectRepoFromSearch}
-          isBookmarked={checkIsBookmarked}
-          onToggleBookmark={handleToggleBookmark}
-          onCopyClone={handleCopyClone}
-          copiedId={copiedId}
-          isCompact={isCompactView}
-          starredRepos={starredRepos}
-          onToggleStar={handleToggleStar}
-          onShareMessage={handleShareMessage}
-        />
+          {isSearchActive && (
+            <SearchFlyout
+              open={isSearchActive}
+              onClose={handleCloseSearch}
+              onSelectRepo={handleSelectRepoFromSearch}
+              isBookmarked={checkIsBookmarked}
+              onToggleBookmark={handleToggleBookmark}
+              onCopyClone={handleCopyClone}
+              copiedId={copiedId}
+              isCompact={isCompactView}
+              starredRepos={starredRepos}
+              onToggleStar={handleToggleStar}
+              onShareMessage={handleShareMessage}
+            />
+          )}
 
-        {/* GitHub Token Settings Dialog */}
-        <TokenDialog
-          open={tokenDialogOpen}
-          onClose={() => setTokenDialogOpen(false)}
-          onTokenSaved={() => {
-            if (currentTab === 'apks') loadApkData();
-            else if (currentTab === 'explore') loadExploreData();
-            checkLiveRateLimit();
-            const token = getStoredToken();
-            if (token) {
-              pullBookmarksFromGist(token)
-                .then((gistBookmarks) => {
-                  if (gistBookmarks && Array.isArray(gistBookmarks) && gistBookmarks.length > 0) {
-                    const local = getBookmarks();
-                    const localMap = new Map(local.map((r) => [r.id, r]));
-                    let hasNew = false;
-                    for (const gb of gistBookmarks) {
-                      if (!localMap.has(gb.id)) {
-                        localMap.set(gb.id, gb);
-                        hasNew = true;
-                      }
-                    }
-                    if (hasNew) {
-                      saveBookmarks(Array.from(localMap.values()));
-                    }
-                  }
-                })
-                .catch(() => {});
+          {tokenDialogOpen && (
+            <TokenDialog
+              open={tokenDialogOpen}
+              onClose={handleCloseTokenDialog}
+              onTokenSaved={() => {
+                if (currentTab === 'apks') loadApkData();
+                else if (currentTab === 'explore') loadExploreData();
+                checkLiveRateLimit();
+                syncAuthenticatedAccountData(getStoredToken());
+              }}
+            />
+          )}
 
-              fetchUserStarredRepositories(token, 1, 100)
-                .then((starred) => {
-                  if (starred && Array.isArray(starred)) {
-                    setStarredReposList(starred);
-                    setStarredRepos(new Set(starred.map((r) => r.full_name)));
-                    setStarredListLoaded(true);
-                  }
-                })
-                .catch(() => {});
-            }
-          }}
-        />
+          {updateDialogOpen && (
+            <UpdateDialog
+              open={updateDialogOpen}
+              onClose={handleCloseUpdateDialog}
+              updateInfo={updateInfo}
+            />
+          )}
+
+          {onboardingOpen && (
+            <OnboardingInterestsModal
+              open={onboardingOpen}
+              onClose={() => setOnboardingOpen(false)}
+              onInterestsSaved={() => {
+                setSnackbarMessage('Spotlight topic preferences saved');
+                setSnackbarOpen(true);
+              }}
+            />
+          )}
+        </Suspense>
 
         {/* Apple Style Floating Glass Bottom Navigation Bar (Middle Aligned & Short) */}
         <BottomNav
           currentTab={currentTab}
-          onTabChange={(tab) => {
-            if (tab === currentTab) {
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            } else {
-              setCurrentTab(tab);
-              if (tab === 'explore' && !exploreLoadedOnceRef.current) {
-                loadExploreData();
-              }
-            }
-          }}
+          onTabChange={handleTabChange}
           vaultCount={vaultCount}
           visible={isBottomNavVisible}
-        />
-
-        {/* In-App Auto Update Dialog */}
-        <UpdateDialog
-          open={updateDialogOpen}
-          onClose={() => setUpdateDialogOpen(false)}
-          updateInfo={updateInfo}
         />
 
         {/* APK Download Confirmation Prompt */}
@@ -1275,19 +1549,37 @@ export const App: React.FC = () => {
         {/* Global Feedback Snackbar */}
         <Snackbar
           open={snackbarOpen}
-          autoHideDuration={2500}
-          onClose={() => setSnackbarOpen(false)}
+          autoHideDuration={undoBookmarkRepo ? 3600 : 2500}
+          onClose={() => {
+            setSnackbarOpen(false);
+            setUndoBookmarkRepo(null);
+          }}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
           sx={{ bottom: { xs: 72, sm: 72 }, zIndex: 1900 }}
         >
           <Alert
             severity="success"
-            onClose={() => setSnackbarOpen(false)}
+            onClose={() => {
+              setSnackbarOpen(false);
+              setUndoBookmarkRepo(null);
+            }}
+            action={
+              undoBookmarkRepo ? (
+                <Button
+                  size="small"
+                  color="primary"
+                  onClick={handleUndoRemoveBookmark}
+                  sx={{ fontWeight: 800, fontSize: '0.74rem', minWidth: 0, px: 1 }}
+                >
+                  UNDO
+                </Button>
+              ) : undefined
+            }
             sx={{
-              borderRadius: '16px',
+              borderRadius: '18px',
               fontWeight: 700,
               fontSize: '0.8rem',
-              bgcolor: 'background.paper',
+              bgcolor: 'var(--bg-menu)',
               color: 'text.primary',
               border: `1px solid ${muiTheme.palette.divider}`
             }}

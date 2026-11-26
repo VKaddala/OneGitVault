@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
+  DialogTitle,
   DialogContent,
+  DialogActions,
   Typography,
   Box,
-  Avatar,
   Chip,
   Button,
   IconButton,
@@ -40,13 +41,44 @@ import BugReportIcon from '@mui/icons-material/BugReport';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import StorageIcon from '@mui/icons-material/Storage';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
+import CloseIcon from '@mui/icons-material/Close';
 import { Repository, ReleaseAsset } from '../types';
 import { fetchReadme, fetchReleases, fetchRepoCompleteDetails, getStoredToken } from '../services/githubApi';
 import { shareProject } from '../services/shareHelper';
 import { translateMarkdownToEnglish } from '../services/translateService';
 import { downloadApkFile } from '../services/downloadHelper';
+import { registerMemoryCacheCleaner, setBoundedMapEntry } from '../services/cacheManager';
+import { OwnerAvatar } from './OwnerAvatar';
+import { renderMarkdownToSafeHtml, isSafeHttpUrl } from '../utils/sanitizeMarkdown';
+import { triggerHaptic } from '../utils/haptics';
+
+const MAX_PARSED_README_CACHE = 25;
+const parsedReadmeHtmlCache = new Map<string, string>();
+registerMemoryCacheCleaner(() => {
+  parsedReadmeHtmlCache.clear();
+});
+
+function detectApkAbiBadge(filename: string): string | null {
+  const lower = filename.toLowerCase();
+  if (lower.includes('arm64-v8a') || lower.includes('aarch64') || lower.includes('arm64')) return 'arm64-v8a';
+  if (lower.includes('armeabi-v7a') || lower.includes('armv7') || lower.includes('arm-v7a')) return 'armeabi-v7a';
+  if (lower.includes('x86_64') || lower.includes('amd64')) return 'x86_64';
+  if (lower.includes('universal') || lower.includes('-all')) return 'universal';
+  return null;
+}
+
+function getOrParseMarkdownHtml(
+  cacheKey: string,
+  markdown: string,
+  repoFullName: string,
+  defaultBranch: string = 'HEAD'
+): string {
+  const cached = parsedReadmeHtmlCache.get(cacheKey);
+  if (cached) return cached;
+  const finalHtml = renderMarkdownToSafeHtml(markdown, { repoFullName, defaultBranch });
+  setBoundedMapEntry(parsedReadmeHtmlCache, cacheKey, finalHtml, MAX_PARSED_README_CACHE);
+  return finalHtml;
+}
 
 interface RepoDetailSheetProps {
   repo: Repository | null;
@@ -84,6 +116,7 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
   const [isTranslated, setIsTranslated] = useState<boolean>(false);
   const [isTranslating, setIsTranslating] = useState<boolean>(false);
   const [releases, setReleases] = useState<ReleaseAsset[]>([]);
+  const [selectedReleaseAsset, setSelectedReleaseAsset] = useState<ReleaseAsset | null>(null);
   const [loadingReadme, setLoadingReadme] = useState<boolean>(false);
   const [loadingReleases, setLoadingReleases] = useState<boolean>(false);
 
@@ -111,10 +144,13 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
         if (!isMounted) return;
         setRawReadme(raw);
         try {
-          const parsed = marked.parse(raw);
-          const sanitized = DOMPurify.sanitize(typeof parsed === 'string' ? parsed : '', {
-            ADD_ATTR: ['id', 'name', 'target', 'rel']
-          });
+          const branch = repo.default_branch || 'HEAD';
+          const sanitized = getOrParseMarkdownHtml(
+            `orig:${repo.full_name}:${branch}:${raw.length}`,
+            raw,
+            repo.full_name,
+            branch
+          );
           setOriginalHtml(sanitized);
         } catch {
           setOriginalHtml('<p>Error rendering README.</p>');
@@ -202,14 +238,16 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
       return;
     }
 
-    if (!rawReadme) return;
+    if (!rawReadme || !repo) return;
     setIsTranslating(true);
     try {
-      const translatedMd = await translateMarkdownToEnglish(rawReadme);
-      const parsed = marked.parse(translatedMd);
-      const sanitized = DOMPurify.sanitize(typeof parsed === 'string' ? parsed : '', {
-        ADD_ATTR: ['id', 'name', 'target', 'rel']
-      });
+      const branch = repo.default_branch || 'HEAD';
+      const trCacheKey = `tr:${repo.full_name}:${branch}:${rawReadme.length}`;
+      let sanitized = parsedReadmeHtmlCache.get(trCacheKey);
+      if (!sanitized) {
+        const translatedMd = await translateMarkdownToEnglish(rawReadme);
+        sanitized = getOrParseMarkdownHtml(trCacheKey, translatedMd, repo.full_name, branch);
+      }
       setTranslatedHtml(sanitized);
       setIsTranslated(true);
     } catch (e) {
@@ -230,13 +268,19 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
     // 1. Internal hash navigation links (e.g. #installation, #features, #table-of-contents)
     if (href.startsWith('#')) {
       e.preventDefault();
-      const rawId = decodeURIComponent(href.slice(1)).toLowerCase().trim();
+      let rawId = '';
+      try {
+        rawId = decodeURIComponent(href.slice(1)).toLowerCase().trim();
+      } catch {
+        rawId = href.slice(1).toLowerCase().trim();
+      }
       if (!rawId) return;
 
+      const escId = (window as any).CSS?.escape ? CSS.escape(rawId) : rawId.replace(/[^a-zA-Z0-9_-]/g, '');
       let el: Element | null = document.getElementById(rawId) ||
                                document.getElementById(`user-content-${rawId}`) ||
-                               document.querySelector(`[name="${rawId}"]`) ||
-                               document.querySelector(`[name="user-content-${rawId}"]`);
+                               (escId ? document.querySelector(`[name="${escId}"]`) : null) ||
+                               (escId ? document.querySelector(`[name="user-content-${escId}"]`) : null);
 
       if (!el) {
         // Fallback: search headings (h1, h2, h3, h4, h5, h6) inside the dialog
@@ -261,16 +305,19 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
     // 2. Relative file/doc links inside the repository (e.g. docs/install.md, ./LICENSE)
     if (repo && !href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('mailto:')) {
       e.preventDefault();
+      if (/^(javascript|vbscript|data):/i.test(href.trim())) return;
       const cleanPath = href.replace(/^\.?\//, '');
-      const fullUrl = `https://github.com/${repo.full_name}/blob/main/${cleanPath}`;
-      window.open(fullUrl, '_blank', 'noopener,noreferrer');
+      const fullUrl = `https://github.com/${repo.full_name}/blob/${repo.default_branch || 'main'}/${cleanPath}`;
+      if (isSafeHttpUrl(fullUrl, true)) {
+        window.open(fullUrl, '_blank', 'noopener,noreferrer');
+      }
       return;
     }
 
     // 3. Absolute HTTP / HTTPS URLs
-    if (href.startsWith('http://') || href.startsWith('https://')) {
+    if (isSafeHttpUrl(href, false)) {
       e.preventDefault();
-      window.open(href, '_blank', 'noopener,noreferrer');
+      window.open(href.trim(), '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -360,9 +407,7 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
           px: 2,
           pb: 1.25,
           borderBottom: `1px solid ${alpha(theme.palette.divider, 0.7)}`,
-          bgcolor: alpha(theme.palette.background.paper, 0.92),
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
+          bgcolor: 'var(--bg-header)',
           zIndex: 10
         }}
       >
@@ -380,19 +425,12 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
           <ArrowBackIcon sx={{ fontSize: 22 }} />
         </IconButton>
 
-        <Avatar
-          src={repo.owner.avatar_url}
-          alt={repo.owner.login}
-          variant="rounded"
-          sx={{
-            width: 38,
-            height: 38,
-            borderRadius: '12px',
-            bgcolor: 'background.default',
-            boxShadow: `0 2px 8px ${alpha(theme.palette.common.black, 0.12)}`,
-            border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
-            flexShrink: 0
-          }}
+        <OwnerAvatar
+          owner={repo.owner}
+          size={38}
+          borderRadius="10px"
+          border={`1px solid ${alpha(theme.palette.divider, 0.8)}`}
+          boxShadow={`0 2px 8px ${alpha(theme.palette.common.black, 0.12)}`}
         />
 
         <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -417,7 +455,7 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
               lineHeight: 1.2
             }}
           >
-            by {repo.owner.login}
+            by {repo.owner?.login || repo.full_name?.split('/')[0] || 'unknown'}
           </Typography>
         </Box>
       </Box>
@@ -826,17 +864,13 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0, flex: 1 }}>
-                <Avatar
-                  src={repo.owner.avatar_url}
-                  alt={repo.owner.login}
-                  sx={{ width: 36, height: 36, borderRadius: '10px' }}
-                />
+                <OwnerAvatar owner={repo.owner} size={36} borderRadius="10px" />
                 <Box sx={{ minWidth: 0 }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }}>
                     Author / Organization
                   </Typography>
                   <Typography variant="body2" noWrap sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1.2 }}>
-                    {repo.owner.login}
+                    {repo.owner?.login || repo.full_name?.split('/')[0] || 'unknown'}
                   </Typography>
                 </Box>
               </Box>
@@ -844,7 +878,7 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                 size="small"
                 variant="outlined"
                 component="a"
-                href={repo.owner.html_url}
+                href={repo.owner?.html_url || `https://github.com/${repo.owner?.login || repo.full_name?.split('/')[0] || ''}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 endIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
@@ -946,6 +980,29 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
             ) : (
               <Box
                 onClick={handleReadmeLinkClick}
+                onErrorCapture={(e: React.SyntheticEvent<HTMLDivElement>) => {
+                  const target = e.target as HTMLElement | null;
+                  if (!target || target.tagName !== 'IMG') return;
+                  const img = target as HTMLImageElement;
+                  const attempt = Number(img.dataset.retryAttempt || '0');
+                  const currentSrc = img.getAttribute('src') || '';
+
+                  // Fallback across HEAD / main / master for raw.githubusercontent.com before hiding broken images
+                  const rawMatch = currentSrc.match(
+                    /^https:\/\/raw\.githubusercontent\.com\/([^/]+\/[^/]+)\/([^/]+)\/(.+)$/i
+                  );
+                  if (rawMatch && attempt === 0) {
+                    const altBranch = rawMatch[2] === 'HEAD' ? 'main' : rawMatch[2] === 'main' ? 'master' : 'HEAD';
+                    img.dataset.retryAttempt = '1';
+                    img.src = `https://raw.githubusercontent.com/${rawMatch[1]}/${altBranch}/${rawMatch[3]}`;
+                    return;
+                  }
+
+                  // Hide genuinely broken/unreachable images cleanly instead of rendering broken alt placeholders
+                  img.style.display = 'none';
+                  const parentPic = img.closest('picture');
+                  if (parentPic) (parentPic as HTMLElement).style.display = 'none';
+                }}
                 dangerouslySetInnerHTML={{ __html: isTranslated ? (translatedHtml || originalHtml) : originalHtml }}
                 sx={{
                   color: 'text.primary',
@@ -1066,19 +1123,34 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                     lowerName.endsWith('.aab')
                   );
                   const sizeMb = (asset.size / (1024 * 1024)).toFixed(1);
+                  const abiLabel = isAndroid ? detectApkAbiBadge(asset.name) : null;
                   return (
                     <ListItem
                       key={asset.id}
+                      onClick={() => {
+                        triggerHaptic(8);
+                        setSelectedReleaseAsset(asset);
+                      }}
                       sx={{
                         px: 1.5,
                         py: 1.25,
                         mb: 1,
-                        borderRadius: '12px',
+                        borderRadius: '14px',
                         bgcolor: alpha(theme.palette.background.default, 0.5),
                         border: `1px solid ${theme.palette.divider}`,
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between'
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        WebkitTapHighlightColor: 'transparent',
+                        '&:hover': {
+                          bgcolor: alpha(theme.palette.primary.main, 0.06),
+                          borderColor: theme.palette.primary.main,
+                        },
+                        '&:active': {
+                          transform: 'scale(0.99)',
+                        }
                       }}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0, flex: 1 }}>
@@ -1087,14 +1159,32 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                         </ListItemIcon>
                         <ListItemText
                           primary={asset.name}
-                          secondary={`${sizeMb} MB • ${asset.download_count.toLocaleString()} downloads`}
+                          secondary={
+                            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                              <span>{sizeMb} MB • {asset.download_count.toLocaleString()} downloads</span>
+                              {abiLabel && (
+                                <Chip
+                                  label={abiLabel}
+                                  size="small"
+                                  sx={{
+                                    height: 17,
+                                    fontSize: '0.62rem',
+                                    fontWeight: 800,
+                                    borderRadius: '6px',
+                                    bgcolor: alpha(theme.palette.primary.main, 0.14),
+                                    color: theme.palette.primary.main,
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          }
                           primaryTypographyProps={{
                             fontSize: '0.825rem',
                             fontWeight: isAndroid ? 800 : 600,
                             noWrap: true,
                             color: isAndroid ? 'text.primary' : 'text.secondary'
                           }}
-                          secondaryTypographyProps={{ fontSize: '0.72rem' }}
+                          secondaryTypographyProps={{ fontSize: '0.72rem', component: 'div' }}
                         />
                       </Box>
                       {isAndroid ? (
@@ -1103,7 +1193,11 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                           variant="contained"
                           color="primary"
                           startIcon={<DownloadIcon sx={{ fontSize: 14 }} />}
-                          onClick={() => downloadApkFile(asset.browser_download_url, asset.name, asset.size)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerHaptic(8);
+                            downloadApkFile(asset.browser_download_url, asset.name, asset.size);
+                          }}
                           sx={{
                             height: 28,
                             fontSize: '0.725rem',
@@ -1117,13 +1211,17 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                           Download APK
                         </Button>
                       ) : (
-                        <Tooltip title="This package is not an Android installer (.exe, .deb, etc.)">
+                        <Tooltip title="Tap to inspect release notes and asset package details">
                           <span>
                             <Button
                               size="small"
                               variant="outlined"
-                              disabled
-                              startIcon={<DownloadIcon sx={{ fontSize: 14 }} />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                triggerHaptic(8);
+                                setSelectedReleaseAsset(asset);
+                              }}
+                              startIcon={<InfoOutlinedIcon sx={{ fontSize: 14 }} />}
                               sx={{
                                 height: 28,
                                 fontSize: '0.725rem',
@@ -1132,12 +1230,11 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                                 textTransform: 'none',
                                 ml: 1,
                                 flexShrink: 0,
-                                opacity: 0.6,
-                                borderColor: alpha(theme.palette.divider, 0.7),
-                                color: 'text.disabled'
+                                borderColor: alpha(theme.palette.divider, 0.8),
+                                color: 'text.secondary'
                               }}
                             >
-                              Desktop only
+                              Inspect
                             </Button>
                           </span>
                         </Tooltip>
@@ -1160,19 +1257,17 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
           position: 'fixed',
           bottom: 'calc(max(env(safe-area-inset-bottom, 0px), 4px) + 6px)',
           left: '50%',
-          transform: 'translateX(-50%)',
+          transform: 'translateX(-50%) translateZ(0)',
           width: 'calc(100% - 32px)',
           maxWidth: 420,
           height: 58,
           borderRadius: '29px',
-          bgcolor: theme.palette.mode === 'dark'
-            ? alpha(theme.palette.background.paper, 0.88)
-            : alpha(theme.palette.background.paper, 0.92),
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
+          bgcolor: 'var(--bg-pill)',
+          backdropFilter: 'var(--glass-backdrop, blur(10px) saturate(135%))',
+          WebkitBackdropFilter: 'var(--glass-backdrop, blur(10px) saturate(135%))',
           border: theme.palette.mode === 'dark'
-            ? `1px solid ${alpha(theme.palette.common.white, 0.12)}`
-            : `1px solid ${alpha(theme.palette.common.white, 0.8)}`,
+            ? `1px solid ${alpha(theme.palette.common.white, 0.14)}`
+            : `1px solid ${alpha(theme.palette.common.white, 0.85)}`,
           boxShadow: theme.palette.mode === 'dark'
             ? `0 18px 48px rgba(0, 0, 0, 0.65), 0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}, inset 0 1px 1px rgba(255, 255, 255, 0.16)`
             : `0 14px 38px rgba(0, 0, 0, 0.08), 0 2px 10px ${alpha(theme.palette.primary.main, 0.12)}, inset 0 1px 1px rgba(255, 255, 255, 0.9)`,
@@ -1397,6 +1492,193 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
           </Box>
         </Tooltip>
       </Box>
+
+      {/* Release Asset / Tag Info Modal */}
+      <Dialog
+        open={Boolean(selectedReleaseAsset)}
+        onClose={() => setSelectedReleaseAsset(null)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            bgcolor: 'var(--bg-menu)',
+            backgroundImage: 'none',
+            border: `1px solid ${theme.palette.divider}`,
+            p: 0.5,
+            overflow: 'hidden'
+          }
+        }}
+      >
+        {selectedReleaseAsset && (
+          <>
+            <DialogTitle sx={{ pb: 1, pt: 2, px: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
+                  {selectedReleaseAsset.release_tag && (
+                    <Chip
+                      label={selectedReleaseAsset.release_tag}
+                      size="small"
+                      color="primary"
+                      sx={{ fontWeight: 800, fontSize: '0.72rem', height: 22 }}
+                    />
+                  )}
+                  {selectedReleaseAsset.is_apk && (
+                    <Chip
+                      label="Android APK"
+                      size="small"
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: '0.68rem',
+                        height: 20,
+                        bgcolor: alpha('#10b981', 0.15),
+                        color: '#10b981',
+                        border: '1px solid rgba(16, 185, 129, 0.3)'
+                      }}
+                    />
+                  )}
+                  {selectedReleaseAsset.published_at && (
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                      {formatDate(selectedReleaseAsset.published_at)} ({formatTimeAgo(selectedReleaseAsset.published_at)})
+                    </Typography>
+                  )}
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1.25 }}>
+                  {selectedReleaseAsset.release_name || selectedReleaseAsset.release_tag || selectedReleaseAsset.name}
+                </Typography>
+              </Box>
+              <IconButton
+                size="small"
+                onClick={() => setSelectedReleaseAsset(null)}
+                sx={{ borderRadius: '50%', color: 'text.secondary' }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </DialogTitle>
+
+            <DialogContent dividers sx={{ px: 2, py: 1.5, maxHeight: '60vh', overflowY: 'auto' }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  p: 1.25,
+                  mb: 2,
+                  borderRadius: '12px',
+                  bgcolor: alpha(theme.palette.text.primary, 0.04),
+                  border: `1px solid ${theme.palette.divider}`
+                }}
+              >
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }}>
+                    Asset Package
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                    {selectedReleaseAsset.name}
+                  </Typography>
+                </Box>
+                <Box sx={{ textAlign: 'right', pl: 1.5, flexShrink: 0 }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }}>
+                    Size & Downloads
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                    {(selectedReleaseAsset.size / (1024 * 1024)).toFixed(1)} MB • {selectedReleaseAsset.download_count.toLocaleString()}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.75, display: 'block' }}>
+                Release Notes & Changelog
+              </Typography>
+
+              {selectedReleaseAsset.release_body ? (
+                <Box
+                  dangerouslySetInnerHTML={{
+                    __html: renderMarkdownToSafeHtml(selectedReleaseAsset.release_body)
+                  }}
+                  sx={{
+                    fontSize: '0.84rem',
+                    lineHeight: 1.6,
+                    color: 'text.primary',
+                    '& p': { my: 0.75 },
+                    '& ul, & ol': { pl: 2.5, my: 0.75 },
+                    '& li': { my: 0.25 },
+                    '& code': {
+                      bgcolor: alpha(theme.palette.primary.main, 0.12),
+                      px: 0.6,
+                      py: 0.2,
+                      borderRadius: '4px',
+                      fontFamily: '"JetBrains Mono", monospace',
+                      fontSize: '0.78rem'
+                    },
+                    '& pre': {
+                      bgcolor: alpha(theme.palette.background.default, 0.8),
+                      p: 1.25,
+                      borderRadius: '8px',
+                      overflowX: 'auto',
+                      border: `1px solid ${theme.palette.divider}`
+                    }
+                  }}
+                />
+              ) : (
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', py: 2 }}>
+                  No release notes or changelog provided for this release tag.
+                </Typography>
+              )}
+            </DialogContent>
+
+            <DialogActions sx={{ px: 2, py: 1.5, gap: 1 }}>
+              {selectedReleaseAsset.release_url && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  component="a"
+                  href={selectedReleaseAsset.release_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  endIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
+                  sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700, fontSize: '0.74rem' }}
+                >
+                  GitHub Release
+                </Button>
+              )}
+              <Box sx={{ flex: 1 }} />
+              {selectedReleaseAsset.is_apk ? (
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="primary"
+                  startIcon={<DownloadIcon sx={{ fontSize: 15 }} />}
+                  onClick={() => {
+                    downloadApkFile(
+                      selectedReleaseAsset.browser_download_url,
+                      selectedReleaseAsset.name,
+                      selectedReleaseAsset.size
+                    );
+                  }}
+                  sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 800, fontSize: '0.76rem' }}
+                >
+                  Download APK
+                </Button>
+              ) : (
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="primary"
+                  startIcon={<DownloadIcon sx={{ fontSize: 15 }} />}
+                  component="a"
+                  href={selectedReleaseAsset.browser_download_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 800, fontSize: '0.76rem' }}
+                >
+                  Download Asset
+                </Button>
+              )}
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </Dialog>
   );
 };

@@ -17,9 +17,8 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import DOMPurify from 'dompurify';
-import { marked } from 'marked';
 import { AndroidUpdateInfo, startAndroidUpdate } from '../services/updateService';
+import { renderMarkdownToSafeHtml, isSafeHttpUrl } from '../utils/sanitizeMarkdown';
 
 interface UpdateDialogProps {
   open: boolean;
@@ -53,7 +52,9 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
 
   const handleStartUpdate = () => {
     if (!updateInfo.apkDownloadUrl) {
-      window.open(updateInfo.releaseUrl, '_blank');
+      if (isSafeHttpUrl(updateInfo.releaseUrl, true)) {
+        window.open(updateInfo.releaseUrl, '_blank', 'noopener,noreferrer');
+      }
       return;
     }
 
@@ -77,7 +78,8 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
         setDownloading(false);
         setCompleted(false);
         setErrorText(err);
-      }
+      },
+      updateInfo.apkDigest
     );
   };
 
@@ -99,7 +101,7 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
     : '';
 
   const parsedBody = updateInfo.releaseBody
-    ? DOMPurify.sanitize(marked.parse(updateInfo.releaseBody) as string)
+    ? renderMarkdownToSafeHtml(updateInfo.releaseBody)
     : '';
 
   return (
@@ -111,7 +113,7 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
       PaperProps={{
         sx: {
           borderRadius: 3,
-          bgcolor: 'background.paper',
+          bgcolor: 'var(--bg-menu)',
           backgroundImage: 'none',
           border: `1px solid ${theme.palette.divider}`,
           overflow: 'hidden',

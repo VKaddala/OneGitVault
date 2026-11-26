@@ -6,6 +6,7 @@ import {
   Typography,
   Chip,
   CircularProgress,
+  LinearProgress,
   Grid,
   Button,
   useTheme,
@@ -17,9 +18,16 @@ import SearchIcon from '@mui/icons-material/Search';
 import HistoryIcon from '@mui/icons-material/History';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import AndroidIcon from '@mui/icons-material/Android';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { Repository } from '../types';
 import { RepoCard } from './RepoCard';
-import { fetchRepositories } from '../services/githubApi';
+import { OwnerAvatar } from './OwnerAvatar';
+import {
+  searchSmartGitHub,
+  fetchUserRepositories,
+  getInstantLocalSearchMatches,
+  GitHubUserSuggestion
+} from '../services/githubApi';
 
 interface SearchFlyoutProps {
   open: boolean;
@@ -35,7 +43,7 @@ interface SearchFlyoutProps {
   onShareMessage?: (msg: string) => void;
 }
 
-const QUICK_TAGS = ['APK', 'Media', 'Tools', 'AI', 'Security', 'Termux', 'NewPipe', 'ReVanced', 'Lawnchair', 'ViMusic'];
+const QUICK_TAGS = ['APK', 'Media', 'Tools', 'AI', 'Security', 'Termux', 'NewPipe', '@sindresorhus', 'Lawnchair', 'Rust'];
 const HISTORY_KEY = 'onegitvault_search_history';
 
 function getSearchHistory(): string[] {
@@ -72,42 +80,55 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
   const [query, setQuery] = useState<string>('');
   const [debouncedQuery, setDebouncedQuery] = useState<string>('');
   const [results, setResults] = useState<Repository[]>([]);
+  const [userSuggestions, setUserSuggestions] = useState<GitHubUserSuggestion[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>(() => getSearchHistory());
 
-  // Focus input automatically on open
   useEffect(() => {
     if (open) {
       setHistory(getSearchHistory());
-      setTimeout(() => {
+      const focusTimer = setTimeout(() => {
         inputRef.current?.focus();
-      }, 100);
+      }, 90);
+      return () => clearTimeout(focusTimer);
     } else {
-      // Reset state on close: do not hold search object
       setQuery('');
       setDebouncedQuery('');
       setResults([]);
+      setUserSuggestions([]);
       setTotalCount(0);
       setLoading(false);
     }
   }, [open]);
 
-  // Debounce search query with 500ms throttle to prevent query exhaustion while typing
+  // Show instant 0ms local cached matches immediately while debouncing live GitHub API calls (280ms)
   useEffect(() => {
     if (!open) return;
+    const trimmed = query.trim();
+    if (trimmed.length >= 2) {
+      const instant = getInstantLocalSearchMatches(trimmed);
+      if (instant.repos.length > 0 || instant.users.length > 0) {
+        setResults((prev) => (prev.length === 0 ? instant.repos : prev));
+        setUserSuggestions((prev) => (prev.length === 0 ? instant.users : prev));
+      }
+    } else {
+      setResults([]);
+      setUserSuggestions([]);
+      setTotalCount(0);
+      setSearchError(null);
+    }
+
     const timer = setTimeout(() => {
-      setDebouncedQuery(query.trim());
-    }, 500);
+      setDebouncedQuery(trimmed);
+    }, 280);
     return () => clearTimeout(timer);
   }, [query, open]);
 
-  // Execute global search across GitHub (requires at least 2 characters)
+  // Execute intelligent GitHub search (users + owner/repo + global repos)
   useEffect(() => {
     if (!open || !debouncedQuery || debouncedQuery.length < 2) {
-      setResults([]);
-      setTotalCount(0);
       setLoading(false);
       setSearchError(null);
       return;
@@ -117,18 +138,11 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
     setLoading(true);
     setSearchError(null);
 
-    fetchRepositories(
-      'all',
-      debouncedQuery,
-      'stars',
-      0,
-      1,
-      30,
-      false
-    )
+    searchSmartGitHub(debouncedQuery)
       .then((data) => {
         if (!active) return;
         setResults(data.repositories);
+        setUserSuggestions(data.users);
         setTotalCount(data.totalCount);
         if (data.error && data.repositories.length === 0) {
           setSearchError(data.error);
@@ -137,10 +151,8 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
         }
       })
       .catch((err) => {
-        console.warn('Flyout search failed:', err);
+        console.warn('Flyout smart search failed:', err);
         if (active) {
-          setResults([]);
-          setTotalCount(0);
           setSearchError('Search network error. Check connection or try another query.');
         }
       })
@@ -179,23 +191,45 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
   }, []);
 
   const handleClose = useCallback(() => {
-    // Reset and return cleanly to previous view
     setQuery('');
     setDebouncedQuery('');
     setResults([]);
+    setUserSuggestions([]);
     onClose();
   }, [onClose]);
 
-  const handleSelectRepo = useCallback((repo: Repository) => {
-    // Save to search history
-    const termToSave = query.trim() || repo.name;
-    addToHistory(termToSave);
+  const handleSelectRepo = useCallback(
+    (repo: Repository) => {
+      const termToSave = query.trim() || repo.name;
+      addToHistory(termToSave);
+      onSelectRepo(repo);
+    },
+    [query, addToHistory, onSelectRepo]
+  );
 
-    // Open selected repo in Explore
-    onSelectRepo(repo);
-  }, [query, addToHistory, onSelectRepo]);
+  const handleSelectUserSuggestion = useCallback(
+    async (user: GitHubUserSuggestion) => {
+      const handleTag = `@${user.login}`;
+      setQuery(handleTag);
+      setDebouncedQuery(handleTag);
+      addToHistory(handleTag);
+      inputRef.current?.blur();
+      setLoading(true);
+      try {
+        const res = await fetchUserRepositories(user.login);
+        setResults(res.repositories);
+        setUserSuggestions(res.user ? [res.user] : [user]);
+        setTotalCount(res.repositories.length);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [addToHistory]
+  );
 
   if (!open) return null;
+
+  const hasActiveQuery = query.trim().length >= 2;
 
   return (
     <Box
@@ -205,24 +239,23 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
         zIndex: 1400,
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: theme.palette.mode === 'dark' ? 'rgba(13, 17, 23, 0.96)' : 'rgba(255, 255, 255, 0.97)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-        animation: 'flyoutFadeIn 0.2s cubic-bezier(0.2, 0, 0, 1)',
+        bgcolor: theme.palette.background.default,
+        backgroundImage: 'var(--bg-mesh-gradient, none)',
+        animation: 'flyoutFadeIn 0.18s cubic-bezier(0.2, 0, 0, 1)',
         '@keyframes flyoutFadeIn': {
-          from: { opacity: 0, transform: 'translateY(-10px)' },
+          from: { opacity: 0, transform: 'translateY(-8px)' },
           to: { opacity: 1, transform: 'translateY(0)' }
         }
       }}
     >
-      {/* ─── Top Translucent Search Bar (WhatsApp / Instagram Style) ─── */}
+      {/* Top Translucent Search Bar */}
       <Box
         sx={{
           pt: 'max(env(safe-area-inset-top, 0px), var(--status-bar-height, 44px))',
           px: { xs: 1.5, sm: 2.5 },
           pb: 1.25,
           borderBottom: `1px solid ${theme.palette.divider}`,
-          bgcolor: theme.palette.mode === 'dark' ? 'rgba(20, 25, 34, 0.88)' : 'rgba(255, 255, 255, 0.90)'
+          bgcolor: 'var(--bg-header)',
         }}
       >
         <Box
@@ -239,7 +272,6 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
             gap: 1
           }}
         >
-          {/* Back Icon Button: Closes and resets search */}
           <IconButton
             size="small"
             onClick={handleClose}
@@ -252,15 +284,15 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
             <ArrowBackIcon sx={{ fontSize: 20 }} />
           </IconButton>
 
-          {/* Search Input Field */}
           <InputBase
             inputRef={inputRef}
-            placeholder="Search APKs, tools, repositories..."
+            placeholder="Search repos, APKs, or @users..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && query.trim()) {
                 addToHistory(query.trim());
+                setDebouncedQuery(query.trim());
                 inputRef.current?.blur();
               } else if (e.key === 'Escape') {
                 handleClose();
@@ -275,13 +307,14 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
             }}
           />
 
-          {/* Clear X Button */}
           {query && (
             <IconButton
               size="small"
               onClick={() => {
                 setQuery('');
                 setDebouncedQuery('');
+                setResults([]);
+                setUserSuggestions([]);
                 inputRef.current?.focus();
               }}
               sx={{ p: 0.4, color: 'text.secondary' }}
@@ -290,7 +323,6 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
             </IconButton>
           )}
 
-          {/* Done / Dismiss Button */}
           <Button
             size="small"
             onClick={handleClose}
@@ -335,12 +367,16 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
                 fontWeight: 700,
                 height: 24,
                 cursor: 'pointer',
-                bgcolor: query.toLowerCase() === tag.toLowerCase()
-                  ? theme.palette.primary.main
-                  : (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'),
-                color: query.toLowerCase() === tag.toLowerCase()
-                  ? theme.palette.primary.contrastText
-                  : 'text.primary',
+                bgcolor:
+                  query.toLowerCase() === tag.toLowerCase()
+                    ? theme.palette.primary.main
+                    : theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.08)'
+                    : 'rgba(0, 0, 0, 0.05)',
+                color:
+                  query.toLowerCase() === tag.toLowerCase()
+                    ? theme.palette.primary.contrastText
+                    : 'text.primary',
                 border: `1px solid ${theme.palette.divider}`,
                 '&:hover': {
                   bgcolor: alpha(theme.palette.primary.main, 0.2)
@@ -351,7 +387,10 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
         </Box>
       </Box>
 
-      {/* ─── Results & History Area Underneath ─── */}
+      {/* Non-blocking live fetch indicator */}
+      {loading && <LinearProgress sx={{ height: 2, flexShrink: 0 }} />}
+
+      {/* Results & History Area */}
       <Box
         sx={{
           flex: 1,
@@ -361,14 +400,15 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
           pb: 'calc(24px + env(safe-area-inset-bottom, 0px))'
         }}
       >
-        {/* State A: Prompt & Recent Searches History when no query entered yet */}
-        {!debouncedQuery ? (
+        {!hasActiveQuery ? (
           <Box sx={{ maxWidth: 640, mx: 'auto', width: '100%' }}>
-            {/* Recent Searches History List */}
             {history.length > 0 && (
               <Box sx={{ mb: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, px: 0.5 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}
+                  >
                     Recent Searches
                   </Typography>
                   <Button
@@ -449,93 +489,158 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
                 <SearchIcon sx={{ fontSize: 30, color: theme.palette.primary.main }} />
               </Box>
               <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                Live Global Repository Search
+                Smart GitHub Repository &amp; Developer Search
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 360 }}>
-                Search across GitHub for APK releases, Android utilities, frameworks, and developer tools. Selecting an item opens it in the Explore observatory.
+                Search repositories, <code style={{ fontWeight: 700 }}>owner/repo</code>, or type a username like{' '}
+                <code style={{ fontWeight: 700 }}>@sindresorhus</code> to explore developer projects directly.
               </Typography>
             </Box>
-          </Box>
-        ) : loading ? (
-          /* State B: Loading spinner */
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              py: 10,
-              gap: 2
-            }}
-          >
-            <CircularProgress size={32} color="primary" />
-            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-              Streaming repositories for "{debouncedQuery}"...
-            </Typography>
-          </Box>
-        ) : results.length === 0 ? (
-          /* State C: No results found or rate limit */
-          <Box
-            sx={{
-              textAlign: 'center',
-              py: 8,
-              border: `2px dashed ${alpha(theme.palette.divider, 0.8)}`,
-              borderRadius: '24px',
-              p: 3,
-              maxWidth: 500,
-              mx: 'auto'
-            }}
-          >
-            <AutoAwesomeIcon sx={{ fontSize: 42, color: searchError ? 'error.main' : 'text.secondary', mb: 1, opacity: 0.8 }} />
-            <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5, color: searchError ? 'error.main' : 'text.primary' }}>
-              {searchError ? 'Search Limit or Network Notice' : 'No repositories found'}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 380, mx: 'auto' }}>
-              {searchError || `No matches found for "${debouncedQuery}". Try searching by app name, technology (e.g. Kotlin, Flutter), or broad keywords.`}
-            </Typography>
           </Box>
         ) : (
-          /* State D: Search Results Grid */
           <Box>
-            {searchError && (
-              <Box sx={{ mb: 2, p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.warning.main, 0.12), border: `1px solid ${alpha(theme.palette.warning.main, 0.3)}` }}>
-                <Typography variant="caption" sx={{ color: 'warning.main', fontWeight: 700 }}>
-                  {searchError}
-                </Typography>
+            {/* Intelligent Matching GitHub Users & Organizations Strip */}
+            {userSuggestions.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, mb: 0.8, px: 0.5 }}>
+                  <PersonOutlineIcon sx={{ fontSize: 15, color: 'primary.main' }} />
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}
+                  >
+                    Developers &amp; Orgs
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 1,
+                    overflowX: 'auto',
+                    pb: 0.5,
+                    '&::-webkit-scrollbar': { display: 'none' }
+                  }}
+                >
+                  {userSuggestions.map((u) => (
+                    <Box
+                      key={u.login}
+                      onClick={() => handleSelectUserSuggestion(u)}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 1.25,
+                        py: 0.75,
+                        borderRadius: '16px',
+                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                        border: `1px solid ${alpha(theme.palette.primary.main, 0.28)}`,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        transition: 'transform 0.12s ease',
+                        '&:active': { transform: 'scale(0.96)' }
+                      }}
+                    >
+                      <OwnerAvatar owner={u} size={28} borderRadius="50%" />
+                      <Box>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary', display: 'block', lineHeight: 1.15 }}>
+                          @{u.login}
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontSize: '0.64rem', color: 'text.secondary', display: 'block' }}>
+                          {u.public_repos ? `${u.public_repos} repos` : 'Tap for repos'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
               </Box>
             )}
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, px: 0.5 }}>
-              <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase' }}>
-                Found {totalCount > 0 ? totalCount.toLocaleString() : results.length} repositories
-              </Typography>
-              <Chip
-                icon={<AndroidIcon sx={{ fontSize: 13 }} />}
-                label="Direct APK Releases Ready"
-                size="small"
-                color="primary"
-                variant="outlined"
-                sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }}
-              />
-            </Box>
 
-            <Grid container spacing={isCompact ? 1 : 1.5}>
-              {results.map((repo) => (
-                <Grid item xs={12} sm={isCompact ? 12 : 6} md={isCompact ? 6 : 4} key={repo.id}>
-                  <RepoCard
-                    repo={repo}
-                    isBookmarked={isBookmarked(repo.id)}
-                    onToggleBookmark={onToggleBookmark}
-                    onOpenDetail={(r) => handleSelectRepo(r)}
-                    onCopyClone={onCopyClone}
-                    copiedId={copiedId}
-                    isCompact={isCompact}
-                    isStarred={starredRepos.has(repo.full_name)}
-                    onToggleStar={onToggleStar}
-                    onShareMessage={onShareMessage}
+            {loading && results.length === 0 ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  py: 10,
+                  gap: 2
+                }}
+              >
+                <CircularProgress size={32} color="primary" />
+                <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                  Searching GitHub for "{debouncedQuery || query}"...
+                </Typography>
+              </Box>
+            ) : results.length === 0 ? (
+              <Box
+                sx={{
+                  textAlign: 'center',
+                  py: 8,
+                  border: `2px dashed ${alpha(theme.palette.divider, 0.8)}`,
+                  borderRadius: '24px',
+                  p: 3,
+                  maxWidth: 500,
+                  mx: 'auto'
+                }}
+              >
+                <AutoAwesomeIcon sx={{ fontSize: 42, color: searchError ? 'error.main' : 'text.secondary', mb: 1, opacity: 0.8 }} />
+                <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5, color: searchError ? 'error.main' : 'text.primary' }}>
+                  {searchError ? 'Search Limit or Network Notice' : 'No repositories found'}
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 380, mx: 'auto' }}>
+                  {searchError || `No matches found for "${debouncedQuery || query}". Try an app name, technology, or @username.`}
+                </Typography>
+              </Box>
+            ) : (
+              <Box>
+                {searchError && (
+                  <Box
+                    sx={{
+                      mb: 2,
+                      p: 1.5,
+                      borderRadius: 2,
+                      bgcolor: alpha(theme.palette.warning.main, 0.12),
+                      border: `1px solid ${alpha(theme.palette.warning.main, 0.3)}`
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ color: 'warning.main', fontWeight: 700 }}>
+                      {searchError}
+                    </Typography>
+                  </Box>
+                )}
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, px: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase' }}>
+                    Found {totalCount > 0 ? totalCount.toLocaleString() : results.length} repositories
+                  </Typography>
+                  <Chip
+                    icon={<AndroidIcon sx={{ fontSize: 13 }} />}
+                    label="APK & Repo Suggestions"
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }}
                   />
+                </Box>
+
+                <Grid container spacing={isCompact ? 1 : 1.5}>
+                  {results.map((repo) => (
+                    <Grid item xs={12} sm={isCompact ? 12 : 6} md={isCompact ? 6 : 4} key={repo.id}>
+                      <RepoCard
+                        repo={repo}
+                        isBookmarked={isBookmarked(repo.id)}
+                        onToggleBookmark={onToggleBookmark}
+                        onOpenDetail={(r) => handleSelectRepo(r)}
+                        onCopyClone={onCopyClone}
+                        copiedId={copiedId}
+                        isCompact={isCompact}
+                        isStarred={starredRepos.has(repo.full_name)}
+                        onToggleStar={onToggleStar}
+                        onShareMessage={onShareMessage}
+                      />
+                    </Grid>
+                  ))}
                 </Grid>
-              ))}
-            </Grid>
+              </Box>
+            )}
           </Box>
         )}
       </Box>

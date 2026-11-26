@@ -15,7 +15,49 @@ export interface GitHubUserProfile {
   avatar_url?: string;
 }
 
+let inMemoryPatToken: string | null = null;
+let tokenVaultInitialized = false;
+
+function initNativeTokenVault(): void {
+  if (tokenVaultInitialized) return;
+  tokenVaultInitialized = true;
+
+  try {
+    const win = window as any;
+    const bridge = win?.AndroidThemeBridge;
+    const legacy = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY) || '';
+
+    if (bridge && typeof bridge.getSecureToken === 'function') {
+      const nativeTok = (bridge.getSecureToken() || '').trim();
+      if (nativeTok) {
+        inMemoryPatToken = nativeTok;
+        // Wipe any leftover cleartext token from WebView localStorage
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(LEGACY_TOKEN_KEY);
+        return;
+      }
+      // Migrate existing cleartext token seamlessly into Android Keystore
+      if (legacy.trim() && typeof bridge.saveSecureToken === 'function' && bridge.saveSecureToken(legacy.trim())) {
+        inMemoryPatToken = legacy.trim();
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(LEGACY_TOKEN_KEY);
+        return;
+      }
+      inMemoryPatToken = '';
+      return;
+    }
+
+    inMemoryPatToken = legacy.trim();
+  } catch {
+    inMemoryPatToken = '';
+  }
+}
+
+initNativeTokenVault();
+
 export function getStoredToken(): string {
+  initNativeTokenVault();
+  if (inMemoryPatToken !== null) return inMemoryPatToken;
   try {
     return localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY) || '';
   } catch {
@@ -68,13 +110,24 @@ export async function fetchAuthenticatedUser(): Promise<GitHubUserProfile | null
 
 export async function setStoredToken(token: string): Promise<void> {
   try {
+    const trimmed = token ? token.trim() : '';
+    const bridge = (window as any)?.AndroidThemeBridge;
     localStorage.removeItem(USER_CACHE_KEY);
-    if (token && token.trim()) {
-      localStorage.setItem(TOKEN_KEY, token.trim());
-      await fetchAuthenticatedUser();
+    inMemoryPatToken = trimmed;
+
+    if (bridge && typeof bridge.saveSecureToken === 'function') {
+      bridge.saveSecureToken(trimmed);
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(LEGACY_TOKEN_KEY);
+    } else if (trimmed) {
+      localStorage.setItem(TOKEN_KEY, trimmed);
     } else {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(LEGACY_TOKEN_KEY);
+    }
+
+    if (trimmed) {
+      await fetchAuthenticatedUser();
     }
     await checkLiveRateLimit(true);
   } catch (e) {
@@ -252,7 +305,7 @@ function isSearchQuotaExhausted(): boolean {
   );
 }
 
-function isCoreQuotaExhausted(): boolean {
+export function isCoreQuotaExhausted(): boolean {
   const limits = getCurrentRateLimit();
   return (
     limits.remaining <= 0 &&
@@ -439,7 +492,7 @@ function queryLocalCachedRepositories(
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k) continue;
-      if (k.startsWith('ogv_repo_cache_') || k.startsWith('ogv_trending_') || k.startsWith('ogv_cached_starred_repos_')) {
+      if (k.startsWith('ogv_repo_cache_') || k.startsWith('ogv_trending_') || k.startsWith('ogv_cached_starred_repos_') || k.startsWith('ogv_user_repos_')) {
         const raw = localStorage.getItem(k);
         if (!raw) continue;
         const parsed = JSON.parse(raw);
@@ -836,6 +889,11 @@ export async function fetchRepoCompleteDetails(fullName: string): Promise<Comple
             browser_download_url: a.downloadUrl,
             content_type: a.contentType || '',
             is_apk: isApk,
+            release_tag: rel.tagName || '',
+            release_name: rel.name || rel.tagName || '',
+            release_body: '',
+            release_url: '',
+            published_at: rel.publishedAt || '',
           });
         }
       }
@@ -954,7 +1012,7 @@ export async function fetchReleases(repoFullName: string): Promise<ReleaseAsset[
 
       const assets: ReleaseAsset[] = [];
       for (const rel of releases) {
-        if (Array.isArray(rel.assets)) {
+        if (Array.isArray(rel.assets) && rel.assets.length > 0) {
           for (const a of rel.assets) {
             const lowerName = (a.name || '').toLowerCase();
             const isApk =
@@ -970,9 +1028,30 @@ export async function fetchReleases(repoFullName: string): Promise<ReleaseAsset[
               download_count: a.download_count || 0,
               browser_download_url: a.browser_download_url,
               content_type: a.content_type || '',
-              is_apk: isApk
+              is_apk: isApk,
+              release_tag: rel.tag_name || '',
+              release_name: rel.name || rel.tag_name || '',
+              release_body: rel.body || '',
+              release_url: rel.html_url || '',
+              published_at: rel.published_at || '',
             });
           }
+        } else if (rel) {
+          // Release with no binary assets: provide release overview entry
+          assets.push({
+            id: rel.id || Math.floor(Math.random() * 1000000),
+            name: `${rel.name || rel.tag_name || 'Release'} (Source)`,
+            size: 0,
+            download_count: 0,
+            browser_download_url: rel.zipball_url || rel.tarball_url || rel.html_url || '',
+            content_type: 'application/zip',
+            is_apk: false,
+            release_tag: rel.tag_name || '',
+            release_name: rel.name || rel.tag_name || '',
+            release_body: rel.body || '',
+            release_url: rel.html_url || '',
+            published_at: rel.published_at || '',
+          });
         }
       }
 
@@ -1079,12 +1158,13 @@ const trendingMemoryCache = new Map<string, { data: Repository[]; timestamp: num
 const TRENDING_CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 registerMemoryCacheCleaner((clearAll) => {
-  if (clearAll) {
-    repoSearchMemoryCache.clear();
-    releasesCache.clear();
-    trendingMemoryCache.clear();
-    return;
-  }
+    if (clearAll) {
+      repoSearchMemoryCache.clear();
+      releasesCache.clear();
+      trendingMemoryCache.clear();
+      userReposMemoryCache.clear();
+      return;
+    }
   const now = Date.now();
   for (const [k, v] of repoSearchMemoryCache.entries()) {
     if (now - v.timestamp >= REPO_CACHE_TTL_MS) repoSearchMemoryCache.delete(k);
@@ -1219,4 +1299,272 @@ export async function fetchTrendingRepositories(
       return getTrendingCachedFallback();
     }
   });
+}
+
+export interface GitHubUserSuggestion {
+  login: string;
+  name?: string;
+  avatar_url: string;
+  html_url: string;
+  public_repos?: number;
+  followers?: number;
+  bio?: string;
+  type?: string;
+}
+
+const userReposMemoryCache = new Map<
+  string,
+  { user: GitHubUserSuggestion | null; repositories: Repository[]; timestamp: number }
+>();
+
+/**
+ * Synchronous 0ms local search across cached repositories & repository owners while live fetch runs.
+ */
+export function getInstantLocalSearchMatches(rawQuery: string): {
+  repos: Repository[];
+  users: GitHubUserSuggestion[];
+} {
+  const clean = rawQuery.trim().replace(/^@/, '');
+  if (clean.length < 2) return { repos: [], users: [] };
+
+  const repos = queryLocalCachedRepositories('all', clean, 'stars', 0, false).slice(0, 30);
+  const lower = clean.toLowerCase();
+  const userMap = new Map<string, GitHubUserSuggestion>();
+
+  for (const r of repos) {
+    const login = r.owner?.login;
+    if (login && login.toLowerCase().includes(lower) && !userMap.has(login.toLowerCase())) {
+      userMap.set(login.toLowerCase(), {
+        login,
+        avatar_url: r.owner.avatar_url || `https://github.com/${login}.png?size=80`,
+        html_url: r.owner.html_url || `https://github.com/${login}`,
+      });
+      if (userMap.size >= 4) break;
+    }
+  }
+
+  return { repos, users: Array.from(userMap.values()) };
+}
+
+/**
+ * Fetches a GitHub user's profile and top repositories via Core API (no Search quota used).
+ */
+export async function fetchUserRepositories(
+  rawUsername: string
+): Promise<{ user: GitHubUserSuggestion | null; repositories: Repository[] }> {
+  const username = rawUsername.trim().replace(/^@/, '');
+  if (!username || !/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/.test(username)) {
+    return { user: null, repositories: [] };
+  }
+
+  const lower = username.toLowerCase();
+  const cacheKey = `ogv_user_repos_${lower}`;
+
+  const mem = userReposMemoryCache.get(lower);
+  if (mem && (isCoreQuotaExhausted() || Date.now() - mem.timestamp < REPO_CACHE_TTL_MS)) {
+    return { user: mem.user, repositories: mem.repositories };
+  }
+
+  try {
+    const rawLocal = localStorage.getItem(cacheKey);
+    if (rawLocal) {
+      const parsed = JSON.parse(rawLocal);
+      if (
+        isCoreQuotaExhausted() ||
+        (Date.now() - (parsed.timestamp || 0) < REPO_CACHE_TTL_MS && Array.isArray(parsed.repositories))
+      ) {
+        setBoundedMapEntry(userReposMemoryCache, lower, parsed, 15);
+        return { user: parsed.user || null, repositories: parsed.repositories || [] };
+      }
+    }
+  } catch {}
+
+  if (isCoreQuotaExhausted()) {
+    const cachedRepos = queryLocalCachedRepositories('all', username, 'stars', 0, false).filter(
+      (r) => r.owner?.login?.toLowerCase() === lower
+    );
+    return {
+      user: cachedRepos[0]?.owner
+        ? {
+            login: cachedRepos[0].owner.login,
+            avatar_url: cachedRepos[0].owner.avatar_url,
+            html_url: cachedRepos[0].owner.html_url,
+          }
+        : null,
+      repositories: cachedRepos,
+    };
+  }
+
+  return deduplicatedFetch(`user_repos_${lower}`, async () => {
+    try {
+      const headers = getHeaders();
+      const [userRes, reposRes] = await Promise.all([
+        fetch(`${BASE_URL}/users/${encodeURIComponent(username)}`, { headers }),
+        fetch(`${BASE_URL}/users/${encodeURIComponent(username)}/repos?per_page=30&sort=updated`, { headers }),
+      ]);
+
+      updateRateLimitFromHeaders(userRes.headers);
+      updateRateLimitFromHeaders(reposRes.headers);
+
+      if (userRes.status === 403 || userRes.status === 429 || reposRes.status === 403 || reposRes.status === 429) {
+        markCoreRateLimitExhausted(reposRes.headers);
+        return { user: null, repositories: [] };
+      }
+
+      const userData = userRes.ok ? await userRes.json() : null;
+      const reposData = reposRes.ok ? await reposRes.json() : [];
+
+      const user: GitHubUserSuggestion | null = userData?.login
+        ? {
+            login: userData.login,
+            name: userData.name || undefined,
+            avatar_url: userData.avatar_url || `https://github.com/${userData.login}.png?size=80`,
+            html_url: userData.html_url || `https://github.com/${userData.login}`,
+            public_repos: userData.public_repos,
+            followers: userData.followers,
+            bio: userData.bio || undefined,
+            type: userData.type,
+          }
+        : null;
+
+      const mappedRepos: Repository[] = Array.isArray(reposData)
+        ? reposData
+            .map((item: any) => ({
+              ...item,
+              has_apks:
+                item.topics &&
+                (item.topics.includes('apk') ||
+                  item.topics.includes('android-app') ||
+                  item.topics.includes('android')),
+            }))
+            .sort((a: Repository, b: Repository) => (b.stargazers_count || 0) - (a.stargazers_count || 0))
+        : [];
+
+      const payload = { user, repositories: mappedRepos, timestamp: Date.now() };
+      if (user || mappedRepos.length > 0) {
+        setBoundedMapEntry(userReposMemoryCache, lower, payload, 15);
+        safeSetLocalCache(cacheKey, JSON.stringify(payload));
+      }
+
+      return { user, repositories: mappedRepos };
+    } catch {
+      return { user: null, repositories: [] };
+    }
+  });
+}
+
+/**
+ * Intelligent Global Search: handles `@username` developer lookups, `owner/repo` direct paths,
+ * matching GitHub usernames found inside handles, and global repository search cleanly together.
+ */
+export async function searchSmartGitHub(rawQuery: string): Promise<{
+  users: GitHubUserSuggestion[];
+  repositories: Repository[];
+  totalCount: number;
+  error?: string;
+  isRateLimit?: boolean;
+  fromCache?: boolean;
+}> {
+  const trimmed = rawQuery.trim();
+  if (trimmed.length < 2) {
+    return { users: [], repositories: [], totalCount: 0 };
+  }
+
+  // Case 1: Explicit @username lookup (uses Core API — no Search quota consumed)
+  if (/^@[a-zA-Z0-9-]{2,39}$/.test(trimmed)) {
+    const userResult = await fetchUserRepositories(trimmed.slice(1));
+    if (userResult.user || userResult.repositories.length > 0) {
+      return {
+        users: userResult.user ? [userResult.user] : [],
+        repositories: userResult.repositories,
+        totalCount: userResult.repositories.length,
+      };
+    }
+  }
+
+  // Case 2: Direct owner/repo lookup (e.g., facebook/react)
+  if (/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(trimmed)) {
+    let directRepo: Repository | null = null;
+    if (!isCoreQuotaExhausted()) {
+      try {
+        const res = await fetch(`${BASE_URL}/repos/${trimmed}`, { headers: getHeaders() });
+        updateRateLimitFromHeaders(res.headers);
+        if (res.ok) {
+          directRepo = await res.json();
+        } else if (res.status === 403 || res.status === 429) {
+          markCoreRateLimitExhausted(res.headers);
+        }
+      } catch {}
+    }
+    if (directRepo?.id) {
+      const ownerUser: GitHubUserSuggestion | null = directRepo.owner?.login
+        ? {
+            login: directRepo.owner.login,
+            avatar_url: directRepo.owner.avatar_url,
+            html_url: directRepo.owner.html_url,
+          }
+        : null;
+      return {
+        users: ownerUser ? [ownerUser] : [],
+        repositories: [directRepo],
+        totalCount: 1,
+      };
+    }
+  }
+
+  // Case 3: Single handle token -> run repo search + opportunistic Core API user check in parallel
+  const isSingleHandle = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{1,37}[a-zA-Z0-9])?$/.test(trimmed);
+  const repoSearchPromise = fetchRepositories('all', trimmed, 'stars', 0, 1, 30, false);
+  const userLookupPromise =
+    isSingleHandle && !isCoreQuotaExhausted()
+      ? fetchUserRepositories(trimmed)
+      : Promise.resolve({ user: null, repositories: [] as Repository[] });
+
+  const [repoRes, userRes] = await Promise.all([repoSearchPromise, userLookupPromise]);
+
+  const userMap = new Map<string, GitHubUserSuggestion>();
+  if (userRes.user) {
+    userMap.set(userRes.user.login.toLowerCase(), userRes.user);
+  }
+
+  const lower = trimmed.toLowerCase();
+  const mergedRepos: Repository[] = [];
+  const seenIds = new Set<number>();
+
+  // Blend top repos from exact username match first (up to 6 flagship repos), then global repo search matches
+  for (const r of userRes.repositories.slice(0, 6)) {
+    if (!seenIds.has(r.id)) {
+      seenIds.add(r.id);
+      mergedRepos.push(r);
+    }
+  }
+
+  for (const r of repoRes.repositories) {
+    if (!seenIds.has(r.id)) {
+      seenIds.add(r.id);
+      mergedRepos.push(r);
+    }
+    const ownerLogin = r.owner?.login;
+    if (
+      ownerLogin &&
+      ownerLogin.toLowerCase().includes(lower) &&
+      !userMap.has(ownerLogin.toLowerCase()) &&
+      userMap.size < 4
+    ) {
+      userMap.set(ownerLogin.toLowerCase(), {
+        login: ownerLogin,
+        avatar_url: r.owner.avatar_url || `https://github.com/${ownerLogin}.png?size=80`,
+        html_url: r.owner.html_url || `https://github.com/${ownerLogin}`,
+      });
+    }
+  }
+
+  return {
+    users: Array.from(userMap.values()),
+    repositories: mergedRepos,
+    totalCount: Math.max(repoRes.totalCount, mergedRepos.length),
+    error: mergedRepos.length === 0 ? repoRes.error : undefined,
+    isRateLimit: repoRes.isRateLimit,
+    fromCache: repoRes.fromCache,
+  };
 }

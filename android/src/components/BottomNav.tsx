@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Typography, Badge, useTheme, alpha } from '@mui/material';
 import AndroidIcon from '@mui/icons-material/Android';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import BookmarksIcon from '@mui/icons-material/Bookmarks';
 import ExploreIcon from '@mui/icons-material/Explore';
+import { triggerHaptic } from '../utils/haptics';
 
 interface BottomNavProps {
   currentTab: string;
@@ -13,17 +14,20 @@ interface BottomNavProps {
   visible?: boolean;
 }
 
-export const BottomNav: React.FC<BottomNavProps> = ({
+export const BottomNav: React.FC<BottomNavProps> = React.memo(({
   currentTab,
   onTabChange,
   vaultCount,
   visible = true
 }) => {
   const theme = useTheme();
+  const [optimisticTab, setOptimisticTab] = useState<string>(currentTab);
 
-  if (!visible) return null;
+  useEffect(() => {
+    setOptimisticTab(currentTab);
+  }, [currentTab]);
 
-  const TABS = [
+  const TABS = useMemo(() => [
     { id: 'apks', label: 'APK', icon: <AndroidIcon sx={{ fontSize: 20 }} /> },
     { id: 'trending', label: 'Trending', icon: <WhatshotIcon sx={{ fontSize: 20 }} /> },
     { id: 'spotlight', label: 'Spotlight', icon: <AutoAwesomeIcon sx={{ fontSize: 20 }} /> },
@@ -55,9 +59,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       )
     },
     { id: 'explore', label: 'Explore', icon: <ExploreIcon sx={{ fontSize: 19 }} /> },
-  ];
+  ], [vaultCount, theme.palette.primary.main, theme.palette.primary.contrastText]);
 
-  const activeIndex = Math.max(0, TABS.findIndex(t => t.id === currentTab));
+  if (!visible) return null;
+
+  const activeIndex = Math.max(0, TABS.findIndex(t => t.id === optimisticTab));
 
   return (
     <Box
@@ -65,66 +71,72 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         position: 'fixed',
         bottom: 'calc(max(env(safe-area-inset-bottom, 0px), 4px) + 6px)',
         left: '50%',
-        transform: 'translateX(-50%)',
+        transform: 'translateX(-50%) translateZ(0)',
         width: 'calc(100% - 24px)',
         maxWidth: 410,
-        height: 60,
-        borderRadius: '30px',
+        height: 62,
+        borderRadius: '31px',
         bgcolor: theme.palette.mode === 'dark'
-          ? alpha(theme.palette.background.paper, 0.88)
-          : alpha(theme.palette.background.paper, 0.92),
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
+          ? alpha(theme.palette.background.paper, 0.96)
+          : alpha(theme.palette.background.paper, 0.98),
         border: theme.palette.mode === 'dark'
-          ? `1px solid ${alpha(theme.palette.common.white, 0.12)}`
-          : `1px solid ${alpha(theme.palette.common.white, 0.8)}`,
+          ? `1px solid ${alpha(theme.palette.common.white, 0.14)}`
+          : `1px solid ${alpha(theme.palette.common.white, 0.85)}`,
         boxShadow: theme.palette.mode === 'dark'
-          ? `0 18px 48px rgba(0, 0, 0, 0.65), 0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}, inset 0 1px 1px rgba(255, 255, 255, 0.16)`
-          : `0 14px 38px rgba(0, 0, 0, 0.08), 0 2px 10px ${alpha(theme.palette.primary.main, 0.12)}, inset 0 1px 1px rgba(255, 255, 255, 0.9)`,
+          ? `0 18px 48px rgba(0, 0, 0, 0.65), 0 2px 10px ${alpha(theme.palette.primary.main, 0.14)}, inset 0 1px 0 rgba(255, 255, 255, 0.16)`
+          : `0 14px 38px rgba(15, 23, 42, 0.12), 0 2px 10px ${alpha(theme.palette.primary.main, 0.10)}, inset 0 1px 0 rgba(255, 255, 255, 0.95)`,
         display: 'flex',
         alignItems: 'center',
-        px: 0.8,
+        px: 0.75,
         zIndex: 1200,
         userSelect: 'none',
         touchAction: 'manipulation'
       }}
     >
-      {/* ── Slidable Selection Pill (Liquid Glass Theme Blend) ── */}
+      {/* ── Full-Tab Sliding Liquid Glass Capsule (Vivo / Material You Style) ── */}
       <Box
         sx={{
           position: 'absolute',
-          top: 6,
+          top: 5,
           left: 6,
           width: 'calc((100% - 12px) / 5)',
-          height: 32,
+          height: 52,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           pointerEvents: 'none',
-          transform: `translateX(${activeIndex * 100}%)`,
-          transition: 'transform 0.32s cubic-bezier(0.34, 1.25, 0.64, 1)',
+          transform: `translateX(${activeIndex * 100}%) translateZ(0)`,
+          willChange: 'transform',
+          transition: 'transform 0.20s cubic-bezier(0.22, 1, 0.36, 1)',
           zIndex: 1
         }}
       >
         <Box
           sx={{
-            width: 50,
-            height: 32,
-            borderRadius: '16px',
-            bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.22 : 0.15),
-            border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.42 : 0.28)}`,
-            boxShadow: `0 2px 12px ${alpha(theme.palette.primary.main, 0.24)}, inset 0 1px 1px ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.75)'}`
+            width: 'calc(100% - 4px)',
+            height: '100%',
+            borderRadius: '26px',
+            background: theme.palette.mode === 'dark'
+              ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.30)}, ${alpha(theme.palette.secondary.main, 0.22)})`
+              : `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.17)}, ${alpha(theme.palette.secondary.main, 0.12)})`,
+            border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.45 : 0.28)}`,
+            boxShadow: theme.palette.mode === 'dark'
+              ? `0 4px 16px ${alpha(theme.palette.primary.main, 0.26)}, inset 0 1px 0 rgba(255, 255, 255, 0.22)`
+              : `0 3px 12px ${alpha(theme.palette.primary.main, 0.14)}, inset 0 1px 0 rgba(255, 255, 255, 0.90)`
           }}
         />
       </Box>
 
       {TABS.map((tab) => {
-        const isSelected = currentTab === tab.id;
+        const isSelected = optimisticTab === tab.id;
         return (
           <Box
             key={tab.id}
             onClick={() => {
-              try { navigator.vibrate?.(10); } catch {}
+              if (optimisticTab !== tab.id) {
+                setOptimisticTab(tab.id);
+              }
+              triggerHaptic(10);
               onTabChange(tab.id);
             }}
             sx={{
@@ -137,7 +149,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               cursor: 'pointer',
               touchAction: 'manipulation',
               WebkitTapHighlightColor: 'transparent',
-              transition: 'transform 0.15s ease',
+              transition: 'transform 0.12s ease',
               '&:active': {
                 transform: 'scale(0.92)'
               }
@@ -153,7 +165,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 color: isSelected
                   ? theme.palette.primary.main
                   : (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.88)' : theme.palette.text.secondary),
-                transition: 'color 0.22s ease'
+                transition: 'color 0.14s ease'
               }}
             >
               {tab.icon}
@@ -169,7 +181,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 color: isSelected
                   ? theme.palette.primary.main
                   : (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.72)' : theme.palette.text.secondary),
-                transition: 'color 0.22s ease'
+                transition: 'color 0.14s ease'
               }}
             >
               {tab.label}
@@ -179,4 +191,4 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       })}
     </Box>
   );
-};
+});

@@ -28,6 +28,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import TuneIcon from '@mui/icons-material/Tune';
 import { CATEGORIES } from '../data/categories';
 import { SortOption, Category } from '../types';
+import { triggerHaptic } from '../utils/haptics';
 
 interface CompactFilterBarProps {
   selectedCategoryId: string;
@@ -101,11 +102,7 @@ export const CompactFilterBar = React.memo<CompactFilterBarProps>(({
         scrollbarWidth: 'none',
         '&::-webkit-scrollbar': { display: 'none' },
         borderBottom: `1px solid ${alpha(theme.palette.divider, 0.7)}`,
-        bgcolor: theme.palette.mode === 'dark'
-          ? alpha(theme.palette.background.default, 0.88)
-          : alpha(theme.palette.background.default, 0.92),
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
+        bgcolor: 'var(--bg-header)',
         boxShadow: theme.palette.mode === 'dark'
           ? '0 4px 16px rgba(0, 0, 0, 0.35)'
           : `0 2px 10px ${alpha(theme.palette.primary.main, 0.05)}`,
@@ -133,21 +130,15 @@ export const CompactFilterBar = React.memo<CompactFilterBarProps>(({
           userSelect: 'none',
           WebkitUserSelect: 'none',
           touchAction: 'manipulation',
-          bgcolor: theme.palette.mode === 'dark'
-            ? 'rgba(56, 189, 248, 0.14)'
-            : 'rgba(37, 99, 235, 0.10)',
-          borderColor: theme.palette.mode === 'dark'
-            ? 'rgba(56, 189, 248, 0.35)'
-            : 'rgba(37, 99, 235, 0.25)',
-          color: theme.palette.mode === 'dark' ? '#38bdf8' : theme.palette.primary.main,
+          bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.16 : 0.11),
+          borderColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.38 : 0.28),
+          color: theme.palette.primary.main,
           boxShadow: theme.palette.mode === 'dark'
-            ? '0 2px 8px rgba(0,0,0,0.25), inset 0 1px 1px rgba(255,255,255,0.1)'
-            : '0 2px 6px rgba(0,0,0,0.05), inset 0 1px 1px rgba(255,255,255,0.6)',
+            ? `0 2px 10px ${alpha(theme.palette.primary.main, 0.18)}, inset 0 1px 1px rgba(255,255,255,0.10)`
+            : `0 2px 8px ${alpha(theme.palette.primary.main, 0.10)}, inset 0 1px 1px rgba(255,255,255,0.70)`,
           '&:hover, &:focus, &:active, &.Mui-focusVisible': {
-            bgcolor: theme.palette.mode === 'dark'
-              ? 'rgba(56, 189, 248, 0.22)'
-              : 'rgba(37, 99, 235, 0.16)',
-            color: theme.palette.mode === 'dark' ? '#38bdf8' : theme.palette.primary.main
+            bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.24 : 0.18),
+            color: theme.palette.primary.main
           },
           '& .MuiChip-deleteIcon': {
             color: 'inherit',
@@ -256,9 +247,8 @@ export const CompactFilterBar = React.memo<CompactFilterBarProps>(({
             borderRadius: '20px',
             minWidth: 210,
             maxHeight: 380,
-            bgcolor: alpha(theme.palette.background.paper, 0.96),
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
+            bgcolor: 'var(--bg-menu)',
+            backgroundImage: 'none',
             border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
             boxShadow: '0 16px 40px rgba(0,0,0,0.35)',
             p: 0.5
@@ -272,7 +262,7 @@ export const CompactFilterBar = React.memo<CompactFilterBarProps>(({
               key={cat.id}
               selected={isSelected}
               onClick={() => {
-                try { navigator.vibrate?.(8); } catch {}
+                triggerHaptic(8);
                 onSelectCategory(cat.id);
                 setCategoryAnchor(null);
               }}
@@ -318,9 +308,8 @@ export const CompactFilterBar = React.memo<CompactFilterBarProps>(({
             borderRadius: '20px',
             minWidth: 165,
             p: 0.5,
-            bgcolor: alpha(theme.palette.background.paper, 0.96),
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
+            bgcolor: 'var(--bg-menu)',
+            backgroundImage: 'none',
             border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
             boxShadow: '0 16px 40px rgba(0, 0, 0, 0.35)'
           }
@@ -372,9 +361,8 @@ export const CompactFilterBar = React.memo<CompactFilterBarProps>(({
             borderRadius: '20px',
             minWidth: 155,
             p: 0.5,
-            bgcolor: alpha(theme.palette.background.paper, 0.96),
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
+            bgcolor: 'var(--bg-menu)',
+            backgroundImage: 'none',
             border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
             boxShadow: '0 16px 40px rgba(0, 0, 0, 0.35)'
           }

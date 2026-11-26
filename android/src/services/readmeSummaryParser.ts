@@ -12,6 +12,7 @@ export interface ReadmeSummary {
   headline: string;
   highlights: string[];
   heroMediaUrl?: string;
+  isTranslated?: boolean;
 }
 
 const summaryCache = new Map<string, ReadmeSummary>();

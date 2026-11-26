@@ -4,7 +4,6 @@ import {
   CardContent,
   Typography,
   Box,
-  Avatar,
   Chip,
   IconButton,
   Button,
@@ -22,6 +21,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { Repository } from '../types';
 import { downloadApkFile } from '../services/downloadHelper';
+import { OwnerAvatar } from './OwnerAvatar';
+import { triggerHaptic } from '../utils/haptics';
 
 interface RepoCardProps {
   repo: Repository;
@@ -37,6 +38,7 @@ interface RepoCardProps {
   isSelectMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (repoId: number) => void;
+  updateBadge?: string;
 }
 
 export const RepoCard = React.memo<RepoCardProps>(({
@@ -52,7 +54,8 @@ export const RepoCard = React.memo<RepoCardProps>(({
   onShareMessage: _onShareMessage,
   isSelectMode = false,
   isSelected = false,
-  onToggleSelect
+  onToggleSelect,
+  updateBadge,
 }) => {
   const theme = useTheme();
 
@@ -62,7 +65,8 @@ export const RepoCard = React.memo<RepoCardProps>(({
     return count.toString();
   };
 
-  const hasApk = repo.has_apks || (repo.topics && (repo.topics.includes('apk') || repo.topics.includes('android-app') || repo.topics.includes('android')));
+  const ownerLogin = repo.owner?.login || repo.full_name?.split('/')[0] || 'unknown';
+  const hasApk = repo.has_apks || (Array.isArray(repo.topics) && (repo.topics.includes('apk') || repo.topics.includes('android-app') || repo.topics.includes('android')));
   const primaryApkAsset = repo.latest_release?.assets?.find(a => a.is_apk || a.name.endsWith('.apk'));
 
   const handleStarClick = (e: React.MouseEvent) => {
@@ -89,7 +93,7 @@ export const RepoCard = React.memo<RepoCardProps>(({
           overflow: 'hidden',
           bgcolor: isSelected
             ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.09)
-            : (theme.palette.mode === 'dark' ? 'rgba(21, 28, 44, 0.94)' : 'rgba(255, 255, 255, 0.97)'),
+            : 'background.paper',
           borderRadius: '16px',
           border: isSelected
             ? `2px solid ${theme.palette.primary.main}`
@@ -97,7 +101,7 @@ export const RepoCard = React.memo<RepoCardProps>(({
           boxShadow: isSelected
             ? `0 0 16px ${alpha(theme.palette.primary.main, 0.45)}`
             : (theme.palette.mode === 'dark' ? '0 2px 10px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(0, 0, 0, 0.03)'),
-          transition: 'all 0.15s ease',
+          transition: 'transform 0.12s ease, border-color 0.15s ease',
           '&:active': {
             transform: 'scale(0.985)',
             filter: theme.palette.mode === 'dark' ? 'brightness(1.08)' : 'brightness(0.97)'
@@ -130,17 +134,11 @@ export const RepoCard = React.memo<RepoCardProps>(({
 
         <Box sx={{ display: 'flex', alignItems: 'center', p: 1.25, gap: 1.25 }}>
           {/* Avatar */}
-          <Avatar
-            src={repo.owner.avatar_url}
-            alt={repo.owner.login}
-            sx={{
-              width: 38,
-              height: 38,
-              borderRadius: '10px',
-              bgcolor: 'background.default',
-              flexShrink: 0,
-              border: `1px solid ${theme.palette.divider}`
-            }}
+          <OwnerAvatar
+            owner={repo.owner}
+            size={38}
+            borderRadius="10px"
+            border={`1px solid ${theme.palette.divider}`}
           />
 
           {/* Central Info Column */}
@@ -168,7 +166,7 @@ export const RepoCard = React.memo<RepoCardProps>(({
                   flexShrink: 0
                 }}
               >
-                by {repo.owner.login}
+                by {ownerLogin}
               </Typography>
             </Box>
 
@@ -186,7 +184,18 @@ export const RepoCard = React.memo<RepoCardProps>(({
             </Typography>
 
             {/* Row 3: Meta pills (Stars, Forks, Language) */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, color: 'text.secondary', fontSize: '0.68rem' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                color: 'text.secondary',
+                fontSize: '0.68rem',
+                flexWrap: 'nowrap',
+                overflow: 'hidden',
+                minWidth: 0
+              }}
+            >
               <Box
                 onClick={handleStarClick}
                 sx={{
@@ -195,6 +204,8 @@ export const RepoCard = React.memo<RepoCardProps>(({
                   gap: 0.35,
                   cursor: 'pointer',
                   fontWeight: 800,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                   color: isStarred ? '#e3b341' : 'inherit'
                 }}
               >
@@ -202,15 +213,44 @@ export const RepoCard = React.memo<RepoCardProps>(({
                 <span>{formatCount(repo.stargazers_count + (isStarred ? 1 : 0))}</span>
               </Box>
 
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, fontWeight: 600 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>
                 <CallSplitIcon sx={{ fontSize: 12 }} />
                 <span>{formatCount(repo.forks_count)}</span>
               </Box>
 
               {repo.language && (
-                <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'secondary.main' }}>
+                <Typography
+                  noWrap
+                  sx={{
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    color: 'secondary.main',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}
+                >
                   • {repo.language}
                 </Typography>
+              )}
+              {updateBadge && (
+                <Chip
+                  size="small"
+                  label={`↑ ${updateBadge}`}
+                  color="success"
+                  sx={{
+                    height: 17,
+                    fontSize: '0.62rem',
+                    fontWeight: 800,
+                    borderRadius: '6px',
+                    maxWidth: 112,
+                    minWidth: 0,
+                    '& .MuiChip-label': {
+                      px: 0.75,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }
+                  }}
+                />
               )}
             </Box>
           </Box>
@@ -261,7 +301,7 @@ export const RepoCard = React.memo<RepoCardProps>(({
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleBookmark(repo);
-                  try { navigator.vibrate?.(10); } catch {}
+                  triggerHaptic(10);
                 }}
                 sx={{
                   color: isBookmarked ? theme.palette.primary.main : 'text.secondary',
@@ -304,7 +344,7 @@ export const RepoCard = React.memo<RepoCardProps>(({
         overflow: 'hidden',
         bgcolor: isSelected
           ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.09)
-          : (theme.palette.mode === 'dark' ? 'rgba(21, 28, 44, 0.94)' : 'rgba(255, 255, 255, 0.97)'),
+          : 'background.paper',
         borderRadius: isCompact ? '16px' : '20px',
         border: isSelected
           ? `2px solid ${theme.palette.primary.main}`
@@ -347,16 +387,10 @@ export const RepoCard = React.memo<RepoCardProps>(({
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1, mb: isCompact ? 0.5 : 0.85 }}>
           {/* Left: Avatar & Repo Details */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: isCompact ? 1 : 1.25, minWidth: 0, flex: 1 }}>
-            <Avatar
-              src={repo.owner.avatar_url}
-              alt={repo.owner.login}
-              sx={{
-                width: isCompact ? 28 : 34,
-                height: isCompact ? 28 : 34,
-                borderRadius: isCompact ? '7px' : '9px',
-                bgcolor: 'background.default',
-                flexShrink: 0
-              }}
+            <OwnerAvatar
+              owner={repo.owner}
+              size={isCompact ? 28 : 34}
+              borderRadius={isCompact ? '7px' : '9px'}
             />
             <Box sx={{ minWidth: 0, flex: 1 }}>
               <Typography
@@ -370,7 +404,7 @@ export const RepoCard = React.memo<RepoCardProps>(({
                   mb: '1px'
                 }}
               >
-                {repo.owner.login}
+                {ownerLogin}
               </Typography>
               <Typography
                 noWrap
@@ -437,7 +471,7 @@ export const RepoCard = React.memo<RepoCardProps>(({
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleBookmark(repo);
-                  try { navigator.vibrate?.(10); } catch {}
+                  triggerHaptic(10);
                 }}
                 sx={{
                   color: isBookmarked ? theme.palette.primary.main : 'text.secondary',
@@ -489,9 +523,11 @@ export const RepoCard = React.memo<RepoCardProps>(({
                 sx={{
                   height: isCompact ? 18 : 20,
                   fontSize: isCompact ? '0.62rem' : '0.67rem',
-                  bgcolor: alpha(theme.palette.text.primary, 0.05),
-                  color: 'text.secondary',
-                  borderRadius: '5px'
+                  fontWeight: 600,
+                  bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.11 : 0.08),
+                  color: 'var(--tag-text)',
+                  border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.22 : 0.16)}`,
+                  borderRadius: '6px'
                 }}
               />
             ))}
@@ -542,6 +578,15 @@ export const RepoCard = React.memo<RepoCardProps>(({
               {formatCount(repo.forks_count)}
             </Typography>
           </Box>
+
+          {updateBadge && (
+            <Chip
+              size="small"
+              label={`↑ ${updateBadge}`}
+              color="success"
+              sx={{ height: 18, fontSize: '0.64rem', fontWeight: 800, borderRadius: '6px' }}
+            />
+          )}
 
           {repo.license && (
             <Typography variant="caption" sx={{ fontSize: isCompact ? '0.68rem' : '0.72rem', color: 'text.secondary', ml: 'auto', fontWeight: 600 }}>

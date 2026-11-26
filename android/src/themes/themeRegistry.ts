@@ -1,52 +1,124 @@
 import { ThemePlugin, ThemeColors, ThemeId } from './types';
-import { prometheusDarkTheme } from './plugins/prometheusDark';
-import { sandLightTheme } from './plugins/sandLight';
-import { ambientTwilightTheme } from './plugins/ambientTwilight';
 import { githubLightTheme } from './plugins/githubLight';
 import { githubDarkTheme } from './plugins/githubDark';
 
+export interface SystemAppearanceInfo {
+  isDark: boolean;
+}
+
+const systemAutoDescriptor: ThemePlugin = {
+  ...githubDarkTheme,
+  id: 'system',
+  name: 'System (Auto)',
+  description: 'Automatically switches between GitHub Dark and GitHub Simple Light based on system mode',
+  iconName: 'Sparkles',
+};
+
 class ThemeRegistry {
   private themes: Map<string, ThemePlugin> = new Map();
-  private lastAppliedThemeId: string | null = null;
-  private lastAppliedDark: boolean | null = null;
+  private lastSignature: string | null = null;
   private bridgeInitTimer: any = null;
+  private cachedSysInfo: SystemAppearanceInfo | null = null;
+  private resolvedThemeCache: Map<string, ThemePlugin> = new Map();
+  private cachedAllThemes: ThemePlugin[] | null = null;
 
   constructor() {
+    this.register(systemAutoDescriptor);
     this.register(githubDarkTheme);
     this.register(githubLightTheme);
-    this.register(prometheusDarkTheme);
-    this.register(sandLightTheme);
-    this.register(ambientTwilightTheme);
   }
 
   public register(plugin: ThemePlugin): void {
     this.themes.set(plugin.id, plugin);
+    this.resolvedThemeCache.clear();
+    this.cachedAllThemes = null;
+  }
+
+  public invalidateSystemAppearance(): void {
+    this.cachedSysInfo = null;
+    this.resolvedThemeCache.clear();
+    this.cachedAllThemes = null;
+  }
+
+  public getSystemAppearance(): SystemAppearanceInfo {
+    if (this.cachedSysInfo) {
+      return this.cachedSysInfo;
+    }
+
+    const mediaDark =
+      typeof window !== 'undefined' && window.matchMedia
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches
+        : true;
+
+    try {
+      const bridge = (window as any)?.AndroidThemeBridge;
+      if (bridge && typeof bridge.getSystemAppearance === 'function') {
+        const parsed = JSON.parse(bridge.getSystemAppearance() || '{}');
+        const isDark = typeof parsed.isDark === 'boolean' ? parsed.isDark : mediaDark;
+        this.cachedSysInfo = { isDark };
+        return this.cachedSysInfo;
+      }
+    } catch {}
+
+    this.cachedSysInfo = { isDark: mediaDark };
+    return this.cachedSysInfo;
   }
 
   public getSystemThemeId(): ThemeId {
-    if (typeof window !== 'undefined' && window.matchMedia) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'github-dark' : 'github-light';
-    }
-    return 'github-dark';
+    return 'system';
+  }
+
+  public normalizeThemeId(id?: string | null): ThemeId {
+    if (!id || id === 'system' || id === 'system-black' || id === 'system-light') return 'system';
+    if (id === 'dark' || id === 'github-dark') return 'github-dark';
+    if (id === 'light' || id === 'github-light') return 'github-light';
+    return 'system';
   }
 
   public get(id?: string): ThemePlugin {
-    // Map generic 'dark' and 'light' to GitHub Dark and GitHub Light
-    if (id === 'dark') return githubDarkTheme;
-    if (id === 'light') return githubLightTheme;
-    if (id && this.themes.has(id)) {
-      return this.themes.get(id)!;
+    const resolvedKey = this.normalizeThemeId(id);
+
+    const cached = this.resolvedThemeCache.get(resolvedKey);
+    if (cached) {
+      return cached;
     }
-    return this.themes.get(this.getSystemThemeId()) || githubDarkTheme;
+
+    if (resolvedKey !== 'system') {
+      const staticPlugin = this.themes.get(resolvedKey) || githubDarkTheme;
+      this.resolvedThemeCache.set(resolvedKey, staticPlugin);
+      return staticPlugin;
+    }
+
+    const sys = this.getSystemAppearance();
+    const base = sys.isDark ? githubDarkTheme : githubLightTheme;
+    const resolved: ThemePlugin = {
+      ...base,
+      id: 'system',
+      name: 'System (Auto)',
+      description: 'Automatically switches between GitHub Dark and GitHub Simple Light based on system mode',
+      iconName: 'Sparkles',
+    };
+    this.resolvedThemeCache.set(resolvedKey, resolved);
+    return resolved;
   }
 
   public getAll(): ThemePlugin[] {
-    return Array.from(this.themes.values());
+    if (!this.cachedAllThemes) {
+      this.cachedAllThemes = Array.from(this.themes.keys()).map((id) => this.get(id));
+    }
+    return this.cachedAllThemes;
   }
 
   public has(id: string): boolean {
-    if (id === 'dark' || id === 'light') return true;
-    return this.themes.has(id);
+    return (
+      id === 'system' ||
+      id === 'system-black' ||
+      id === 'system-light' ||
+      id === 'dark' ||
+      id === 'light' ||
+      id === 'github-dark' ||
+      id === 'github-light'
+    );
   }
 
   public applyThemeToDom(theme: ThemePlugin): void {
@@ -56,20 +128,17 @@ class ThemeRegistry {
   public applyToDom(theme: ThemePlugin): void {
     if (typeof document === 'undefined') return;
 
-    // Fast-path guard: avoid DOM reflows and repeated system bridge calls if identical
-    const isDarkChanged = this.lastAppliedDark !== theme.isDark;
-    const isThemeChanged = this.lastAppliedThemeId !== theme.id;
+    const sig = `${theme.id}|${theme.isDark}|${theme.colors.accent}|${theme.colors.bgCanvas}`;
 
-    if (!isThemeChanged && !isDarkChanged) {
+    if (this.lastSignature === sig) {
       return;
     }
 
-    this.lastAppliedThemeId = theme.id;
-    this.lastAppliedDark = theme.isDark;
+    this.lastSignature = sig;
+    (window as any).__ogvSystemBlurEnabled = false;
 
     const root = document.documentElement;
 
-    // Set standard class for dark / light
     if (theme.isDark) {
       root.classList.add('dark');
       root.classList.remove('light');
@@ -78,21 +147,28 @@ class ThemeRegistry {
       root.classList.remove('dark');
     }
 
-    // Set data-theme attribute for scoped styling
     root.setAttribute('data-theme', theme.id);
+    root.setAttribute('data-theme-glass', 'false');
+    root.style.setProperty('--glass-backdrop', 'none');
+    root.style.setProperty('--glass-backdrop-menu', 'none');
+    root.style.setProperty('--bg-mesh-gradient', 'none');
+    root.style.setProperty('--bg-menu', theme.colors.bgMenu || theme.colors.bgSurface);
+    root.style.setProperty('--bg-pill', theme.colors.bgPill || theme.colors.bgHeader || theme.colors.bgSurface);
+    root.style.setProperty('--primary-container', theme.colors.primaryContainer || theme.colors.accentSoft);
+    root.style.setProperty('--on-primary-container', theme.colors.onPrimaryContainer || theme.colors.accent);
 
-    // Inject CSS variables
-    const colorEntries = Object.entries(theme.colors) as [keyof ThemeColors, string][];
+    const colorEntries = Object.entries(theme.colors) as [keyof ThemeColors, string | undefined][];
     for (const [key, value] of colorEntries) {
+      if (!value) continue;
       const cssVarName = '--' + key.replace(/([A-Z])/g, (m) => '-' + m.toLowerCase());
       root.style.setProperty(cssVarName, value);
     }
 
-    // Set root and body background to flow seamlessly under status and nav bars
     root.style.backgroundColor = theme.colors.bgCanvas;
     document.body.style.backgroundColor = theme.colors.bgCanvas;
+    document.body.style.backgroundImage = 'none';
+    document.body.style.backgroundAttachment = 'scroll';
 
-    // Dynamically update mobile browser/system theme-color meta tag
     let metaTheme = document.querySelector('meta[name="theme-color"]');
     if (!metaTheme) {
       metaTheme = document.createElement('meta');
@@ -101,22 +177,19 @@ class ThemeRegistry {
     }
     metaTheme.setAttribute('content', theme.colors.bgCanvas);
 
-    // Only invoke Android native status bar style bridge when dark/light mode actually changes
-    if (isDarkChanged) {
+    const applyBars = () => {
       try {
-        if ((window as any).AndroidThemeBridge?.setStatusBarStyle) {
-          (window as any).AndroidThemeBridge.setStatusBarStyle(theme.isDark);
-        } else {
-          // In case bridge is still initializing on cold launch, try once after 200ms
-          if (this.bridgeInitTimer) clearTimeout(this.bridgeInitTimer);
-          this.bridgeInitTimer = setTimeout(() => {
-            if ((window as any).AndroidThemeBridge?.setStatusBarStyle) {
-              (window as any).AndroidThemeBridge.setStatusBarStyle(theme.isDark);
-            }
-          }, 200);
-        }
+        (window as any).AndroidThemeBridge?.setStatusBarStyle?.(theme.isDark);
       } catch {}
-    }
+      try {
+        (window as any).Capacitor?.Plugins?.SystemBars?.setStyle?.({
+          style: theme.isDark ? 'DARK' : 'LIGHT',
+        });
+      } catch {}
+    };
+    applyBars();
+    if (this.bridgeInitTimer) clearTimeout(this.bridgeInitTimer);
+    this.bridgeInitTimer = setTimeout(applyBars, 150);
   }
 }
 

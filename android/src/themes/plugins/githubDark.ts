@@ -2,62 +2,62 @@ import { ThemePlugin } from '../types';
 
 export const githubDarkTheme: ThemePlugin = {
   id: 'github-dark',
-  name: 'GitHub Dark (AMOLED)',
-  description: 'Pure pitch-black AMOLED dark with high-contrast surfaces, crisp blue buttons, and gold stars',
+  name: 'GitHub Dark',
+  description: 'Pure pitch-black canvas with high-contrast midnight cards, vivid sapphire blue accents, and rich gold stars',
   isDark: true,
   iconName: 'Github',
   colors: {
-    bgCanvas: '#000000',           // Pure AMOLED deep pitch black (not grey!)
-    bgHeader: 'rgba(0, 0, 0, 0.96)',
-    bgSurface: '#0d1117',          // Deep sleek dark surface
-    bgSurfaceHover: '#161b22',     // Clear visible hover
-    bgSurfaceActive: '#080c10',    // Recessed active area
-    bgSubtle: 'rgba(56, 139, 253, 0.15)',
+    bgCanvas: '#000000',
+    bgHeader: 'rgba(6, 9, 14, 0.94)',
+    bgSurface: '#0d121a',
+    bgSurfaceHover: '#161f2c',
+    bgSurfaceActive: '#090d13',
+    bgSubtle: 'rgba(47, 129, 247, 0.16)',
 
-    heroGradient: 'linear-gradient(to right, #388bfd, #58a6ff, #a371f7)',
+    heroGradient: 'linear-gradient(135deg, #2f81f7, #58a6ff, #a371f7)',
 
-    borderSubtle: '#161b22',
-    borderDefault: '#21262d',      // Crisp, visible high-contrast border
+    borderSubtle: '#171e28',
+    borderDefault: '#232c38',
     borderHover: '#58a6ff',
-    borderFocus: '#1f6feb',
+    borderFocus: '#2f81f7',
 
-    textPrimary: '#f0f6fc',
-    textSecondary: '#8d96a0',
-    textMuted: '#7d8590',
-    textInverse: '#ffffff',        // White text on blue buttons!
+    textPrimary: '#f3f7fc',
+    textSecondary: '#9ba6b5',
+    textMuted: '#788392',
+    textInverse: '#ffffff',
 
-    accent: '#1f6feb',             // Classic GitHub blue
-    accentHover: '#388bfd',
-    accentSoft: 'rgba(56, 139, 253, 0.18)',
-    accentBorder: 'rgba(56, 139, 253, 0.45)',
+    accent: '#2f81f7',
+    accentHover: '#58a6ff',
+    accentSoft: 'rgba(47, 129, 247, 0.18)',
+    accentBorder: 'rgba(88, 166, 255, 0.45)',
 
-    secondaryAccent: '#58a6ff',
-    secondarySoft: 'rgba(88, 166, 255, 0.15)',
-    secondaryBorder: 'rgba(88, 166, 255, 0.35)',
+    secondaryAccent: '#79c0ff',
+    secondarySoft: 'rgba(121, 192, 255, 0.14)',
+    secondaryBorder: 'rgba(121, 192, 255, 0.35)',
 
-    starColor: '#e3b341',          // GitHub gold star
-    starBg: 'rgba(227, 179, 65, 0.15)',
-    starBorder: 'rgba(227, 179, 65, 0.4)',
+    starColor: '#f0b429',
+    starBg: 'rgba(240, 180, 41, 0.16)',
+    starBorder: 'rgba(240, 180, 41, 0.42)',
 
-    tagBg: '#090d12',
-    tagBorder: '#21262d',
-    tagText: '#58a6ff',
-    tagHoverText: '#79c0ff',
+    tagBg: '#0b1017',
+    tagBorder: '#232c38',
+    tagText: '#79c0ff',
+    tagHoverText: '#a5d6ff',
 
-    activePillBg: '#1f6feb',
+    activePillBg: '#2f81f7',
     activePillText: '#ffffff',
-    activePillBorder: '#1f6feb',
+    activePillBorder: '#2f81f7',
 
     overlayBackdrop: 'rgba(0, 0, 0, 0.88)',
 
-    codeBg: '#090d12',
-    codeBorder: '#21262d',
-    codeText: '#f0f6fc',
-    codeInlineBg: '#161b22',
+    codeBg: '#090d14',
+    codeBorder: '#232c38',
+    codeText: '#f3f7fc',
+    codeInlineBg: '#161f2c',
     codeInlineText: '#79c0ff',
 
     scrollbarTrack: '#000000',
-    scrollbarThumb: '#21262d',
+    scrollbarThumb: '#232c38',
     scrollbarThumbHover: '#58a6ff',
   }
 };

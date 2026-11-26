@@ -15,6 +15,7 @@ import { ThemePlugin } from '../themes/types';
 import { OneGitVaultLogo } from './OneGitVaultLogo';
 import { AndroidUpdateInfo } from '../services/updateService';
 import { fetchAuthenticatedUser, getCachedUser, GitHubUserProfile } from '../services/githubApi';
+import { triggerHaptic } from '../utils/haptics';
 
 interface TopAppBarProps {
   searchQuery?: string;
@@ -36,7 +37,7 @@ interface TopAppBarProps {
   onToggleCompactView?: () => void;
 }
 
-export const TopAppBar: React.FC<TopAppBarProps> = ({
+export const TopAppBar: React.FC<TopAppBarProps> = React.memo(({
   isRefreshing = false,
   isAuthenticated,
   isSearchActive: _isSearchActive,
@@ -64,11 +65,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
         left: 0,
         right: 0,
         zIndex: 1200,
-        bgcolor: theme.palette.mode === 'dark'
-          ? alpha(theme.palette.background.default, 0.88)
-          : alpha(theme.palette.background.default, 0.92),
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
+        bgcolor: 'var(--bg-header)',
         borderBottom: `1px solid ${alpha(theme.palette.divider, 0.7)}`,
         pt: 'calc(max(env(safe-area-inset-top, 0px), var(--status-bar-height, 44px)) + 6px)',
         px: { xs: 1.5, sm: 2 },
@@ -86,9 +83,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
           height: 48,
           px: 1.5,
           borderRadius: '24px',
-          bgcolor: theme.palette.mode === 'dark'
-            ? alpha(theme.palette.common.white, 0.06)
-            : alpha(theme.palette.common.white, 0.72),
+          bgcolor: 'var(--bg-surface)',
           border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
           boxShadow: theme.palette.mode === 'dark'
             ? '0 4px 16px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.08)'
@@ -140,7 +135,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
             aria-label="Open Settings"
             onClick={(e) => {
               e.stopPropagation();
-              try { navigator.vibrate?.(10); } catch {}
+              triggerHaptic(10);
               onOpenSettings();
             }}
             sx={{
@@ -200,4 +195,4 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
       )}
     </Box>
   );
-};
+});

@@ -12,6 +12,11 @@ const TEMPORARY_CACHE_PREFIXES = [
   'ogv_rel_',
   'ogv_readme_',
   'ogv_cached_starred_repos_',
+  'ogv_cached_watched_repos_',
+  'ogv_user_repos_',
+  'ogv_release_notes_',
+  'ogv_seen_spotlight_',
+  'ogv_vault_release_radar_',
 ];
 
 const SESSION_TRANSLATION_PREFIX = 'ogv_tr_';

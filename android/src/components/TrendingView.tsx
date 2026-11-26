@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useTransition } from 'react';
 import {
   Box,
   Typography,
@@ -37,7 +37,7 @@ type TrendingScope = 'all' | 'apk';
 
 const POPULAR_LANGUAGES = ['All', 'TypeScript', 'Python', 'Rust', 'Go', 'Java', 'Kotlin', 'C++'];
 
-export const TrendingView: React.FC<TrendingViewProps> = ({
+export const TrendingView: React.FC<TrendingViewProps> = React.memo(({
   onOpenDetail,
   isBookmarked,
   onToggleBookmark,
@@ -48,13 +48,18 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
   isActive = true
 }) => {
   const theme = useTheme();
+  const [, startTransition] = useTransition();
   const [scope, setScope] = useState<TrendingScope>('all');
+  const [uiScope, setUiScope] = useState<TrendingScope>('all');
   const [timeRange, setTimeRange] = useState<TimeRange>('daily');
+  const [uiTimeRange, setUiTimeRange] = useState<TimeRange>('daily');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('All');
+  const [uiLanguage, setUiLanguage] = useState<string>('All');
   const [loading, setLoading] = useState<boolean>(false);
   const [repos, setRepos] = useState<Repository[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [, setBookmarkTick] = useState(0);
+  const fetchReqIdRef = useRef<number>(0);
 
   useEffect(() => {
     const handleBookmarkChange = () => setBookmarkTick((t) => t + 1);
@@ -63,17 +68,24 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
   }, []);
 
   const loadTrending = useCallback(async (forceRefresh = false) => {
+    const reqId = ++fetchReqIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const langParam = selectedLanguage === 'All' ? undefined : selectedLanguage;
       const data = await fetchTrendingRepositories(timeRange, scope, langParam, forceRefresh);
-      setRepos(data);
+      if (reqId === fetchReqIdRef.current) {
+        setRepos(data);
+      }
     } catch (err: any) {
       console.warn('Failed to load trending:', err);
-      setError('Unable to fetch live trending repositories. Tap retry below.');
+      if (reqId === fetchReqIdRef.current) {
+        setError('Unable to fetch live trending repositories. Tap retry below.');
+      }
     } finally {
-      setLoading(false);
+      if (reqId === fetchReqIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [timeRange, scope, selectedLanguage]);
 
@@ -188,11 +200,14 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
             icon={<WhatshotIcon sx={{ fontSize: '13px !important' }} />}
             label="All"
             size="small"
-            onClick={() => setScope('all')}
-            color={scope === 'all' ? 'primary' : 'default'}
-            variant={scope === 'all' ? 'filled' : 'outlined'}
+            onClick={() => {
+              setUiScope('all');
+              startTransition(() => setScope('all'));
+            }}
+            color={uiScope === 'all' ? 'primary' : 'default'}
+            variant={uiScope === 'all' ? 'filled' : 'outlined'}
             sx={{
-              fontWeight: scope === 'all' ? 800 : 600,
+              fontWeight: uiScope === 'all' ? 800 : 600,
               fontSize: '0.68rem',
               height: 24,
               borderRadius: '9px',
@@ -204,11 +219,14 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
             icon={<AndroidIcon sx={{ fontSize: '13px !important' }} />}
             label="APKs"
             size="small"
-            onClick={() => setScope('apk')}
-            color={scope === 'apk' ? 'primary' : 'default'}
-            variant={scope === 'apk' ? 'filled' : 'outlined'}
+            onClick={() => {
+              setUiScope('apk');
+              startTransition(() => setScope('apk'));
+            }}
+            color={uiScope === 'apk' ? 'primary' : 'default'}
+            variant={uiScope === 'apk' ? 'filled' : 'outlined'}
             sx={{
-              fontWeight: scope === 'apk' ? 800 : 600,
+              fontWeight: uiScope === 'apk' ? 800 : 600,
               fontSize: '0.68rem',
               height: 24,
               borderRadius: '9px',
@@ -237,11 +255,14 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
             icon={<TodayIcon sx={{ fontSize: '13px !important' }} />}
             label="Today"
             size="small"
-            onClick={() => setTimeRange('daily')}
-            color={timeRange === 'daily' ? 'primary' : 'default'}
-            variant={timeRange === 'daily' ? 'filled' : 'outlined'}
+            onClick={() => {
+              setUiTimeRange('daily');
+              startTransition(() => setTimeRange('daily'));
+            }}
+            color={uiTimeRange === 'daily' ? 'primary' : 'default'}
+            variant={uiTimeRange === 'daily' ? 'filled' : 'outlined'}
             sx={{
-              fontWeight: timeRange === 'daily' ? 700 : 500,
+              fontWeight: uiTimeRange === 'daily' ? 700 : 500,
               fontSize: '0.68rem',
               height: 24,
               borderRadius: '9px',
@@ -253,11 +274,14 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
             icon={<DateRangeIcon sx={{ fontSize: '13px !important' }} />}
             label="Week"
             size="small"
-            onClick={() => setTimeRange('weekly')}
-            color={timeRange === 'weekly' ? 'primary' : 'default'}
-            variant={timeRange === 'weekly' ? 'filled' : 'outlined'}
+            onClick={() => {
+              setUiTimeRange('weekly');
+              startTransition(() => setTimeRange('weekly'));
+            }}
+            color={uiTimeRange === 'weekly' ? 'primary' : 'default'}
+            variant={uiTimeRange === 'weekly' ? 'filled' : 'outlined'}
             sx={{
-              fontWeight: timeRange === 'weekly' ? 700 : 500,
+              fontWeight: uiTimeRange === 'weekly' ? 700 : 500,
               fontSize: '0.68rem',
               height: 24,
               borderRadius: '9px',
@@ -269,11 +293,14 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
             icon={<CalendarMonthIcon sx={{ fontSize: '13px !important' }} />}
             label="Month"
             size="small"
-            onClick={() => setTimeRange('monthly')}
-            color={timeRange === 'monthly' ? 'primary' : 'default'}
-            variant={timeRange === 'monthly' ? 'filled' : 'outlined'}
+            onClick={() => {
+              setUiTimeRange('monthly');
+              startTransition(() => setTimeRange('monthly'));
+            }}
+            color={uiTimeRange === 'monthly' ? 'primary' : 'default'}
+            variant={uiTimeRange === 'monthly' ? 'filled' : 'outlined'}
             sx={{
-              fontWeight: timeRange === 'monthly' ? 700 : 500,
+              fontWeight: uiTimeRange === 'monthly' ? 700 : 500,
               fontSize: '0.68rem',
               height: 24,
               borderRadius: '9px',
@@ -284,18 +311,21 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
         </Box>
 
         {/* Group 3: Languages (when in All scope) */}
-        {scope === 'all' && (
+        {uiScope === 'all' && (
           <>
             <Divider orientation="vertical" flexItem sx={{ my: 0.5, opacity: 0.35 }} />
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
               {POPULAR_LANGUAGES.map((lang) => {
-                const isSelected = selectedLanguage === lang;
+                const isSelected = uiLanguage === lang;
                 return (
                   <Chip
                     key={lang}
                     label={lang}
                     size="small"
-                    onClick={() => setSelectedLanguage(lang)}
+                    onClick={() => {
+                      setUiLanguage(lang);
+                      startTransition(() => setSelectedLanguage(lang));
+                    }}
                     color={isSelected ? 'secondary' : 'default'}
                     variant={isSelected ? 'filled' : 'outlined'}
                     sx={{
@@ -355,4 +385,4 @@ export const TrendingView: React.FC<TrendingViewProps> = ({
       )}
     </Box>
   );
-};
+});

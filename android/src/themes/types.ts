@@ -6,6 +6,10 @@ export interface ThemeColors {
   bgSurfaceHover: string;
   bgSurfaceActive: string;
   bgSubtle: string;
+  bgMenu?: string;
+  bgPill?: string;
+  primaryContainer?: string;
+  onPrimaryContainer?: string;
 
   // Hero Background Gradients
   heroGradient: string;
@@ -65,10 +69,8 @@ export interface ThemeColors {
   scrollbarThumbHover: string;
 }
 
-export type ThemeId = 
-  | 'prometheus-dark'
-  | 'sand-light'
-  | 'ambient'
+export type ThemeId =
+  | 'system'
   | 'github-light'
   | 'github-dark';
 
@@ -77,6 +79,7 @@ export interface ThemePlugin {
   readonly name: string;
   readonly description: string;
   readonly isDark: boolean;
-  readonly iconName: 'Flame' | 'Sun' | 'Sparkles' | 'Github';
+  readonly isGlass?: boolean;
+  readonly iconName: 'Sparkles' | 'Github';
   readonly colors: ThemeColors;
 }

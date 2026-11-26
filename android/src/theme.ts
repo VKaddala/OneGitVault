@@ -4,6 +4,9 @@ import { ThemePlugin } from './themes/types';
 export const createMuiThemeFromPlugin = (plugin: ThemePlugin): Theme => {
   const isDark = plugin.isDark;
   const c = plugin.colors;
+  const glassFilter = 'none';
+  const menuFilter = 'none';
+  const menuSurface = c.bgMenu || c.bgSurface;
 
   return createTheme({
     palette: {
@@ -77,10 +80,64 @@ export const createMuiThemeFromPlugin = (plugin: ThemePlugin): Theme => {
         styleOverrides: {
           root: {
             backgroundColor: c.bgHeader || c.bgSurface,
-            backdropFilter: 'blur(16px)',
+            backdropFilter: glassFilter,
+            WebkitBackdropFilter: glassFilter,
             boxShadow: 'none',
             borderBottom: `1px solid ${c.borderDefault}`,
             color: c.textPrimary,
+          },
+        },
+      },
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            backgroundImage: 'none',
+          },
+        },
+      },
+      MuiPopover: {
+        styleOverrides: {
+          paper: {
+            borderRadius: 18,
+            backgroundColor: menuSurface,
+            backgroundImage: 'none',
+            backdropFilter: menuFilter,
+            WebkitBackdropFilter: menuFilter,
+            border: `1px solid ${c.borderDefault}`,
+            color: c.textPrimary,
+            boxShadow: isDark
+              ? '0 18px 44px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.10)'
+              : '0 14px 36px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.90)',
+          },
+        },
+      },
+      MuiMenu: {
+        styleOverrides: {
+          paper: {
+            borderRadius: 18,
+            backgroundColor: menuSurface,
+            backgroundImage: 'none',
+            backdropFilter: menuFilter,
+            WebkitBackdropFilter: menuFilter,
+            border: `1px solid ${c.borderDefault}`,
+            color: c.textPrimary,
+            boxShadow: isDark
+              ? '0 18px 44px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.10)'
+              : '0 14px 36px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.90)',
+          },
+        },
+      },
+      MuiMenuItem: {
+        styleOverrides: {
+          root: {
+            borderRadius: 10,
+            '&.Mui-selected': {
+              backgroundColor: c.primaryContainer || c.accentSoft,
+              color: c.onPrimaryContainer || c.accent,
+            },
+            '&.Mui-selected:hover': {
+              backgroundColor: c.primaryContainer || c.accentSoft,
+            },
           },
         },
       },
@@ -92,8 +149,8 @@ export const createMuiThemeFromPlugin = (plugin: ThemePlugin): Theme => {
             backgroundImage: 'none',
             border: `1px solid ${c.borderDefault}`,
             boxShadow: isDark
-              ? '0 4px 18px rgba(0, 0, 0, 0.45)'
-              : '0 4px 18px rgba(0, 0, 0, 0.05)',
+              ? '0 4px 18px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
+              : '0 4px 18px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
             transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
             '&:hover': {
               borderColor: c.borderHover || c.accent,
@@ -148,8 +205,9 @@ export const createMuiThemeFromPlugin = (plugin: ThemePlugin): Theme => {
       MuiBottomNavigation: {
         styleOverrides: {
           root: {
-            backgroundColor: c.bgHeader || c.bgSurface,
-            backdropFilter: 'blur(20px)',
+            backgroundColor: c.bgPill || c.bgHeader || c.bgSurface,
+            backdropFilter: glassFilter,
+            WebkitBackdropFilter: glassFilter,
             borderTop: `1px solid ${c.borderDefault}`,
             height: 64,
           },
@@ -180,10 +238,15 @@ export const createMuiThemeFromPlugin = (plugin: ThemePlugin): Theme => {
         styleOverrides: {
           paper: {
             borderRadius: 24,
-            backgroundColor: isDark ? '#0d1117' : (c.bgSurface || '#ffffff'),
+            backgroundColor: menuSurface,
             backgroundImage: 'none',
+            backdropFilter: menuFilter,
+            WebkitBackdropFilter: menuFilter,
             border: `1px solid ${c.borderDefault}`,
             color: c.textPrimary,
+            boxShadow: isDark
+              ? '0 24px 60px rgba(0, 0, 0, 0.78), inset 0 1px 0 rgba(255, 255, 255, 0.08)'
+              : '0 20px 50px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
           },
         },
       },

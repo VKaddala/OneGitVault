@@ -54,8 +54,7 @@ export const FloatingSearchModal: React.FC<FloatingSearchModalProps> = ({
       fullWidth
       sx={{
         '& .MuiBackdrop-root': {
-          backdropFilter: 'blur(10px)',
-          bgcolor: isDark ? 'rgba(0, 0, 0, 0.65)' : 'rgba(15, 23, 42, 0.45)'
+          bgcolor: isDark ? 'rgba(0, 0, 0, 0.72)' : 'rgba(15, 23, 42, 0.45)'
         },
         '& .MuiDialog-container': {
           alignItems: 'flex-start',
@@ -65,7 +64,7 @@ export const FloatingSearchModal: React.FC<FloatingSearchModalProps> = ({
       PaperProps={{
         sx: {
           borderRadius: '24px',
-          bgcolor: theme.palette.background.paper,
+          bgcolor: 'var(--bg-menu)',
           backgroundImage: 'none',
           border: `1px solid ${theme.palette.divider}`,
           boxShadow: isDark

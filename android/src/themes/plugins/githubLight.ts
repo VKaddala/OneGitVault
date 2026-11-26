@@ -3,61 +3,61 @@ import { ThemePlugin } from '../types';
 export const githubLightTheme: ThemePlugin = {
   id: 'github-light',
   name: 'GitHub Simple Light',
-  description: 'Clean classic GitHub light with crisp off-white canvas, white cards, and signature blue buttons',
+  description: 'Crisp cool-porcelain canvas with bright white cards, sapphire accents, emerald highlights, and high contrast',
   isDark: false,
   iconName: 'Github',
   colors: {
-    bgCanvas: '#f6f8fa',          // Soft light canvas
-    bgHeader: 'rgba(255, 255, 255, 0.98)',
-    bgSurface: '#ffffff',          // Crisp white elevated cards
-    bgSurfaceHover: '#f3f4f6',     // Smooth visible hover
-    bgSurfaceActive: '#eaeef2',    // Subtle recessed active area
-    bgSubtle: 'rgba(9, 105, 218, 0.08)',
+    bgCanvas: '#f1f5f9',
+    bgHeader: 'rgba(255, 255, 255, 0.96)',
+    bgSurface: '#ffffff',
+    bgSurfaceHover: '#f8fafc',
+    bgSurfaceActive: '#e8eff7',
+    bgSubtle: 'rgba(29, 78, 216, 0.08)',
 
-    heroGradient: 'linear-gradient(to right, #0969da, #1a7f37, #8250df)',
+    heroGradient: 'linear-gradient(135deg, #1d4ed8, #0284c7, #059669)',
 
-    borderSubtle: '#e5e9f0',
-    borderDefault: '#d0d7de',      // GitHub standard border
-    borderHover: '#0969da',
-    borderFocus: '#0969da',
+    borderSubtle: '#e2e8f0',
+    borderDefault: '#cbd5e1',
+    borderHover: '#1d4ed8',
+    borderFocus: '#1d4ed8',
 
-    textPrimary: '#1f2328',        // Deep GitHub black text
-    textSecondary: '#57606a',
-    textMuted: '#656d76',
-    textInverse: '#ffffff',        // White text on blue buttons!
+    textPrimary: '#0f172a',
+    textSecondary: '#475569',
+    textMuted: '#64748b',
+    textInverse: '#ffffff',
 
-    accent: '#0969da',             // Signature GitHub blue
-    accentHover: '#0550ae',
-    accentSoft: 'rgba(9, 105, 218, 0.12)',
-    accentBorder: 'rgba(9, 105, 218, 0.35)',
+    accent: '#1d4ed8',
+    accentHover: '#1e40af',
+    accentSoft: 'rgba(29, 78, 216, 0.12)',
+    accentBorder: 'rgba(29, 78, 216, 0.35)',
 
-    secondaryAccent: '#1a7f37',
-    secondarySoft: 'rgba(26, 127, 55, 0.1)',
-    secondaryBorder: 'rgba(26, 127, 55, 0.25)',
+    secondaryAccent: '#0f766e',
+    secondarySoft: 'rgba(15, 118, 110, 0.11)',
+    secondaryBorder: 'rgba(15, 118, 110, 0.28)',
 
-    starColor: '#d4a72c',          // GitHub gold star
-    starBg: 'rgba(212, 167, 44, 0.14)',
-    starBorder: 'rgba(212, 167, 44, 0.35)',
+    starColor: '#d97706',
+    starBg: 'rgba(217, 119, 6, 0.13)',
+    starBorder: 'rgba(217, 119, 6, 0.35)',
 
-    tagBg: '#f6f8fa',
-    tagBorder: '#d0d7de',
-    tagText: '#0969da',
-    tagHoverText: '#0550ae',
+    tagBg: '#f8fafc',
+    tagBorder: '#cbd5e1',
+    tagText: '#1d4ed8',
+    tagHoverText: '#1e40af',
 
-    activePillBg: '#0969da',
+    activePillBg: '#1d4ed8',
     activePillText: '#ffffff',
-    activePillBorder: '#0969da',
+    activePillBorder: '#1d4ed8',
 
-    overlayBackdrop: 'rgba(31, 35, 40, 0.55)',
+    overlayBackdrop: 'rgba(15, 23, 42, 0.55)',
 
-    codeBg: '#f6f8fa',
-    codeBorder: '#d0d7de',
-    codeText: '#1f2328',
-    codeInlineBg: '#eff1f3',
-    codeInlineText: '#0969da',
+    codeBg: '#f8fafc',
+    codeBorder: '#cbd5e1',
+    codeText: '#0f172a',
+    codeInlineBg: '#e2e8f0',
+    codeInlineText: '#1d4ed8',
 
-    scrollbarTrack: '#f6f8fa',
-    scrollbarThumb: '#d0d7de',
-    scrollbarThumbHover: '#0969da',
+    scrollbarTrack: '#f1f5f9',
+    scrollbarThumb: '#cbd5e1',
+    scrollbarThumbHover: '#1d4ed8',
   }
 };

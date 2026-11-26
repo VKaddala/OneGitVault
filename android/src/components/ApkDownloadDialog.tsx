@@ -83,7 +83,7 @@ export const ApkDownloadDialog: React.FC = () => {
       PaperProps={{
         sx: {
           borderRadius: '24px',
-          bgcolor: 'background.paper',
+          bgcolor: 'var(--bg-menu)',
           backgroundImage: 'none',
           border: `1px solid ${theme.palette.divider}`,
           mx: { xs: 2.5, sm: 'auto' },

@@ -28,6 +28,7 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import ShareIcon from '@mui/icons-material/Share';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
+import TodayIcon from '@mui/icons-material/Today';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CallSplitIcon from '@mui/icons-material/CallSplit';
 import PublicIcon from '@mui/icons-material/Public';
@@ -37,8 +38,15 @@ import MoreHorizRoundedIcon from '@mui/icons-material/MoreHorizRounded';
 import { Repository } from '../types';
 import { fetchRepositories, fetchReadme } from '../services/githubApi';
 import { parseReadmeToSummary, createSyntheticSummary, ReadmeSummary } from '../services/readmeSummaryParser';
+import {
+  getCachedSpotlightSuggestions,
+  refreshSpotlightSuggestionsIfDue,
+  SpotlightKeyword
+} from '../services/spotlightSuggestions';
+import { needsTranslation, translateItemsToEnglish } from '../services/translateService';
 import { ReelCard } from './ReelCard';
 import { OneGitVaultLogo } from './OneGitVaultLogo';
+import { triggerHaptic } from '../utils/haptics';
 
 interface ReelsViewProps {
   onOpenDetail: (repo: Repository, initialTab?: 'info' | 'readme' | 'releases') => void;
@@ -50,7 +58,7 @@ interface ReelsViewProps {
   isActive?: boolean;
 }
 
-type FilterType = 'stars' | 'trending' | 'newest' | 'forks' | 'all';
+type FilterType = 'today' | 'stars' | 'trending' | 'newest' | 'forks' | 'all';
 
 interface FilterOption {
   id: FilterType;
@@ -64,6 +72,12 @@ const FILTER_OPTIONS: FilterOption[] = [
     id: 'stars',
     label: 'More Stars',
     icon: <StarIcon sx={{ fontSize: 18, color: '#f59e0b' }} />,
+    sort: 'stars'
+  },
+  {
+    id: 'today',
+    label: 'Today',
+    icon: <TodayIcon sx={{ fontSize: 18, color: '#06b6d4' }} />,
     sort: 'stars'
   },
   {
@@ -92,20 +106,63 @@ const FILTER_OPTIONS: FilterOption[] = [
   }
 ];
 
-const TRENDING_KEYWORDS = [
-  { label: '🤖 AI Agents', query: 'ai-agents' },
-  { label: '🧠 LLM & Ollama', query: 'ollama' },
-  { label: '📱 Android APK', query: 'android apk' },
-  { label: '🦀 Rust CLI', query: 'rust cli' },
-  { label: '⚡ React & Next.js', query: 'react' },
-  { label: '🔒 Cybersecurity', query: 'cybersecurity' },
-  { label: '📦 Self-Hosted', query: 'self-hosted' },
-  { label: '🎥 Screen Mirror', query: 'scrcpy' },
-  { label: '🐍 Python Automation', query: 'python automation' },
-  { label: '🎮 Game Dev & Godot', query: 'godot' }
-];
+const SEEN_SPOTLIGHT_KEY = 'ogv_seen_spotlight_v1';
+const MAX_SEEN_SPOTLIGHT = 200;
 
-export const ReelsView: React.FC<ReelsViewProps> = ({
+let cachedSeenIdsList: number[] | null = null;
+let cachedSeenIdsSet: Set<number> | null = null;
+let seenFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
+function ensureSeenCacheLoaded(): Set<number> {
+  if (cachedSeenIdsSet !== null) return cachedSeenIdsSet;
+  try {
+    const raw = localStorage.getItem(SEEN_SPOTLIGHT_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const arr: number[] = Array.isArray(parsed?.ids) ? parsed.ids : [];
+    cachedSeenIdsList = arr.slice(0, MAX_SEEN_SPOTLIGHT);
+    cachedSeenIdsSet = new Set(cachedSeenIdsList);
+  } catch {
+    cachedSeenIdsList = [];
+    cachedSeenIdsSet = new Set();
+  }
+  return cachedSeenIdsSet;
+}
+
+function getSeenSpotlightIds(): Set<number> {
+  return ensureSeenCacheLoaded();
+}
+
+function recordSeenSpotlightId(repoId: number): void {
+  if (!repoId) return;
+  const set = ensureSeenCacheLoaded();
+  if (set.has(repoId)) return;
+  const next = [repoId, ...(cachedSeenIdsList || []).filter((id) => id !== repoId)].slice(0, MAX_SEEN_SPOTLIGHT);
+  cachedSeenIdsList = next;
+  cachedSeenIdsSet = new Set(next);
+  if (seenFlushTimer) clearTimeout(seenFlushTimer);
+  seenFlushTimer = setTimeout(() => {
+    seenFlushTimer = null;
+    try {
+      localStorage.setItem(SEEN_SPOTLIGHT_KEY, JSON.stringify({ ids: next, timestamp: Date.now() }));
+    } catch {}
+  }, 600);
+}
+
+function formatUtcDaysAgo(daysAgo: number): string {
+  const d = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+  return d.toISOString().split('T')[0];
+}
+
+function getLocalTodayWindow(): { utcQueryDate: string; localStartMs: number } {
+  const now = new Date();
+  const localMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return {
+    utcQueryDate: localMidnight.toISOString().split('T')[0],
+    localStartMs: localMidnight.getTime()
+  };
+}
+
+export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
   onOpenDetail,
   isBookmarked,
   onToggleBookmark,
@@ -117,10 +174,11 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
 
-  // 1. User Search State & Collapsible Suggestions
+  // 1. User Search State & 10-Day Rotating Collapsible Suggestions
   const [searchInput, setSearchInput] = useState<string>('');
   const [activeSearch, setActiveSearch] = useState<string>('');
   const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
+  const [trendingKeywords, setTrendingKeywords] = useState<SpotlightKeyword[]>(() => getCachedSpotlightSuggestions());
 
   // 2. Filter State
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('stars');
@@ -137,15 +195,26 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
 
   // Summaries Map: repo.full_name -> ReadmeSummary
   const [summaries, setSummaries] = useState<Record<string, ReadmeSummary>>({});
+  const summariesRef = useRef<Record<string, ReadmeSummary>>({});
+  summariesRef.current = summaries;
 
-  // 3. Round Arrow Button & Expandable Actions Dock (Fixed at bottom right)
+  // 3. Round Quick Actions Button & Expandable Actions Dock
   const [actionsExpanded, setActionsExpanded] = useState<boolean>(false);
+  const actionsExpandedRef = useRef<boolean>(false);
+  actionsExpandedRef.current = actionsExpanded;
+  const dockOpenedAtRef = useRef<number>(0);
+  const touchScrollStartYRef = useRef<number | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const dockAreaRef = useRef<HTMLDivElement>(null);
   const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasActivatedRef = useRef<boolean>(false);
   const fetchedReadmesRef = useRef<Set<string>>(new Set());
+  const translatedSummariesRef = useRef<Set<string>>(new Set());
+  const preloadedImgsRef = useRef<Set<string>>(new Set());
+  const feedReqIdRef = useRef<number>(0);
+  const lastScrollTopRef = useRef<number>(0);
   const activeIndexRef = useRef<number>(0);
   activeIndexRef.current = activeIndex;
 
@@ -159,22 +228,28 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
 
   const constructQuery = useCallback(() => {
     const trimmed = activeSearch.trim();
+    const { utcQueryDate } = getLocalTodayWindow();
 
     if (trimmed) {
+      if (selectedFilter === 'today') {
+        return `${trimmed} in:name,description,topics created:>=${utcQueryDate}`;
+      }
       if (selectedFilter === 'trending') {
-        return `${trimmed} in:name,description,topics pushed:>=2026-01-01`;
+        return `${trimmed} in:name,description,topics pushed:>=${formatUtcDaysAgo(7)}`;
       }
       if (selectedFilter === 'newest') {
-        return `${trimmed} in:name,description,topics created:>=2025-01-01`;
+        return `${trimmed} in:name,description,topics created:>=${formatUtcDaysAgo(30)}`;
       }
       return `${trimmed} in:name,description,topics`;
     }
 
     switch (selectedFilter) {
+      case 'today':
+        return `created:>=${utcQueryDate}`;
       case 'trending':
-        return 'stars:>500 pushed:>=2026-10-01';
+        return `stars:>500 pushed:>=${formatUtcDaysAgo(7)}`;
       case 'newest':
-        return 'created:>=2026-01-01 stars:>50';
+        return `created:>=${formatUtcDaysAgo(30)} stars:>50`;
       case 'forks':
         return 'forks:>500';
       case 'all':
@@ -187,11 +262,13 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
 
   const loadFeed = useCallback(
     async (pageNum: number = 1, append: boolean = false) => {
+      const reqId = ++feedReqIdRef.current;
       if (pageNum === 1) setLoading(true);
       else setLoadingMore(true);
 
       const query = constructQuery();
       const sortParam = currentFilterOption.sort;
+      const { localStartMs } = getLocalTodayWindow();
 
       try {
         const result = await fetchRepositories(
@@ -205,29 +282,55 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
           false
         );
 
-        const newRepos = result.repositories || [];
-        setRepos((prev) => (append ? [...prev, ...newRepos] : newRepos));
-        setHasMore(newRepos.length >= 50);
+        // Discard stale responses if user rapidly switched filter/search
+        if (reqId !== feedReqIdRef.current) return;
+
+        let newRepos = result.repositories || [];
+
+        // Strictly enforce "Today" filter so only today-created repositories appear
+        if (selectedFilter === 'today') {
+          const todayOnly = newRepos.filter(
+            (r) => r.created_at && new Date(r.created_at).getTime() >= localStartMs
+          );
+          if (todayOnly.length > 0 || !result.fromCache) {
+            newRepos = todayOnly;
+          }
+        }
+
+        // Prioritize unseen Spotlight projects ahead of recently viewed ones in default unfiltered feed
+        if (!append && !activeSearch.trim() && newRepos.length > 5) {
+          const seenIds = getSeenSpotlightIds();
+          if (seenIds.size > 0) {
+            const unseen = newRepos.filter((r) => !seenIds.has(r.id));
+            const seen = newRepos.filter((r) => seenIds.has(r.id));
+            if (unseen.length > 0) {
+              newRepos = [...unseen, ...seen];
+            }
+          }
+        }
+
+        setRepos((prev) => {
+          if (!append) return newRepos;
+          const seen = new Set(prev.map((r) => r.id));
+          return [...prev, ...newRepos.filter((r) => !seen.has(r.id))];
+        });
+        setHasMore((result.repositories || []).length >= 50);
 
         if (result.fromCache && result.isRateLimit && pageNum === 1) {
           onShareMessage?.(
             `Rate limit reached — showing cached repos (resets in ~${result.rateLimitResetInSec || 60}s)`
           );
         }
-
-        const initialSummaries: Record<string, ReadmeSummary> = {};
-        for (const repo of newRepos) {
-          initialSummaries[repo.full_name] = createSyntheticSummary(repo);
-        }
-        setSummaries((prev) => ({ ...initialSummaries, ...prev }));
       } catch (err) {
         console.error('Failed to load feed:', err);
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
+        if (reqId === feedReqIdRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
     },
-    [constructQuery, currentFilterOption.sort]
+    [constructQuery, currentFilterOption.sort, selectedFilter, onShareMessage]
   );
 
   const prevFeedDepsRef = useRef({ activeSearch, selectedFilter, loadFeed });
@@ -243,6 +346,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
       if (!isActive) return;
       hasActivatedRef.current = true;
       loadFeed(1, false);
+      refreshSpotlightSuggestionsIfDue().then(setTrendingKeywords).catch(() => {});
       return;
     }
 
@@ -250,6 +354,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
       setActiveIndex(0);
       pageRef.current = 1;
       fetchedReadmesRef.current.clear();
+      translatedSummariesRef.current.clear();
       setShowSwipeHint(true);
       setActionsExpanded(false);
       loadFeed(1, false);
@@ -260,36 +365,102 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
     }
   }, [isActive, activeSearch, selectedFilter, loadFeed]);
 
-  const fetchAndParseReadmeForRepo = useCallback(async (repo: Repository) => {
-    if (!repo || !repo.full_name || fetchedReadmesRef.current.has(repo.full_name)) return;
-    if (fetchedReadmesRef.current.size > 120) {
-      fetchedReadmesRef.current.clear();
-    }
-    fetchedReadmesRef.current.add(repo.full_name);
+  // Translate non-English display lines only (0 API calls when summary is English)
+  const translateSummaryIfNeeded = useCallback(async (repoFullName: string, summary: ReadmeSummary) => {
+    if (!summary || summary.isTranslated || translatedSummariesRef.current.has(repoFullName)) return;
 
+    const textBlob = [summary.headline, ...(summary.highlights || [])].join('\n');
+    if (!needsTranslation(textBlob)) return;
+
+    translatedSummariesRef.current.add(repoFullName);
     try {
-      const rawMarkdown = await fetchReadme(repo.full_name, repo.default_branch);
-      if (rawMarkdown && !rawMarkdown.startsWith('# Failed to load')) {
-        const parsed = parseReadmeToSummary(rawMarkdown, repo);
-        setSummaries((prev) => ({
-          ...prev,
-          [repo.full_name]: parsed
-        }));
+      const inputs = [summary.headline, ...(summary.highlights || [])];
+      const { items, didTranslate } = await translateItemsToEnglish(inputs);
+      if (didTranslate && items.length > 0) {
+        setSummaries((prev) => {
+          const latest = prev[repoFullName] || summary;
+          return {
+            ...prev,
+            [repoFullName]: {
+              ...latest,
+              headline: items[0] || latest.headline,
+              highlights: items.slice(1).length > 0 ? items.slice(1) : latest.highlights,
+              isTranslated: true
+            }
+          };
+        });
       }
-    } catch {
-      // Keep synthetic fallback
-    }
+    } catch {}
   }, []);
+
+  const fetchAndParseReadmeForRepo = useCallback(
+    async (repo: Repository) => {
+      if (!repo || !repo.full_name || fetchedReadmesRef.current.has(repo.full_name)) return;
+      if (fetchedReadmesRef.current.size > 120) {
+        fetchedReadmesRef.current.clear();
+      }
+      fetchedReadmesRef.current.add(repo.full_name);
+
+      try {
+        const rawMarkdown = await fetchReadme(repo.full_name, repo.default_branch);
+        if (rawMarkdown && !rawMarkdown.startsWith('# Failed to load')) {
+          const parsed = parseReadmeToSummary(rawMarkdown, repo);
+          setSummaries((prev) => ({
+            ...prev,
+            [repo.full_name]: parsed
+          }));
+          translateSummaryIfNeeded(repo.full_name, parsed);
+        } else {
+          const synthetic = createSyntheticSummary(repo);
+          translateSummaryIfNeeded(repo.full_name, synthetic);
+        }
+      } catch {
+        const synthetic = createSyntheticSummary(repo);
+        translateSummaryIfNeeded(repo.full_name, synthetic);
+      }
+    },
+    [translateSummaryIfNeeded]
+  );
 
   useEffect(() => {
     if (!hasActivatedRef.current || repos.length === 0) return;
 
     const current = repos[activeIndex];
-    if (current) fetchAndParseReadmeForRepo(current);
+    if (current) {
+      if (isActive) recordSeenSpotlightId(current.id);
+      fetchAndParseReadmeForRepo(current);
+      const currentSummary = summariesRef.current[current.full_name] || createSyntheticSummary(current);
+      translateSummaryIfNeeded(current.full_name, currentSummary);
+    }
 
     const next = repos[activeIndex + 1];
-    if (next) fetchAndParseReadmeForRepo(next);
-  }, [activeIndex, repos, fetchAndParseReadmeForRepo]);
+    if (next) {
+      fetchAndParseReadmeForRepo(next);
+      const nextHero = summariesRef.current[next.full_name]?.heroMediaUrl;
+      if (nextHero && !preloadedImgsRef.current.has(nextHero)) {
+        if (preloadedImgsRef.current.size > 40) preloadedImgsRef.current.clear();
+        preloadedImgsRef.current.add(nextHero);
+        try {
+          const img = new Image();
+          img.src = nextHero;
+        } catch {}
+      }
+    }
+  }, [isActive, activeIndex, repos, fetchAndParseReadmeForRepo, translateSummaryIfNeeded]);
+
+  const toggleDock = useCallback(() => {
+    triggerHaptic(12);
+    setActionsExpanded((prev) => {
+      const next = !prev;
+      if (next) {
+        dockOpenedAtRef.current = Date.now();
+        if (containerRef.current) {
+          lastScrollTopRef.current = containerRef.current.scrollTop;
+        }
+      }
+      return next;
+    });
+  }, []);
 
   const handleScroll = () => {
     const el = containerRef.current;
@@ -299,11 +470,19 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
     const clientHeight = el.clientHeight;
     if (clientHeight <= 0) return;
 
+    const recentlyOpened = Date.now() - dockOpenedAtRef.current < 260;
+
+    // Collapse quick actions when user actually scrolls away (guarding post-open settle jitter)
+    if (actionsExpandedRef.current && !recentlyOpened && Math.abs(scrollTop - lastScrollTopRef.current) > 14) {
+      setActionsExpanded(false);
+    }
+    lastScrollTopRef.current = scrollTop;
+
     const newIndex = Math.round(scrollTop / clientHeight);
     if (newIndex !== activeIndexRef.current && newIndex >= 0 && newIndex < repos.length) {
       setActiveIndex(newIndex);
-      setActionsExpanded(false);
-      try { navigator.vibrate?.(8); } catch {}
+      if (!recentlyOpened) setActionsExpanded(false);
+      triggerHaptic(8);
       if (showSwipeHint) setShowSwipeHint(false);
 
       if (newIndex >= repos.length - 3 && !loadingMore && hasMore) {
@@ -327,7 +506,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
   };
 
   const handleSelectTrendingKeyword = (kwQuery: string) => {
-    try { navigator.vibrate?.(10); } catch {}
+    triggerHaptic(10);
     setSearchInput(kwQuery);
     setActiveSearch(kwQuery);
     setIsSearchFocused(false);
@@ -359,12 +538,17 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
 
   return (
     <Box
+      onPointerDownCapture={(e) => {
+        if (actionsExpandedRef.current && dockAreaRef.current && !dockAreaRef.current.contains(e.target as Node)) {
+          setActionsExpanded(false);
+        }
+      }}
       sx={{
         width: '100%',
         height: '100dvh',
         position: 'relative',
         overflow: 'hidden',
-        bgcolor: isDark ? '#06090e' : '#f8fafc'
+        bgcolor: 'transparent'
       }}
     >
       {/* ── Top Bar: Upper Safe-Area Padding + Search Input + Icon-Only Filter + Collapsible Suggestions ── */}
@@ -380,9 +564,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
           pt: 'calc(max(env(safe-area-inset-top, 0px), 48px) + 16px)',
           pb: 1.2,
           px: { xs: 2, sm: 2.8 },
-          bgcolor: isDark ? 'rgba(6, 9, 14, 0.90)' : 'rgba(248, 250, 252, 0.95)',
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
+          bgcolor: 'var(--bg-header)',
           borderBottom: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
           display: 'flex',
           flexDirection: 'column',
@@ -479,7 +661,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
               '&::-webkit-scrollbar': { display: 'none' }
             }}
           >
-            {TRENDING_KEYWORDS.map((item) => {
+            {trendingKeywords.map((item) => {
               const isSelected = activeSearch.toLowerCase() === item.query.toLowerCase();
               return (
                 <Chip
@@ -517,7 +699,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
               mt: 1,
               borderRadius: '20px',
               minWidth: 190,
-              bgcolor: isDark ? '#0d1117' : '#ffffff',
+              bgcolor: 'var(--bg-menu)',
               backgroundImage: 'none',
               border: `1px solid ${alpha(theme.palette.divider, 0.18)}`,
               boxShadow: isDark ? '0 16px 40px rgba(0,0,0,0.65)' : '0 12px 32px rgba(0,0,0,0.12)',
@@ -533,7 +715,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
                 onClick={() => {
                   setSelectedFilter(option.id);
                   setFilterAnchorEl(null);
-                  try { navigator.vibrate?.(10); } catch {}
+                  triggerHaptic(10);
                 }}
                 sx={{
                   borderRadius: '12px',
@@ -623,6 +805,25 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
         <Box
           ref={containerRef}
           onScroll={handleScroll}
+          onTouchStart={(e) => {
+            if (e.touches.length === 1) {
+              touchScrollStartYRef.current = e.touches[0].clientY;
+            }
+          }}
+          onTouchMove={(e) => {
+            if (
+              actionsExpandedRef.current &&
+              Date.now() - dockOpenedAtRef.current >= 160 &&
+              e.touches.length === 1 &&
+              touchScrollStartYRef.current !== null &&
+              Math.abs(e.touches[0].clientY - touchScrollStartYRef.current) > 12
+            ) {
+              setActionsExpanded(false);
+            }
+          }}
+          onTouchEnd={() => {
+            touchScrollStartYRef.current = null;
+          }}
           sx={{
             width: '100%',
             height: '100dvh',
@@ -635,7 +836,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
         >
           {repos.map((repo, idx) => {
             const isNearActive = Math.abs(idx - activeIndex) <= 2;
-            const summary = summaries[repo.full_name] || createSyntheticSummary(repo);
+            const summary = isNearActive ? (summaries[repo.full_name] || createSyntheticSummary(repo)) : null;
 
             return (
               <Box
@@ -647,7 +848,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
                   scrollSnapStop: 'always'
                 }}
               >
-                {isNearActive ? (
+                {summary ? (
                   <ReelCard
                     repo={repo}
                     summary={summary}
@@ -667,46 +868,31 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
         </Box>
       )}
 
-      {/* ── FIXED ROUND ARROW BUTTON AT THE BOTTOM RIGHT EDGE ON SPOTLIGHT PAGE (Non-scrollable!) ── */}
+      {/* ── FIXED ROUND QUICK-ACTIONS BUTTON AT THE BOTTOM RIGHT EDGE ON SPOTLIGHT PAGE (Non-scrollable!) ── */}
       {activeRepo && !loading && (
-        <>
-          {/* Transparent backdrop — closes dock when tapping outside */}
-          {actionsExpanded && (
-            <Box
-              onClick={() => setActionsExpanded(false)}
-              sx={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 1199,
-                bgcolor: 'transparent'
-              }}
-            />
-          )}
-
-          <Box
-            sx={{
-              position: 'fixed',
-              right: { xs: 16, sm: 24 },
-              bottom: 'calc(max(env(safe-area-inset-bottom, 0px), 4px) + 78px)',
-              zIndex: 1200,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-end',
-              pointerEvents: 'auto'
-            }}
-          >
+        <Box
+          ref={dockAreaRef}
+          sx={{
+            position: 'fixed',
+            right: { xs: 16, sm: 24 },
+            bottom: 'calc(max(env(safe-area-inset-bottom, 0px), 4px) + 78px)',
+            zIndex: 1200,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            pointerEvents: 'auto'
+          }}
+        >
             {/* Expanded Action Dock (Pops upward aligned to right edge above the round arrow button) */}
-            {actionsExpanded && (
-              <Slide direction="up" in={actionsExpanded}>
-                <Box
-                  onClick={(e) => e.stopPropagation()}
+            <Slide direction="up" in={actionsExpanded} mountOnEnter unmountOnExit timeout={160}>
+              <Box
+                onClick={(e) => e.stopPropagation()}
                   sx={{
                     mb: 1.5,
                     maxWidth: 'calc(100vw - 32px)',
                     borderRadius: '28px',
-                    bgcolor: isDark ? 'rgba(13, 17, 23, 0.96)' : 'rgba(255, 255, 255, 0.97)',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)',
+                    bgcolor: 'var(--bg-menu)',
+                    backgroundImage: 'none',
                     border: `1.5px solid ${alpha(theme.palette.primary.main, 0.4)}`,
                     boxShadow: isDark
                       ? `0 20px 60px rgba(0,0,0,0.8), 0 0 24px ${alpha(theme.palette.primary.main, 0.3)}`
@@ -751,7 +937,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
                     <IconButton
                       onClick={(e) => {
                         e.stopPropagation();
-                        try { navigator.vibrate?.(10); } catch {}
+                        triggerHaptic(10);
                         onToggleBookmark(activeRepo);
                       }}
                       sx={{
@@ -839,23 +1025,22 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
                   </Box>
                 </Box>
               </Slide>
-            )}
 
             {/* FIXED ROUND QUICK-ACTIONS BUTTON — bottom right edge */}
           <IconButton
             aria-label="Open repository quick actions"
+            onMouseDown={(e) => e.preventDefault()}
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
-              try { navigator.vibrate?.(12); } catch {}
-              setActionsExpanded((prev) => !prev);
+              toggleDock();
             }}
             sx={{
               width: 48,
               height: 48,
               borderRadius: '50%',
-              bgcolor: isDark ? 'rgba(13, 17, 23, 0.94)' : 'rgba(255, 255, 255, 0.96)',
-              backdropFilter: 'blur(14px)',
-              WebkitBackdropFilter: 'blur(14px)',
+              bgcolor: 'var(--bg-pill)',
+              transform: 'translateZ(0)',
               border: `1.5px solid ${alpha(theme.palette.primary.main, 0.4)}`,
               boxShadow: isDark
                 ? `0 12px 36px rgba(0,0,0,0.7), 0 0 16px ${alpha(theme.palette.primary.main, 0.25)}`
@@ -886,8 +1071,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
               />
             )}
           </IconButton>
-          </Box>
-        </>
+        </Box>
       )}
 
       {/* ── Swipe Up Guidance Cue ── */}
@@ -903,8 +1087,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            bgcolor: isDark ? 'rgba(0,0,0,0.82)' : 'rgba(255,255,255,0.92)',
-            backdropFilter: 'blur(10px)',
+            bgcolor: isDark ? 'rgba(0,0,0,0.88)' : 'rgba(255,255,255,0.95)',
             border: `1px solid ${alpha(theme.palette.divider, 0.18)}`,
             px: 2,
             py: 0.4,
@@ -924,4 +1107,4 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
       </Fade>
     </Box>
   );
-};
+});

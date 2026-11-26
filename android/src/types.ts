@@ -43,6 +43,11 @@ export interface ReleaseAsset {
   browser_download_url: string;
   content_type: string;
   is_apk?: boolean;
+  release_tag?: string;
+  release_name?: string;
+  release_body?: string;
+  release_url?: string;
+  published_at?: string;
 }
 
 export interface Category {

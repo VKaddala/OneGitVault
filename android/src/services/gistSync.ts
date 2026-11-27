@@ -4,6 +4,7 @@
 // This allows bookmarks to persist seamlessly across devices and reinstalls.
 
 import { Repository } from '../types';
+import { handleAuthFailure } from './githubApi';
 import { registerMemoryCacheCleaner, safeSetLocalCache, setBoundedMapEntry } from './cacheManager';
 import {
   getVaultFolders,
@@ -129,6 +130,10 @@ async function fetchGistWithFallback(
     };
     const retryRes = await fetch(url, { ...options, headers: secondaryHeaders });
     if (retryRes.ok) return retryRes;
+    if (retryRes.status === 401) {
+      handleAuthFailure('GitHub Gist sync authorization expired');
+    }
+    return retryRes;
   }
 
   return res;

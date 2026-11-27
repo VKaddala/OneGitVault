@@ -68,6 +68,78 @@ export function getCurrentRateLimit(): RateLimitInfo {
   return currentRateLimit;
 }
 
+export function getHeaders(token?: string): HeadersInit {
+  const t = token !== undefined ? token : getStoredToken();
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github.v3+json',
+    'User-Agent': 'OneGitVault-Desktop',
+  };
+  if (t && t.trim()) {
+    const cleanToken = t.trim().replace(/^(Bearer|token)\s+/i, '');
+    headers.Authorization = `Bearer ${cleanToken}`;
+  }
+  return headers;
+}
+
+export const AUTH_INVALID_EVENT = 'ogv:auth_invalid';
+
+export function handleAuthFailure(reason: string = 'GitHub token expired or invalid'): void {
+  if (!getStoredToken()) return;
+  console.warn(`[OneGitVault Desktop Auth] ${reason}. Clearing expired token and switching to public guest access.`);
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.setItem('ogv_last_auth_error', reason);
+  } catch {}
+
+  currentRateLimit = {
+    ...currentRateLimit,
+    limit: 60,
+    searchLimit: 10,
+  };
+  if (onRateLimitChange) {
+    onRateLimitChange(currentRateLimit);
+  }
+  try {
+    window.dispatchEvent(new CustomEvent(AUTH_INVALID_EVENT, { detail: { reason } }));
+  } catch {}
+}
+
+export async function fetchGitHubWithAuthFallback(
+  url: string,
+  init?: RequestInit,
+  allowPublicRetry: boolean = true
+): Promise<Response> {
+  const customHeaders = init?.headers ? new Headers(init.headers) : new Headers(getHeaders());
+  const hadAuth = customHeaders.has('Authorization');
+
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, headers: customHeaders });
+  } catch (err) {
+    throw err;
+  }
+
+  if (res.status === 401 && hadAuth) {
+    console.warn(`[OneGitVault Desktop Auth] 401 Unauthorized for ${url}. Invalidating token.`);
+    handleAuthFailure('GitHub token expired or invalid — switched to guest mode');
+
+    if (allowPublicRetry) {
+      const publicHeaders = new Headers(init?.headers || {});
+      publicHeaders.delete('Authorization');
+      if (!publicHeaders.has('Accept')) {
+        publicHeaders.set('Accept', 'application/vnd.github.v3+json');
+      }
+      console.log(`[OneGitVault Desktop Auth] Retrying ${url} with public guest access...`);
+      const retryRes = await fetch(url, { ...init, headers: publicHeaders });
+      updateRateLimitFromHeaders(retryRes.headers);
+      return retryRes;
+    }
+  }
+
+  updateRateLimitFromHeaders(res.headers);
+  return res;
+}
+
 /**
  * Checks if the authenticated user has starred a repository on GitHub.
  * Returns true if starred (204 No Content), false otherwise.
@@ -216,18 +288,27 @@ export async function checkLiveRateLimit(force: boolean = false): Promise<RateLi
     }
 
     try {
-      const res = await fetch('https://api.github.com/rate_limit', { headers });
+      let res = await fetch('https://api.github.com/rate_limit', { headers });
+      if (res.status === 401 && token) {
+        console.warn('[OneGitVault Desktop Auth] 401 from /rate_limit. Invalidating token.');
+        handleAuthFailure('GitHub token expired or invalid');
+        res = await fetch('https://api.github.com/rate_limit', {
+          headers: { Accept: 'application/vnd.github.v3+json' },
+        });
+      }
+
       if (res.ok) {
         const data = await res.json();
         const core = data?.resources?.core || data?.rate;
         const search = data?.resources?.search;
+        const activeToken = getStoredToken();
         if (core) {
           currentRateLimit = {
-            limit: core.limit ?? (token ? 5000 : 60),
+            limit: core.limit ?? (activeToken ? 5000 : 60),
             remaining: core.remaining ?? 60,
             resetTime: core.reset ? new Date(core.reset * 1000) : null,
-            searchLimit: search?.limit ?? (token ? 30 : 10),
-            searchRemaining: search?.remaining ?? (token ? 30 : 10),
+            searchLimit: search?.limit ?? (activeToken ? 30 : 10),
+            searchRemaining: search?.remaining ?? (activeToken ? 30 : 10),
             searchResetTime: search?.reset ? new Date(search.reset * 1000) : null,
           };
           if (onRateLimitChange) {
@@ -379,11 +460,8 @@ export async function fetchRepositories(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 9000); // 9s timeout for GitHub Search API
 
-    const res = await fetch(url, { headers, signal: controller.signal });
+    const res = await fetchGitHubWithAuthFallback(url, { headers, signal: controller.signal });
     clearTimeout(timeoutId);
-
-    // Track rate limit headers
-    updateRateLimitFromHeaders(res.headers);
 
     if (!res.ok) {
       console.warn(`GitHub API search failed (${res.status} ${res.statusText}) for query "${query}".`);

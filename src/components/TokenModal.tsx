@@ -194,41 +194,58 @@ export const TokenModal: React.FC<TokenModalProps> = ({
           </div>
         </div>
 
-        {/* Instructions */}
+        {/* Quick 1-Tap Web Generator */}
+        <div className="mb-4 p-3 bg-action-soft/40 border border-action-border rounded-xl">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-bold text-txt-primary flex items-center gap-1.5">
+              <span>1-Tap GitHub Web Redirect</span>
+            </span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-action/20 text-action font-mono font-semibold">Pre-Configured</span>
+          </div>
+          <p className="text-[11px] text-txt-muted leading-relaxed mb-2.5">
+            Opens GitHub with <code className="text-action font-mono">public_repo</code> and <code className="text-action font-mono">gist</code> scopes already selected. Just scroll down and tap <strong>Generate token</strong>!
+          </p>
+          <a
+            href="https://github.com/settings/tokens/new?description=OneGitVault&scopes=public_repo,gist"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-1.5 w-full py-2 px-3 text-xs font-bold font-mono text-txt-inverse bg-action hover:opacity-90 rounded-lg shadow transition-all active:scale-98"
+          >
+            <span>Open GitHub Token Generator</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+
+        {/* Security Notice */}
         <div className="space-y-3 mb-5">
           <div className="flex items-start gap-2 text-xs text-txt-secondary font-sans">
             <ShieldCheck className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
             <p>
-              Your token is stored <strong>locally only</strong> in your computer's storage. It is never transmitted anywhere other than direct queries to <code className="text-action font-mono text-[11px]">api.github.com</code>.
+              Your token is stored <strong>locally only</strong> on your machine. It is communicated strictly and directly with <code className="text-action font-mono text-[11px]">api.github.com</code>.
             </p>
-          </div>
-
-          <div className="p-3 bg-surface-active rounded-xl border border-themeline text-xs">
-            <div className="flex items-center gap-1.5 font-semibold text-txt-primary mb-1">
-              <Info className="w-3.5 h-3.5 text-action" />
-              <span>Recommended Permissions:</span>
-            </div>
-            <p className="text-txt-muted text-[11px] leading-relaxed">
-              Create a <strong>Fine-grained</strong> or <strong>Classic</strong> token with <code className="text-action font-mono">public_repo</code> (starring repositories) and <code className="text-action font-mono">gist</code> (cloud bookmark backup).
-            </p>
-            <a
-              href="https://github.com/settings/tokens/new?description=OneGitVault&scopes=public_repo,gist"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] font-mono text-action hover:opacity-80 font-medium mt-2 underline"
-            >
-              <span>Generate token on GitHub</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
           </div>
         </div>
 
         {/* Input Form */}
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-mono text-txt-muted mb-1.5">
-              Personal Access Token (PAT)
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-mono text-txt-muted">
+                Personal Access Token (PAT)
+              </label>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) setTokenInput(text.trim());
+                  } catch {}
+                }}
+                className="text-[11px] font-mono text-action hover:underline"
+              >
+                Paste from Clipboard
+              </button>
+            </div>
             <input
               type="password"
               value={tokenInput}

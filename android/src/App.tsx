@@ -455,6 +455,19 @@ export const App: React.FC = () => {
     setRateLimitListener((info) => setRateLimit(info));
     checkLiveRateLimit();
     syncAuthenticatedAccountData(getStoredToken());
+
+    const handleAuthInvalid = (e: any) => {
+      const msg = e?.detail?.reason || 'GitHub token expired or invalid — switched to guest mode';
+      setSnackbarMessage(msg);
+      setSnackbarOpen(true);
+      setStarredRepos(new Set());
+      setStarredReposList([]);
+    };
+    window.addEventListener('ogv:auth_invalid', handleAuthInvalid);
+
+    return () => {
+      window.removeEventListener('ogv:auth_invalid', handleAuthInvalid);
+    };
   }, [syncAuthenticatedAccountData]);
 
   // Debounce search input with 280ms throttle for snappy response

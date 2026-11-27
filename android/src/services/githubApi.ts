@@ -90,6 +90,10 @@ export async function fetchAuthenticatedUser(): Promise<GitHubUserProfile | null
         Accept: 'application/vnd.github.v3+json',
       },
     });
+    if (res.status === 401) {
+      handleAuthFailure('Token is invalid or expired');
+      return null;
+    }
     if (res.ok) {
       const data = await res.json();
       const profile: GitHubUserProfile = {
@@ -202,6 +206,85 @@ export function getHeaders(token?: string): HeadersInit {
     headers.Authorization = `Bearer ${cleanToken}`;
   }
   return headers;
+}
+
+export const AUTH_INVALID_EVENT = 'ogv:auth_invalid';
+export type AuthInvalidListener = (message: string) => void;
+let authInvalidListener: AuthInvalidListener | null = null;
+
+export function setAuthInvalidListener(listener: AuthInvalidListener | null): void {
+  authInvalidListener = listener;
+}
+
+export function handleAuthFailure(reason: string = 'GitHub token expired or invalid'): void {
+  const currentToken = getStoredToken();
+  if (!currentToken) return;
+
+  console.warn(`[OneGitVault Auth] ${reason}. Clearing expired token and switching to public access.`);
+  inMemoryPatToken = '';
+  try {
+    const bridge = (window as any)?.AndroidThemeBridge;
+    if (bridge && typeof bridge.saveSecureToken === 'function') {
+      bridge.saveSecureToken('');
+    }
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+    localStorage.removeItem(USER_CACHE_KEY);
+    sessionStorage.setItem('ogv_last_auth_error', reason);
+  } catch {}
+
+  currentRateLimits = {
+    ...currentRateLimits,
+    limit: 60,
+    searchLimit: 10,
+  };
+  if (onRateLimitChange) {
+    onRateLimitChange(currentRateLimits);
+  }
+
+  if (authInvalidListener) {
+    try { authInvalidListener(reason); } catch {}
+  }
+  try {
+    window.dispatchEvent(new CustomEvent(AUTH_INVALID_EVENT, { detail: { reason } }));
+  } catch {}
+}
+
+export async function fetchGitHubWithAuthFallback(
+  url: string,
+  init?: RequestInit,
+  allowPublicRetry: boolean = true
+): Promise<Response> {
+  const customHeaders = init?.headers ? new Headers(init.headers) : new Headers(getHeaders());
+  const hadAuth = customHeaders.has('Authorization');
+
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, headers: customHeaders });
+  } catch (err) {
+    throw err;
+  }
+
+  // 401 Unauthorized check: Bad credentials, token expired, revoked or invalidated
+  if (res.status === 401 && hadAuth) {
+    console.warn(`[OneGitVault Auth] 401 Unauthorized received for ${url}. Invalidating token.`);
+    handleAuthFailure('GitHub token expired or invalid — switched to guest mode');
+
+    if (allowPublicRetry) {
+      const publicHeaders = new Headers(init?.headers || {});
+      publicHeaders.delete('Authorization');
+      if (!publicHeaders.has('Accept')) {
+        publicHeaders.set('Accept', 'application/vnd.github.v3+json');
+      }
+      console.log(`[OneGitVault Auth] Retrying ${url} with public guest access...`);
+      const retryRes = await fetch(url, { ...init, headers: publicHeaders });
+      updateRateLimitFromHeaders(retryRes.headers);
+      return retryRes;
+    }
+  }
+
+  updateRateLimitFromHeaders(res.headers);
+  return res;
 }
 
 export let currentRateLimits: RateLimitInfo = {
@@ -359,18 +442,27 @@ export async function checkLiveRateLimit(force: boolean = false): Promise<RateLi
     }
 
     try {
-      const res = await fetch('https://api.github.com/rate_limit', { headers });
+      let res = await fetch('https://api.github.com/rate_limit', { headers });
+      if (res.status === 401 && token) {
+        console.warn('[OneGitVault Auth] 401 from /rate_limit. Invalidating token.');
+        handleAuthFailure('GitHub token expired or invalid');
+        res = await fetch('https://api.github.com/rate_limit', {
+          headers: { Accept: 'application/vnd.github.v3+json' },
+        });
+      }
+
       if (res.ok) {
         const data = await res.json();
         const core = data?.resources?.core || data?.rate;
         const search = data?.resources?.search;
+        const activeToken = getStoredToken();
         if (core) {
           currentRateLimits = {
-            limit: core.limit ?? (token ? 5000 : 60),
+            limit: core.limit ?? (activeToken ? 5000 : 60),
             remaining: core.remaining ?? 60,
             resetTime: core.reset ? new Date(core.reset * 1000) : null,
-            searchLimit: search?.limit ?? (token ? 30 : 10),
-            searchRemaining: search?.remaining ?? (token ? 30 : 10),
+            searchLimit: search?.limit ?? (activeToken ? 30 : 10),
+            searchRemaining: search?.remaining ?? (activeToken ? 30 : 10),
             searchResetTime: search?.reset ? new Date(search.reset * 1000) : null,
           };
           if (onRateLimitChange) {
@@ -643,8 +735,7 @@ export async function fetchRepositories(
   return deduplicatedFetch(cacheKey, async () => {
     try {
       const url = `${BASE_URL}/search/repositories?q=${encodeURIComponent(q)}&sort=${sortParam}&order=desc&per_page=${perPage}&page=${page}`;
-      const res = await fetch(url, { headers: getHeaders() });
-      updateRateLimitFromHeaders(res.headers);
+      const res = await fetchGitHubWithAuthFallback(url);
 
       if (!res.ok) {
         console.warn(`GitHub API returned ${res.status}, attempting cached fallback`);
@@ -860,6 +951,10 @@ export async function fetchRepoCompleteDetails(fullName: string): Promise<Comple
       });
 
       updateRateLimitFromHeaders(res.headers);
+      if (res.status === 401) {
+        handleAuthFailure('GraphQL token is invalid or expired');
+        return null;
+      }
       if (!res.ok) {
         if (res.status === 403 || res.status === 429) markCoreRateLimitExhausted(res.headers);
         return null;
@@ -984,8 +1079,7 @@ export async function fetchReleases(repoFullName: string): Promise<ReleaseAsset[
   return deduplicatedFetch(`releases_${normKey}`, async () => {
     try {
       const url = `${BASE_URL}/repos/${repoFullName}/releases?per_page=10`;
-      const res = await fetch(url, { headers: getHeaders() });
-      updateRateLimitFromHeaders(res.headers);
+      const res = await fetchGitHubWithAuthFallback(url);
 
       if (!res.ok) {
         if (res.status === 403 || res.status === 429) markCoreRateLimitExhausted(res.headers);
@@ -1126,13 +1220,12 @@ export async function fetchReadme(repoFullName: string, preferredBranch?: string
 
     try {
       const url = `${BASE_URL}/repos/${repoFullName}/readme`;
-      const res = await fetch(url, {
+      const res = await fetchGitHubWithAuthFallback(url, {
         headers: {
           ...getHeaders(),
           Accept: 'application/vnd.github.v3.raw'
         }
       });
-      updateRateLimitFromHeaders(res.headers);
       if (!res.ok) {
         if (res.status === 403 || res.status === 429) markCoreRateLimitExhausted(res.headers);
         try {
@@ -1246,8 +1339,7 @@ export async function fetchTrendingRepositories(
     const url = `${BASE_URL}/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=60`;
 
     try {
-      const res = await fetch(url, { headers: getHeaders() });
-      updateRateLimitFromHeaders(res.headers);
+      const res = await fetchGitHubWithAuthFallback(url);
       if (!res.ok) {
         if (res.status === 403 || res.status === 429) markSearchRateLimitExhausted(res.headers);
         return getTrendingCachedFallback();
@@ -1397,14 +1489,10 @@ export async function fetchUserRepositories(
 
   return deduplicatedFetch(`user_repos_${lower}`, async () => {
     try {
-      const headers = getHeaders();
       const [userRes, reposRes] = await Promise.all([
-        fetch(`${BASE_URL}/users/${encodeURIComponent(username)}`, { headers }),
-        fetch(`${BASE_URL}/users/${encodeURIComponent(username)}/repos?per_page=30&sort=updated`, { headers }),
+        fetchGitHubWithAuthFallback(`${BASE_URL}/users/${encodeURIComponent(username)}`),
+        fetchGitHubWithAuthFallback(`${BASE_URL}/users/${encodeURIComponent(username)}/repos?per_page=30&sort=updated`),
       ]);
-
-      updateRateLimitFromHeaders(userRes.headers);
-      updateRateLimitFromHeaders(reposRes.headers);
 
       if (userRes.status === 403 || userRes.status === 429 || reposRes.status === 403 || reposRes.status === 429) {
         markCoreRateLimitExhausted(reposRes.headers);

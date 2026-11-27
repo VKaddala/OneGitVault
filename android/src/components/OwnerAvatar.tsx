@@ -24,7 +24,17 @@ function buildAvatarCandidates(
   const trimmed = (rawUrl || '').trim();
 
   if (trimmed) {
-    if (trimmed.includes('avatars.githubusercontent.com')) {
+    let isGitHubAvatarHost = false;
+    try {
+      const parsedHost = new URL(trimmed).hostname.toLowerCase();
+      isGitHubAvatarHost =
+        parsedHost === 'avatars.githubusercontent.com' ||
+        parsedHost.endsWith('.githubusercontent.com');
+    } catch {
+      isGitHubAvatarHost = false;
+    }
+
+    if (isGitHubAvatarHost) {
       const sep = trimmed.includes('?') ? '&' : '?';
       const sized = /[?&](s|size)=/i.test(trimmed) ? trimmed : `${trimmed}${sep}s=${targetSize}`;
       candidates.push(sized);

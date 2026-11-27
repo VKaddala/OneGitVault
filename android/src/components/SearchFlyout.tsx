@@ -274,6 +274,7 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
         >
           <IconButton
             size="small"
+            aria-label="Back / Close Search"
             onClick={handleClose}
             sx={{
               p: 0.5,
@@ -310,6 +311,7 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
           {query && (
             <IconButton
               size="small"
+              aria-label="Clear Search Input"
               onClick={() => {
                 setQuery('');
                 setDebouncedQuery('');
@@ -450,6 +452,7 @@ export const SearchFlyout: React.FC<SearchFlyoutProps> = ({
                       </Box>
                       <IconButton
                         size="small"
+                        aria-label={`Remove ${item} from search history`}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleRemoveHistoryItem(item);

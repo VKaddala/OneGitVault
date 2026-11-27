@@ -33,14 +33,42 @@ registerMemoryCacheCleaner((clearAll) => {
  * Strips markdown and HTML formatting into clean plain text
  */
 function cleanMarkdown(text: string): string {
-  return text
-    .replace(/<!--[\s\S]*?-->/g, '') // HTML comments
+  // Loop to completely eliminate nested/malicious multi-character HTML comments and tags
+  let cleaned = text;
+  let prev = '';
+  while (cleaned !== prev) {
+    prev = cleaned;
+    cleaned = cleaned
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/<[^>]+>/g, '');
+  }
+
+  return cleaned
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [link](url) -> link
-    .replace(/<[^>]+>/g, '') // HTML tags
     .replace(/[*_~`#]/g, '') // formatting symbols
     .replace(/&nbsp;/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+const BADGE_HOSTS = new Set([
+  'img.shields.io',
+  'shields.io',
+  'badge.fury.io',
+  'codecov.io',
+  'sonarcloud.io',
+  'opencollective.com',
+  'ko-fi.com',
+  'gitter.im'
+]);
+
+function isBadgeOrTrackerDomain(hostname: string): boolean {
+  if (!hostname) return false;
+  if (BADGE_HOSTS.has(hostname)) return true;
+  for (const h of BADGE_HOSTS) {
+    if (hostname.endsWith('.' + h)) return true;
+  }
+  return false;
 }
 
 /**
@@ -48,18 +76,24 @@ function cleanMarkdown(text: string): string {
  */
 function resolveMediaUrl(rawUrl: string, repoFullName: string, defaultBranch: string = 'main'): string | undefined {
   if (!rawUrl) return undefined;
+
+  let hostname = '';
+  try {
+    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+      hostname = new URL(rawUrl).hostname.toLowerCase();
+    }
+  } catch {}
+
+  if (isBadgeOrTrackerDomain(hostname)) {
+    return undefined;
+  }
   
   // Ignore shields, badges, icons, and analytics trackers
   const lower = rawUrl.toLowerCase();
   if (
-    lower.includes('img.shields.io') ||
-    lower.includes('badge.fury.io') ||
     lower.includes('github.com/workflows') ||
     lower.includes('actions/workflows') ||
-    lower.includes('codecov.io') ||
-    lower.includes('sonarcloud.io') ||
     lower.includes('travis-ci') ||
-    lower.includes('opencollective.com') ||
     lower.includes('patreon') ||
     lower.includes('visitor-badge') ||
     lower.includes('license') ||
@@ -67,8 +101,6 @@ function resolveMediaUrl(rawUrl: string, repoFullName: string, defaultBranch: st
     lower.includes('stars.svg') ||
     lower.includes('forks.svg') ||
     lower.includes('buymeacoffee') ||
-    lower.includes('ko-fi.com') ||
-    lower.includes('gitter.im') ||
     lower.includes('discordapp.com/api/guilds')
   ) {
     return undefined;
@@ -142,8 +174,7 @@ function isNoiseParagraph(text: string): boolean {
     lower.includes('patreon') ||
     lower.includes('paypal') ||
     lower.includes('discord.gg') ||
-    lower.includes('twitter.com') ||
-    lower.includes('x.com/') ||
+    /(?:^|[^\w.-])(?:twitter\.com|x\.com)(?:[/?#\s]|$)/i.test(lower) ||
     lower.includes('badge') ||
     lower.includes('build status') ||
     lower.includes('pull request') ||

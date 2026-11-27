@@ -1,7 +1,7 @@
 import { getStoredToken } from './githubApi';
 import { isTrustedReleaseAssetUrl } from '../utils/sanitizeMarkdown';
 
-export const CURRENT_ANDROID_VERSION = '2.0.1';
+export const CURRENT_ANDROID_VERSION = '2.0.2';
 const REPO_OWNER = 'VKaddala';
 const REPO_NAME = 'OneGitVault';
 

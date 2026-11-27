@@ -67,6 +67,7 @@ import {
   ignoreRepoRadar,
 } from '../services/bookmarkStore';
 import { getStoredToken } from '../services/githubApi';
+import { renderMarkdownToSafeHtml } from '../utils/sanitizeMarkdown';
 import {
   pullBookmarksFromGist,
   pushBookmarksToGist,
@@ -1776,26 +1777,58 @@ export const VaultView: React.FC<VaultViewProps> = React.memo(({
                                   </Button>
                                 </Box>
 
-                                {/* Release Notes Preview */}
+                                {/* Release Notes Preview - Rendered as rich parsed Markdown */}
                                 {radar.releaseNotes ? (
                                   <Box
+                                    className="markdown-body selectable-text"
+                                    dangerouslySetInnerHTML={{
+                                      __html: renderMarkdownToSafeHtml(radar.releaseNotes)
+                                    }}
                                     sx={{
                                       p: 1.5,
                                       borderRadius: '12px',
                                       bgcolor: alpha(theme.palette.background.default, 0.7),
                                       border: `1px solid ${alpha(theme.palette.divider, 0.3)}`,
-                                      fontSize: '0.75rem',
-                                      color: 'text.secondary',
-                                      maxHeight: 220,
+                                      fontSize: '0.82rem',
+                                      color: 'text.primary',
+                                      maxHeight: 260,
                                       overflowY: 'auto',
-                                      fontFamily: 'monospace',
-                                      whiteSpace: 'pre-wrap',
                                       wordBreak: 'break-word',
-                                      lineHeight: 1.6
+                                      lineHeight: 1.6,
+                                      userSelect: 'text !important',
+                                      WebkitUserSelect: 'text !important',
+                                      '& p': { my: 0.6 },
+                                      '& ul, & ol': { pl: 2.2, my: 0.6 },
+                                      '& li': { my: 0.2 },
+                                      '& h1, & h2, & h3, & h4': {
+                                        color: 'text.primary',
+                                        fontWeight: 700,
+                                        fontSize: '0.92rem',
+                                        mt: 1.4,
+                                        mb: 0.5
+                                      },
+                                      '& code': {
+                                        bgcolor: alpha(theme.palette.primary.main, 0.12),
+                                        px: 0.6,
+                                        py: 0.2,
+                                        borderRadius: '4px',
+                                        fontFamily: '"JetBrains Mono", monospace',
+                                        fontSize: '0.78rem'
+                                      },
+                                      '& pre': {
+                                        bgcolor: alpha(theme.palette.background.paper, 0.8),
+                                        p: 1,
+                                        borderRadius: '8px',
+                                        overflowX: 'auto',
+                                        my: 0.8
+                                      },
+                                      '& a': {
+                                        color: 'primary.main',
+                                        textDecoration: 'none',
+                                        '&:hover': { textDecoration: 'underline' }
+                                      }
                                     }}
-                                  >
-                                    {radar.releaseNotes}
-                                  </Box>
+                                  />
                                 ) : (
                                   <Typography sx={{ fontSize: '0.74rem', color: 'text.secondary', fontStyle: 'italic' }}>
                                     No release notes published with this release tag.

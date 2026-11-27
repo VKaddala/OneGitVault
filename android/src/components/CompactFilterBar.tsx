@@ -75,7 +75,7 @@ export const CompactFilterBar = React.memo<CompactFilterBarProps>(({
   const sortLabels: Record<SortOption, { label: string; icon: React.ReactElement }> = {
     stars: { label: 'Most Stars', icon: <StarIcon sx={{ fontSize: 14 }} /> },
     forks: { label: 'Most Forks', icon: <CallSplitIcon sx={{ fontSize: 14 }} /> },
-    newest: { label: 'Newest', icon: <AutoAwesomeIcon sx={{ fontSize: 14 }} /> },
+    newest: { label: 'Newest First', icon: <AutoAwesomeIcon sx={{ fontSize: 14 }} /> },
     updated: { label: 'Recent', icon: <AccessTimeIcon sx={{ fontSize: 14 }} /> },
   };
 

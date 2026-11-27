@@ -35,6 +35,21 @@
         user-select: none;
         -webkit-user-select: none;
       }
+      /* Allow text selection and copying inside README, code snippets, documentation and inputs */
+      .markdown-body,
+      .markdown-body *,
+      pre,
+      pre *,
+      code,
+      code *,
+      input,
+      textarea,
+      [data-selectable="true"],
+      .selectable-text,
+      .selectable-text * {
+        user-select: text !important;
+        -webkit-user-select: text !important;
+      }
       ::-webkit-scrollbar {
         width: 4px;
         height: 4px;

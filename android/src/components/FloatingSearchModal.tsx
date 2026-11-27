@@ -109,11 +109,11 @@ export const FloatingSearchModal: React.FC<FloatingSearchModalProps> = ({
             }}
           />
           {searchQuery && (
-            <IconButton size="small" onClick={() => onSearchChange('')} sx={{ p: 0.3 }}>
+            <IconButton size="small" aria-label="Clear Search Input" onClick={() => onSearchChange('')} sx={{ p: 0.3 }}>
               <ClearIcon sx={{ fontSize: 16 }} />
             </IconButton>
           )}
-          <IconButton size="small" onClick={onClose} sx={{ p: 0.3, color: 'text.secondary' }}>
+          <IconButton size="small" aria-label="Close Search Modal" onClick={onClose} sx={{ p: 0.3, color: 'text.secondary' }}>
             <CloseIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Box>

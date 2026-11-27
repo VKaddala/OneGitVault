@@ -67,6 +67,9 @@ export const BottomNav: React.FC<BottomNavProps> = React.memo(({
 
   return (
     <Box
+      component="nav"
+      role="tablist"
+      aria-label="Main Navigation"
       sx={{
         position: 'fixed',
         bottom: 'calc(max(env(safe-area-inset-bottom, 0px), 4px) + 6px)',
@@ -132,6 +135,21 @@ export const BottomNav: React.FC<BottomNavProps> = React.memo(({
         return (
           <Box
             key={tab.id}
+            role="tab"
+            id={`bottom-nav-tab-${tab.id}`}
+            aria-selected={isSelected}
+            aria-label={tab.label}
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (optimisticTab !== tab.id) {
+                  setOptimisticTab(tab.id);
+                }
+                triggerHaptic(10);
+                onTabChange(tab.id);
+              }
+            }}
             onClick={() => {
               if (optimisticTab !== tab.id) {
                 setOptimisticTab(tab.id);

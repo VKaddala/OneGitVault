@@ -402,7 +402,8 @@ function normalizeTagToSemver(tag?: string): string {
 
 function isReleaseTagNewer(liveTag: string, savedTag?: string): boolean {
   if (!liveTag) return false;
-  if (!savedTag) return true;
+  // If there is no saved baseline tag, do not falsely flag the existing release as an update
+  if (!savedTag) return false;
   if (liveTag.trim() === savedTag.trim()) return false;
   const sLive = normalizeTagToSemver(liveTag);
   const sSaved = normalizeTagToSemver(savedTag);
@@ -490,6 +491,7 @@ export async function checkVaultReleaseRadar(
         staleRepos.forEach((repo, idx) => {
           const node = data[`r${idx}`]?.releases?.nodes?.[0];
           if (!node?.tagName) return;
+          const key = repo.full_name.toLowerCase();
           const assets: ReleaseAsset[] = (node.releaseAssets?.nodes || []).map((a: any) => ({
             id: Number(a.id) || 0,
             name: a.name || '',
@@ -500,14 +502,15 @@ export async function checkVaultReleaseRadar(
             is_apk: String(a.name || '').toLowerCase().endsWith('.apk'),
           }));
           const apkAsset = assets.find((a) => a.is_apk);
-          const savedTag = repo.latest_release?.tag_name || '';
-          const key = repo.full_name.toLowerCase();
+          const existingEntry = existing[key];
+          const baselineTag = existingEntry?.savedTag || existingEntry?.latestTag || repo.latest_release?.tag_name || node.tagName;
+          const isInitialBaseline = !existingEntry && !repo.latest_release?.tag_name;
           const isIgnored = isRepoRadarIgnored(repo.full_name, node.tagName);
           nextResults[key] = {
             fullName: repo.full_name,
-            savedTag,
+            savedTag: baselineTag,
             latestTag: node.tagName,
-            hasUpdate: !isIgnored && isReleaseTagNewer(node.tagName, savedTag),
+            hasUpdate: !isIgnored && !isInitialBaseline && isReleaseTagNewer(node.tagName, baselineTag),
             releaseUrl: node.url || `${repo.html_url}/releases`,
             apkAsset,
             releaseNotes: node.description || '',
@@ -542,14 +545,16 @@ export async function checkVaultReleaseRadar(
           content_type: a.content_type || '',
           is_apk: String(a.name || '').toLowerCase().endsWith('.apk'),
         }));
-        const savedTag = repo.latest_release?.tag_name || '';
         const key = repo.full_name.toLowerCase();
+        const existingEntry = existing[key];
+        const baselineTag = existingEntry?.savedTag || existingEntry?.latestTag || repo.latest_release?.tag_name || rel.tag_name;
+        const isInitialBaseline = !existingEntry && !repo.latest_release?.tag_name;
         const isIgnored = isRepoRadarIgnored(repo.full_name, rel.tag_name);
         nextResults[key] = {
           fullName: repo.full_name,
-          savedTag,
+          savedTag: baselineTag,
           latestTag: rel.tag_name,
-          hasUpdate: !isIgnored && isReleaseTagNewer(rel.tag_name, savedTag),
+          hasUpdate: !isIgnored && !isInitialBaseline && isReleaseTagNewer(rel.tag_name, baselineTag),
           releaseUrl: rel.html_url || `${repo.html_url}/releases`,
           apkAsset: assets.find((a) => a.is_apk),
           releaseNotes: rel.body || '',

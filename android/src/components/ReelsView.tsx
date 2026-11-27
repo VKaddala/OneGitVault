@@ -47,6 +47,7 @@ import {
   SpotlightKeyword
 } from '../services/spotlightSuggestions';
 import { needsTranslation, translateItemsToEnglish } from '../services/translateService';
+import { getUserInterests } from '../services/bookmarkStore';
 import { ReelCard } from './ReelCard';
 import { OneGitVaultLogo } from './OneGitVaultLogo';
 import { triggerHaptic } from '../utils/haptics';
@@ -91,7 +92,7 @@ const FILTER_OPTIONS: FilterOption[] = [
   },
   {
     id: 'newest',
-    label: 'Newest',
+    label: 'Newest First',
     icon: <AutoAwesomeIcon sx={{ fontSize: 18, color: '#3b82f6' }} />,
     sort: 'newest'
   },
@@ -265,8 +266,18 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
       case 'all':
         return 'stars:>100';
       case 'stars':
-      default:
+      default: {
+        const userTopics = getUserInterests();
+        if (userTopics && userTopics.length > 0) {
+          const topicClauses = userTopics
+            .map((t) => t.trim())
+            .filter(Boolean)
+            .map((t) => (t.includes(' ') ? `"${t}"` : `topic:${t}`))
+            .join(' OR ');
+          return `(${topicClauses}) stars:>20`;
+        }
         return 'stars:>5000';
+      }
     }
   }, [activeSearch, selectedFilter]);
 
@@ -342,6 +353,18 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
     },
     [constructQuery, currentFilterOption.sort, selectedFilter, onShareMessage]
   );
+
+  useEffect(() => {
+    const handleInterestsChanged = () => {
+      setActiveIndex(0);
+      pageRef.current = 1;
+      fetchedReadmesRef.current.clear();
+      translatedSummariesRef.current.clear();
+      loadFeed(1, false);
+    };
+    window.addEventListener('ogv_interests_changed', handleInterestsChanged);
+    return () => window.removeEventListener('ogv_interests_changed', handleInterestsChanged);
+  }, [loadFeed]);
 
   const prevFeedDepsRef = useRef({ activeSearch, selectedFilter, loadFeed });
 
@@ -1051,6 +1074,7 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
                   {/* Star Action */}
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <IconButton
+                      aria-label={activeIsStarred ? 'Unstar repository' : 'Star repository'}
                       onClick={(e) => {
                         e.stopPropagation();
                         onToggleStar(activeRepo);
@@ -1078,6 +1102,7 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
                   {/* Vault Bookmark Action */}
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <IconButton
+                      aria-label={activeIsBookmarked ? 'Remove from vault' : 'Save to vault'}
                       onClick={(e) => {
                         e.stopPropagation();
                         triggerHaptic(10);
@@ -1104,6 +1129,7 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
                   {/* Full README Button */}
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <IconButton
+                      aria-label="View repository README"
                       onClick={(e) => {
                         e.stopPropagation();
                         onOpenDetail(activeRepo, 'readme');
@@ -1127,6 +1153,7 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
                   {/* Share Action */}
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <IconButton
+                      aria-label="Share repository link"
                       onClick={handleShareActive}
                       sx={{
                         width: 44,
@@ -1147,6 +1174,7 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
                   {/* Shareable Visual Card */}
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <IconButton
+                      aria-label="Generate and share visual spotlight card"
                       onClick={handleGenerateCard}
                       disabled={isGeneratingCard}
                       sx={{
@@ -1173,6 +1201,7 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
                   {/* GitHub Action */}
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <IconButton
+                      aria-label="Open repository on GitHub"
                       onClick={(e) => {
                         e.stopPropagation();
                         window.open(activeRepo.html_url, '_blank');

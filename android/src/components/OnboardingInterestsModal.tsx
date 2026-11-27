@@ -46,6 +46,12 @@ export const OnboardingInterestsModal: React.FC<OnboardingInterestsModalProps> =
   const theme = useTheme();
   const [selected, setSelected] = useState<string[]>(() => getUserInterests());
 
+  React.useEffect(() => {
+    if (open) {
+      setSelected(getUserInterests());
+    }
+  }, [open]);
+
   const toggleTopic = (topicId: string) => {
     setSelected((prev) =>
       prev.includes(topicId)

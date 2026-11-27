@@ -15,10 +15,46 @@ export interface DeviceCodeSession {
   interval: number;
 }
 
+function encryptOAuthClientId(clientId: string): string {
+  if (!clientId) return '';
+  try {
+    const encoded = encodeURIComponent(clientId);
+    let cipher = '';
+    const mask = 0x3c;
+    for (let i = 0; i < encoded.length; i++) {
+      cipher += String.fromCharCode(encoded.charCodeAt(i) ^ mask);
+    }
+    return 'enc:' + btoa(cipher);
+  } catch {
+    return 'enc:' + btoa(clientId);
+  }
+}
+
+function decryptOAuthClientId(stored: string): string {
+  if (!stored) return '';
+  if (!stored.startsWith('enc:')) return stored; // Backward compatibility
+  try {
+    const raw = atob(stored.slice(4));
+    let plain = '';
+    const mask = 0x3c;
+    for (let i = 0; i < raw.length; i++) {
+      plain += String.fromCharCode(raw.charCodeAt(i) ^ mask);
+    }
+    return decodeURIComponent(plain);
+  } catch {
+    try {
+      return atob(stored.slice(4));
+    } catch {
+      return '';
+    }
+  }
+}
+
 export function getConfiguredOAuthClientId(): string {
   if (ENV_CLIENT_ID.trim()) return ENV_CLIENT_ID.trim();
   try {
-    return (localStorage.getItem(OAUTH_CLIENT_ID_STORAGE_KEY) || '').trim();
+    const raw = (localStorage.getItem(OAUTH_CLIENT_ID_STORAGE_KEY) || '').trim();
+    return decryptOAuthClientId(raw).trim();
   } catch {
     return '';
   }
@@ -28,7 +64,7 @@ export function saveOAuthClientId(clientId: string): void {
   try {
     const trimmed = clientId.trim();
     if (trimmed) {
-      localStorage.setItem(OAUTH_CLIENT_ID_STORAGE_KEY, trimmed);
+      localStorage.setItem(OAUTH_CLIENT_ID_STORAGE_KEY, encryptOAuthClientId(trimmed));
     } else {
       localStorage.removeItem(OAUTH_CLIENT_ID_STORAGE_KEY);
     }

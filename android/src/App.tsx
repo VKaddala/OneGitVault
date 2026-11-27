@@ -22,6 +22,7 @@ import { ThemePlugin } from './themes/types';
 import { Repository, SortOption, RateLimitInfo } from './types';
 import {
   fetchRepositories,
+  fetchRepositoryByFullName,
   getCurrentRateLimit,
   checkLiveRateLimit,
   setRateLimitListener,
@@ -803,6 +804,7 @@ export const App: React.FC = () => {
 
     // 2. Open selected repo in Explore
     setCurrentTab('explore');
+    setSelectedExploreCategory('all');
 
     // 3. Prepend selected repo to Explore repository list so it is immediately visible
     setExploreRepos((prev) => {
@@ -906,22 +908,39 @@ export const App: React.FC = () => {
 
   // Handle native widget clicks & deep links (e.g. Vault or Trending widget launched from Home Screen)
   useEffect(() => {
-    const checkBridgeTargetTab = () => {
+    const openRepoByName = async (repoName: string) => {
+      const clean = (repoName || '').trim();
+      if (!clean) return;
+      const r = await fetchRepositoryByFullName(clean);
+      if (r) {
+        handleOpenDetail(r);
+      }
+    };
+
+    const checkBridgeEvents = () => {
       try {
         const bridge = (window as any)?.AndroidThemeBridge;
-        if (bridge && typeof bridge.getPendingTargetTab === 'function') {
-          const target = (bridge.getPendingTargetTab() || '').trim();
-          if (target && ['apks', 'trending', 'spotlight', 'vault', 'explore'].includes(target)) {
-            handleTabChange(target);
+        if (bridge) {
+          if (typeof bridge.getPendingTargetTab === 'function') {
+            const target = (bridge.getPendingTargetTab() || '').trim();
+            if (target && ['apks', 'trending', 'spotlight', 'vault', 'explore'].includes(target)) {
+              handleTabChange(target);
+            }
+          }
+          if (typeof bridge.getPendingTargetRepo === 'function') {
+            const targetRepo = (bridge.getPendingTargetRepo() || '').trim();
+            if (targetRepo) {
+              openRepoByName(targetRepo);
+            }
           }
         }
       } catch {}
     };
 
-    checkBridgeTargetTab();
+    checkBridgeEvents();
 
-    window.addEventListener('focus', checkBridgeTargetTab);
-    document.addEventListener('visibilitychange', checkBridgeTargetTab);
+    window.addEventListener('focus', checkBridgeEvents);
+    document.addEventListener('visibilitychange', checkBridgeEvents);
 
     const handleSwitchTab = (e: any) => {
       const tab = (e?.detail?.tab || '').trim();
@@ -931,12 +950,21 @@ export const App: React.FC = () => {
     };
     window.addEventListener('ogv:switch_tab', handleSwitchTab);
 
-    return () => {
-      window.removeEventListener('focus', checkBridgeTargetTab);
-      document.removeEventListener('visibilitychange', checkBridgeTargetTab);
-      window.removeEventListener('ogv:switch_tab', handleSwitchTab);
+    const handleOpenRepoEvent = (e: any) => {
+      const repo = (e?.detail?.repo || '').trim();
+      if (repo) {
+        openRepoByName(repo);
+      }
     };
-  }, [handleTabChange]);
+    window.addEventListener('ogv:open_repo', handleOpenRepoEvent);
+
+    return () => {
+      window.removeEventListener('focus', checkBridgeEvents);
+      document.removeEventListener('visibilitychange', checkBridgeEvents);
+      window.removeEventListener('ogv:switch_tab', handleSwitchTab);
+      window.removeEventListener('ogv:open_repo', handleOpenRepoEvent);
+    };
+  }, [handleTabChange, handleOpenDetail]);
 
   const handleOpenSettings = useCallback(() => setSettingsOpen(true), []);
   const handleCloseSettings = useCallback(() => setSettingsOpen(false), []);
@@ -1584,6 +1612,7 @@ export const App: React.FC = () => {
               onSelectTheme={handleSelectTheme}
               updateInfo={updateInfo}
               onOpenUpdateDialog={handleOpenUpdateDialog}
+              onOpenInterestsModal={() => setOnboardingOpen(true)}
               onCacheCleared={handleCacheCleared}
             />
           )}

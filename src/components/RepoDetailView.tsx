@@ -18,6 +18,12 @@ import {
   needsTranslation
 } from '../services/translateService';
 
+const SAFE_MARKDOWN_DOMPURIFY_CONFIG = {
+  FORBID_TAGS: ['style', 'form', 'input', 'textarea', 'select', 'button', 'iframe', 'object', 'embed'],
+  FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick', 'onmouseover', 'onfocus'],
+  ADD_ATTR: ['target', 'rel'],
+};
+
 interface RepoDetailViewProps {
   repo: Repository;
   onBack: () => void;
@@ -219,7 +225,7 @@ export const RepoDetailView: React.FC<RepoDetailViewProps> = ({
     try {
       const translatedMd = await translateMarkdownToEnglish(readmeContent);
       const parsed = marked.parse(translatedMd) as string;
-      const sanitized = DOMPurify.sanitize(parsed, { ADD_ATTR: ['target', 'rel'] });
+      const sanitized = DOMPurify.sanitize(parsed, SAFE_MARKDOWN_DOMPURIFY_CONFIG);
       setTranslatedHtml(sanitized);
       setIsTranslated(true);
     } catch (e) {
@@ -283,7 +289,7 @@ export const RepoDetailView: React.FC<RepoDetailViewProps> = ({
     if (!readmeContent) return '';
     try {
       const parsed = marked.parse(readmeContent) as string;
-      return DOMPurify.sanitize(parsed, { ADD_ATTR: ['target', 'rel'] });
+      return DOMPurify.sanitize(parsed, SAFE_MARKDOWN_DOMPURIFY_CONFIG);
     } catch {
       return '<p>Error rendering markdown.</p>';
     }
@@ -548,6 +554,7 @@ export const RepoDetailView: React.FC<RepoDetailViewProps> = ({
                     <div
                       className={`readme-body ${!showFullReadme && (isTranslated ? (translatedHtml || renderedHtml) : readmeContent).length > 7000 ? 'max-h-[700px] overflow-hidden' : ''}`}
                       onClick={handleReadmeLinkClick}
+                      onSubmit={(e) => e.preventDefault()}
                       dangerouslySetInnerHTML={{ __html: isTranslated ? (translatedHtml || renderedHtml) : renderedHtml }}
                     />
 
@@ -723,7 +730,10 @@ export const RepoDetailView: React.FC<RepoDetailViewProps> = ({
                               </summary>
                               <div
                                 className="readme-body max-h-60 overflow-y-auto p-3 rounded-xl bg-surface border border-themeline"
-                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(currentRelease.body) as string) }}
+                                onSubmit={(e) => e.preventDefault()}
+                                dangerouslySetInnerHTML={{
+                                  __html: DOMPurify.sanitize(marked.parse(currentRelease.body) as string, SAFE_MARKDOWN_DOMPURIFY_CONFIG)
+                                }}
                               />
                             </details>
                           </div>

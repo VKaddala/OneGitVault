@@ -69,7 +69,12 @@ public class VaultReleaseWidgetProvider extends AppWidgetProvider {
         Intent intent = new Intent(context, MainActivity.class);
         intent.setAction("io.onegitvault.app.ACTION_OPEN_VAULT");
         intent.putExtra("targetTab", "vault");
-        intent.setData(android.net.Uri.parse("onegitvault://tab/vault"));
+        if (repoTitle != null && repoTitle.contains("/")) {
+            intent.putExtra("targetRepo", repoTitle);
+            intent.setData(android.net.Uri.parse("onegitvault://repo/" + repoTitle));
+        } else {
+            intent.setData(android.net.Uri.parse("onegitvault://tab/vault"));
+        }
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(
             context,

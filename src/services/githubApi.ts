@@ -23,9 +23,45 @@ let currentRateLimit: RateLimitInfo = {
   searchResetTime: null,
 };
 
+function encryptStoredToken(rawToken: string): string {
+  if (!rawToken) return '';
+  try {
+    const encoded = encodeURIComponent(rawToken);
+    let cipher = '';
+    const mask = 0x5a;
+    for (let i = 0; i < encoded.length; i++) {
+      cipher += String.fromCharCode(encoded.charCodeAt(i) ^ mask);
+    }
+    return 'enc:' + btoa(cipher);
+  } catch {
+    return 'enc:' + btoa(rawToken);
+  }
+}
+
+function decryptStoredToken(cipherToken: string): string {
+  if (!cipherToken) return '';
+  if (!cipherToken.startsWith('enc:')) return cipherToken;
+  try {
+    const raw = atob(cipherToken.slice(4));
+    let plain = '';
+    const mask = 0x5a;
+    for (let i = 0; i < raw.length; i++) {
+      plain += String.fromCharCode(raw.charCodeAt(i) ^ mask);
+    }
+    return decodeURIComponent(plain);
+  } catch {
+    try {
+      return atob(cipherToken.slice(4));
+    } catch {
+      return '';
+    }
+  }
+}
+
 export function getStoredToken(): string {
   try {
-    return localStorage.getItem(TOKEN_KEY) || '';
+    const raw = localStorage.getItem(TOKEN_KEY) || '';
+    return decryptStoredToken(raw);
   } catch {
     return '';
   }
@@ -46,7 +82,7 @@ if (typeof window !== 'undefined' && !getStoredToken()) {
 export async function setStoredToken(token: string): Promise<void> {
   try {
     if (token) {
-      localStorage.setItem(TOKEN_KEY, token.trim());
+      localStorage.setItem(TOKEN_KEY, encryptStoredToken(token.trim()));
     } else {
       localStorage.removeItem(TOKEN_KEY);
     }

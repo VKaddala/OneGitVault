@@ -8,9 +8,16 @@ const androidOut1 = path.resolve(__dirname, '../assets/screenshots/27-android-v1
 const androidDist = path.resolve(__dirname, '../android/dist');
 
 const server = http.createServer((req, res) => {
-  let reqPath = req.url.split('?')[0];
-  let filePath = path.join(androidDist, reqPath === '/' ? 'index.html' : reqPath);
-  if (!fs.existsSync(filePath)) filePath = path.join(androidDist, 'index.html');
+  const parsedUrl = new URL(req.url, 'http://localhost:5188');
+  const safePath = path.normalize(decodeURIComponent(parsedUrl.pathname)).replace(/^(\.\.[\/\\])+/, '');
+  const relativeFile = (safePath === '/' || safePath === '.' || !safePath) ? 'index.html' : safePath.replace(/^[/\\]+/, '');
+  const candidatePath = path.resolve(androidDist, relativeFile);
+
+  // Path injection guard: Ensure resolved candidate stays strictly inside androidDist
+  const filePath = (candidatePath.startsWith(androidDist) && fs.existsSync(candidatePath) && fs.statSync(candidatePath).isFile())
+    ? candidatePath
+    : path.resolve(androidDist, 'index.html');
+
   const ext = path.extname(filePath);
   const mimeMap = {
     '.html': 'text/html',

@@ -84,6 +84,7 @@ public class MainActivity extends BridgeActivity {
     private volatile String cachedAppearanceFingerprint = null;
     private volatile Boolean desiredDarkSystemBars = null;
     private volatile String pendingTargetTab = null;
+    private volatile String pendingTargetRepo = null;
     private int lastInjectedStatusBarDp = -1;
     private int lastInjectedNavBarDp = -1;
     private WebViewListener capWebViewListener = null;
@@ -428,6 +429,13 @@ public class MainActivity extends BridgeActivity {
                     pendingTargetTab = null;
                     return tab != null ? tab : "";
                 }
+
+                @JavascriptInterface
+                public String getPendingTargetRepo() {
+                    String repo = pendingTargetRepo;
+                    pendingTargetRepo = null;
+                    return repo != null ? repo : "";
+                }
             }, "AndroidThemeBridge");
         }
 
@@ -451,28 +459,39 @@ public class MainActivity extends BridgeActivity {
     private void handleLaunchIntent(Intent intent) {
         if (intent == null) return;
         String tab = intent.getStringExtra("targetTab");
-        if ((tab == null || tab.isEmpty()) && intent.getData() != null) {
+        String repo = intent.getStringExtra("targetRepo");
+        if (intent.getData() != null) {
             Uri data = intent.getData();
             if ("onegitvault".equalsIgnoreCase(data.getScheme())) {
                 String hostOrPath = data.getHost() != null ? data.getHost() : "";
                 String path = data.getPath() != null ? data.getPath() : "";
+                if ("repo".equalsIgnoreCase(hostOrPath) && !path.isEmpty()) {
+                    if (path.startsWith("/")) path = path.substring(1);
+                    if (!path.isEmpty()) repo = path;
+                }
                 String full = (hostOrPath + "/" + path).toLowerCase();
-                if (full.contains("vault")) {
-                    tab = "vault";
-                } else if (full.contains("trending")) {
-                    tab = "trending";
-                } else if (full.contains("spotlight")) {
-                    tab = "spotlight";
-                } else if (full.contains("explore")) {
-                    tab = "explore";
-                } else if (full.contains("apks")) {
-                    tab = "apks";
+                if (tab == null || tab.isEmpty()) {
+                    if (full.contains("vault")) {
+                        tab = "vault";
+                    } else if (full.contains("trending")) {
+                        tab = "trending";
+                    } else if (full.contains("spotlight")) {
+                        tab = "spotlight";
+                    } else if (full.contains("explore")) {
+                        tab = "explore";
+                    } else if (full.contains("apks")) {
+                        tab = "apks";
+                    }
                 }
             }
         }
         if (tab != null && !tab.isEmpty()) {
             pendingTargetTab = tab;
             dispatchTargetTabToWebView(tab);
+        }
+        if (repo != null && !repo.isEmpty()) {
+            pendingTargetRepo = repo;
+            dispatchTargetRepoToWebView(repo);
         }
     }
 
@@ -485,6 +504,22 @@ public class MainActivity extends BridgeActivity {
                     if (bridge != null && bridge.getWebView() != null) {
                         String js = "window.dispatchEvent(new CustomEvent('ogv:switch_tab', { detail: { tab: "
                             + JSONObject.quote(tab) + " } }));";
+                        bridge.getWebView().evaluateJavascript(js, null);
+                    }
+                } catch (Throwable ignored) {}
+            }
+        });
+    }
+
+    private void dispatchTargetRepoToWebView(final String repo) {
+        if (repo == null || repo.isEmpty()) return;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (bridge != null && bridge.getWebView() != null) {
+                        String js = "window.dispatchEvent(new CustomEvent('ogv:open_repo', { detail: { repo: "
+                            + JSONObject.quote(repo) + " } }));";
                         bridge.getWebView().evaluateJavascript(js, null);
                     }
                 } catch (Throwable ignored) {}

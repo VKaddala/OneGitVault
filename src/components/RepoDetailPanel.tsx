@@ -17,6 +17,12 @@ import {
   needsTranslation
 } from '../services/translateService';
 
+const SAFE_MARKDOWN_DOMPURIFY_CONFIG = {
+  FORBID_TAGS: ['style', 'form', 'input', 'textarea', 'select', 'button', 'iframe', 'object', 'embed'],
+  FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick', 'onmouseover', 'onfocus'],
+  ADD_ATTR: ['target', 'rel'],
+};
+
 interface RepoDetailPanelProps {
   repo: Repository | null;
   isBookmarked: boolean;
@@ -230,9 +236,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
     try {
       const translatedMd = await translateMarkdownToEnglish(readmeContent);
       const parsed = marked.parse(translatedMd) as string;
-      const sanitized = DOMPurify.sanitize(parsed, {
-        ADD_ATTR: ['target', 'rel'],
-      });
+      const sanitized = DOMPurify.sanitize(parsed, SAFE_MARKDOWN_DOMPURIFY_CONFIG);
       setTranslatedHtml(sanitized);
       setIsTranslated(true);
     } catch (e) {
@@ -317,9 +321,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
     if (!readmeContent) return '';
     try {
       const parsed = marked.parse(readmeContent) as string;
-      return DOMPurify.sanitize(parsed, {
-        ADD_ATTR: ['target', 'rel'],
-      });
+      return DOMPurify.sanitize(parsed, SAFE_MARKDOWN_DOMPURIFY_CONFIG);
     } catch {
       return '<p>Error rendering markdown.</p>';
     }
@@ -579,6 +581,7 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                 <div
                   className={`readme-body ${!showFullReadme && (isTranslated ? (translatedHtml || renderedHtml) : readmeContent).length > 7000 ? 'max-h-[620px] overflow-hidden' : ''}`}
                   onClick={handleReadmeLinkClick}
+                  onSubmit={(e) => e.preventDefault()}
                   dangerouslySetInnerHTML={{ __html: isTranslated ? (translatedHtml || renderedHtml) : renderedHtml }}
                 />
                 {!showFullReadme && readmeContent.length > 7000 && (
@@ -763,7 +766,8 @@ export const RepoDetailPanel: React.FC<RepoDetailPanelProps> = ({
                           </summary>
                           <div
                             className="readme-body max-h-60 overflow-y-auto p-3 rounded-xl bg-surface border border-themeline"
-                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(currentRelease.body) as string) }}
+                            onSubmit={(e) => e.preventDefault()}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(currentRelease.body) as string, SAFE_MARKDOWN_DOMPURIFY_CONFIG) }}
                           />
                         </details>
                       </div>

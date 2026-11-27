@@ -1296,7 +1296,19 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                     const imgEl = target as HTMLImageElement;
                     const src = imgEl.currentSrc || imgEl.src;
                     const alt = imgEl.alt || `${repo.name} Preview`;
-                    if (src && !src.includes('badge') && !src.includes('shields.io') && !src.includes('travis-ci')) {
+                    let isBadgeOrShield = false;
+                    try {
+                      const parsed = new URL(src, window.location.origin);
+                      const host = parsed.hostname.toLowerCase();
+                      isBadgeOrShield =
+                        host === 'shields.io' ||
+                        host.endsWith('.shields.io') ||
+                        host.includes('travis-ci') ||
+                        parsed.pathname.includes('badge');
+                    } catch {
+                      isBadgeOrShield = src.includes('badge');
+                    }
+                    if (src && !isBadgeOrShield) {
                       e.preventDefault();
                       triggerHaptic(8);
                       setViewerImage({ url: src, title: alt });
@@ -1328,8 +1340,11 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
                   const parentPic = img.closest('picture');
                   if (parentPic) (parentPic as HTMLElement).style.display = 'none';
                 }}
+                className="markdown-body selectable-text"
                 dangerouslySetInnerHTML={{ __html: isTranslated ? (translatedHtml || originalHtml) : originalHtml }}
                 sx={{
+                  userSelect: 'text !important',
+                  WebkitUserSelect: 'text !important',
                   color: 'text.primary',
                   lineHeight: 1.68,
                   fontSize: '0.88rem',
@@ -2007,10 +2022,13 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
 
               {selectedReleaseAsset.release_body ? (
                 <Box
+                  className="markdown-body selectable-text"
                   dangerouslySetInnerHTML={{
                     __html: renderMarkdownToSafeHtml(selectedReleaseAsset.release_body)
                   }}
                   sx={{
+                    userSelect: 'text !important',
+                    WebkitUserSelect: 'text !important',
                     fontSize: '0.84rem',
                     lineHeight: 1.6,
                     color: 'text.primary',

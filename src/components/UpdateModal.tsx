@@ -61,6 +61,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
     try {
       const parsed = marked.parse(updateInfo.releaseBody) as string;
       return DOMPurify.sanitize(parsed, {
+        FORBID_TAGS: ['style', 'form', 'input', 'textarea', 'select', 'button', 'iframe', 'object', 'embed'],
+        FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick', 'onmouseover', 'onfocus'],
         ADD_ATTR: ['target', 'rel'],
       });
     } catch {

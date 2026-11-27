@@ -55,13 +55,6 @@ export const EXPLORE_CATEGORIES: Category[] = [
     description: 'Global open source repositories across all technology sectors'
   },
   {
-    id: 'newest',
-    label: 'Newest',
-    icon: 'AutoAwesome',
-    query: 'created:>=2026-06-01',
-    description: 'Fresh and newest open-source repositories'
-  },
-  {
     id: 'ai-ml',
     label: 'AI & Machine Learning',
     icon: 'Psychology',

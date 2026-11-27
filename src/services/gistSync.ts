@@ -18,6 +18,7 @@ interface GistFile {
 interface GistResponse {
   id: string;
   description: string;
+  public?: boolean;
   files: Record<string, GistFile>;
   html_url: string;
 }
@@ -74,9 +75,10 @@ async function findBookmarkGist(token: string): Promise<GistResponse | null> {
     return (
       gists.find(
         (g) =>
-          (g.files && g.files[GIST_FILENAME]) ||
+          !g.public &&
+          ((g.files && g.files[GIST_FILENAME]) ||
           g.description === GIST_DESCRIPTION ||
-          (g.description && g.description.includes('OneGitVault'))
+          (g.description && g.description.includes('OneGitVault')))
       ) ?? null
     );
   } catch {
@@ -147,7 +149,7 @@ export async function pushBookmarksToGist(
   try {
     let gist = await findBookmarkGist(clean);
 
-    if (!gist) {
+    if (!gist || gist.public) {
       gist = await createBookmarkGist(clean, bookmarks);
       return gist?.html_url ?? null;
     }

@@ -31,10 +31,12 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import VibrationIcon from '@mui/icons-material/Vibration';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 import { ThemePlugin } from '../themes/types';
 import { renderMarkdownToSafeHtml } from '../utils/sanitizeMarkdown';
 import { OneGitVaultLogo } from './OneGitVaultLogo';
 import { triggerHaptic, isHapticsEnabled, setHapticsEnabled } from '../utils/haptics';
+import { getUserInterests } from '../services/bookmarkStore';
 import {
   AndroidUpdateInfo,
   CURRENT_ANDROID_VERSION,
@@ -62,6 +64,7 @@ interface SettingsPageProps {
   onSelectTheme: (themeId: string) => void;
   updateInfo: AndroidUpdateInfo | null;
   onOpenUpdateDialog: () => void;
+  onOpenInterestsModal?: () => void;
   onCacheCleared?: (msg: string) => void;
 }
 
@@ -94,10 +97,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   onSelectTheme,
   updateInfo,
   onOpenUpdateDialog,
+  onOpenInterestsModal,
   onCacheCleared,
 }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
+
+  const [userInterests, setUserInterests] = useState<string[]>(() => getUserInterests());
+  useEffect(() => {
+    if (open) setUserInterests(getUserInterests());
+    const handleInterests = () => setUserInterests(getUserInterests());
+    window.addEventListener('ogv_interests_changed', handleInterests);
+    return () => window.removeEventListener('ogv_interests_changed', handleInterests);
+  }, [open]);
 
   const maxLimit = isAuthenticated ? 5000 : 60;
   const remainingPct = Math.min(100, Math.max(0, (coreRemaining / maxLimit) * 100));
@@ -235,6 +247,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       >
         <IconButton
           size="small"
+          aria-label={showAbout ? 'Back to Settings' : 'Close Settings'}
           onClick={() => (showAbout ? setShowAbout(false) : onClose())}
           sx={{
             bgcolor: alpha(theme.palette.text.primary, 0.06),
@@ -719,6 +732,47 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     </Box>
                   </Box>
                   <ChevronRightIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                </Box>
+
+                <Divider sx={{ borderColor: hairline }} />
+
+                {/* Row 5: Spotlight Topic Interests */}
+                <Box
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    triggerHaptic(8);
+                    onOpenInterestsModal?.();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      triggerHaptic(8);
+                      onOpenInterestsModal?.();
+                    }
+                  }}
+                  sx={{
+                    px: 1.65,
+                    py: 1.25,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    '&:active': { bgcolor: alpha(theme.palette.primary.main, 0.08) },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
+                    <PsychologyIcon sx={{ fontSize: 19, color: 'text.secondary', flexShrink: 0 }} />
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 700, fontSize: '0.88rem' }}>Spotlight Topic Interests</Typography>
+                      <Typography variant="caption" noWrap sx={{ color: 'text.secondary', fontSize: '0.72rem', display: 'block' }}>
+                        {userInterests.length > 0
+                          ? `${userInterests.length} topic${userInterests.length > 1 ? 's' : ''} active • Tap to edit`
+                          : 'None selected • Tap to personalize Spotlight'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <ChevronRightIcon fontSize="small" sx={{ color: 'text.secondary', flexShrink: 0 }} />
                 </Box>
               </Box>
             </Box>

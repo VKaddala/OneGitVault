@@ -3,6 +3,8 @@ export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
+    "./android/index.html",
+    "./android/src/**/*.{js,ts,jsx,tsx}",
   ],
   darkMode: 'class',
   theme: {

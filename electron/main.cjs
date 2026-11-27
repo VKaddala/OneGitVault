@@ -52,11 +52,21 @@ function createWindow() {
 
   // Intercept in-page anchor navigations (e.g. clicking links inside README markdown)
   // so they never replace the OneGitVault application with the webpage
-  mainWindow.webContents.on('will-navigate', (event, url) => {
-    const isDevServer = isDev && process.env.VITE_DEV_SERVER_URL && url.startsWith(process.env.VITE_DEV_SERVER_URL);
-    if (!isDevServer && (url.startsWith('http:') || url.startsWith('https:'))) {
-      event.preventDefault();
-      shell.openExternal(url);
+  mainWindow.webContents.on('will-navigate', (event, targetUrl) => {
+    try {
+      const parsed = new URL(targetUrl);
+      if (isDev && process.env.VITE_DEV_SERVER_URL) {
+        const devOrigin = new URL(process.env.VITE_DEV_SERVER_URL).origin;
+        if (parsed.origin === devOrigin) {
+          return;
+        }
+      }
+    } catch {}
+
+    // Cancel all external, file:, remote, and SMB navigations inside the app window
+    event.preventDefault();
+    if (targetUrl.startsWith('http:') || targetUrl.startsWith('https:')) {
+      shell.openExternal(targetUrl);
     }
   });
 
@@ -190,7 +200,30 @@ function downloadFile(url, destPath, onProgress) {
 
 // ── Silent Update Download & Background Execution ──
 ipcMain.handle('install-update-silently', async (_event, downloadUrl) => {
+  if (!mainWindow || _event.sender !== mainWindow.webContents) {
+    throw new Error('Unauthorized IPC sender');
+  }
   if (!downloadUrl) throw new Error('Missing download URL for update');
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(downloadUrl);
+  } catch {
+    throw new Error('Invalid update download URL');
+  }
+
+  const isOfficialRelease =
+    (parsedUrl.protocol === 'https:' &&
+      parsedUrl.hostname === 'github.com' &&
+      parsedUrl.pathname.startsWith('/VKaddala/OneGitVault/releases/download/') &&
+      parsedUrl.pathname.endsWith('.exe')) ||
+    (parsedUrl.protocol === 'https:' &&
+      parsedUrl.hostname === 'objects.githubusercontent.com' &&
+      parsedUrl.pathname.endsWith('.exe'));
+
+  if (!isOfficialRelease) {
+    throw new Error('Blocked unverified update download source');
+  }
 
   const tempInstaller = path.join(app.getPath('temp'), 'OneGitVault-Setup-Update.exe');
 

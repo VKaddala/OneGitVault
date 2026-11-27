@@ -18,6 +18,41 @@ export interface GitHubUserProfile {
 let inMemoryPatToken: string | null = null;
 let tokenVaultInitialized = false;
 
+function encryptStoredToken(rawToken: string): string {
+  if (!rawToken) return '';
+  try {
+    const encoded = encodeURIComponent(rawToken);
+    let cipher = '';
+    const mask = 0x5a;
+    for (let i = 0; i < encoded.length; i++) {
+      cipher += String.fromCharCode(encoded.charCodeAt(i) ^ mask);
+    }
+    return 'enc:' + btoa(cipher);
+  } catch {
+    return 'enc:' + btoa(rawToken);
+  }
+}
+
+function decryptStoredToken(cipherToken: string): string {
+  if (!cipherToken) return '';
+  if (!cipherToken.startsWith('enc:')) return cipherToken;
+  try {
+    const raw = atob(cipherToken.slice(4));
+    let plain = '';
+    const mask = 0x5a;
+    for (let i = 0; i < raw.length; i++) {
+      plain += String.fromCharCode(raw.charCodeAt(i) ^ mask);
+    }
+    return decodeURIComponent(plain);
+  } catch {
+    try {
+      return atob(cipherToken.slice(4));
+    } catch {
+      return '';
+    }
+  }
+}
+
 function initNativeTokenVault(): void {
   if (tokenVaultInitialized) return;
   tokenVaultInitialized = true;
@@ -25,7 +60,8 @@ function initNativeTokenVault(): void {
   try {
     const win = window as any;
     const bridge = win?.AndroidThemeBridge;
-    const legacy = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY) || '';
+    const raw = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY) || '';
+    const legacy = decryptStoredToken(raw);
 
     if (bridge && typeof bridge.getSecureToken === 'function') {
       const nativeTok = (bridge.getSecureToken() || '').trim();
@@ -59,7 +95,8 @@ export function getStoredToken(): string {
   initNativeTokenVault();
   if (inMemoryPatToken !== null) return inMemoryPatToken;
   try {
-    return localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY) || '';
+    const raw = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY) || '';
+    return decryptStoredToken(raw);
   } catch {
     return '';
   }
@@ -124,7 +161,7 @@ export async function setStoredToken(token: string): Promise<void> {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(LEGACY_TOKEN_KEY);
     } else if (trimmed) {
-      localStorage.setItem(TOKEN_KEY, trimmed);
+      localStorage.setItem(TOKEN_KEY, encryptStoredToken(trimmed));
     } else {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(LEGACY_TOKEN_KEY);
@@ -839,6 +876,118 @@ export async function fetchRepositories(
         hasMore: true,
         page,
         error: 'Network error loading repositories. Tap to retry.'
+      };
+    }
+  });
+}
+
+export async function fetchRepositoryByFullName(fullName: string): Promise<Repository | null> {
+  const clean = (fullName || '').trim();
+  if (!clean || !clean.includes('/')) return null;
+
+  const parts = clean.split('/');
+  if (parts.length !== 2) return null;
+  const [owner, name] = parts;
+
+  const normKey = clean.toLowerCase();
+  const cacheKey = `ogv_repo_item_${normKey}`;
+
+  try {
+    const rawLocal = localStorage.getItem(cacheKey);
+    if (rawLocal) {
+      const parsed = JSON.parse(rawLocal);
+      if (parsed && parsed.data) return parsed.data;
+    }
+  } catch {}
+
+  // Check bookmarks
+  try {
+    const rawB = localStorage.getItem('ogv_bookmarks_v1');
+    if (rawB) {
+      const bList: Repository[] = JSON.parse(rawB);
+      const match = bList.find((r) => r.full_name?.toLowerCase() === normKey);
+      if (match) return match;
+    }
+  } catch {}
+
+  return deduplicatedFetch(`repo_entity_${normKey}`, async () => {
+    try {
+      const url = `${BASE_URL}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`;
+      const res = await fetchGitHubWithAuthFallback(url);
+      if (!res.ok) {
+        return {
+          id: Math.abs(clean.split('').reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) | 0, 0)),
+          name: name,
+          full_name: clean,
+          owner: {
+            login: owner,
+            avatar_url: `https://github.com/${owner}.png?size=80`,
+            html_url: `https://github.com/${owner}`
+          },
+          description: null,
+          html_url: `https://github.com/${clean}`,
+          stargazers_count: 0,
+          forks_count: 0,
+          open_issues_count: 0,
+          watchers_count: 0,
+          language: null,
+          topics: [],
+          updated_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          pushed_at: new Date().toISOString(),
+          clone_url: `https://github.com/${clean}.git`,
+          default_branch: 'main'
+        };
+      }
+      const item = await res.json();
+      const mapped: Repository = {
+        id: item.id,
+        name: item.name,
+        full_name: item.full_name,
+        owner: {
+          login: item.owner?.login || owner,
+          avatar_url: item.owner?.avatar_url || `https://github.com/${owner}.png?size=80`,
+          html_url: item.owner?.html_url || `https://github.com/${owner}`,
+        },
+        description: item.description,
+        html_url: item.html_url,
+        stargazers_count: item.stargazers_count || 0,
+        forks_count: item.forks_count || 0,
+        open_issues_count: item.open_issues_count || 0,
+        watchers_count: item.watchers_count || item.stargazers_count || 0,
+        language: item.language,
+        topics: item.topics || [],
+        updated_at: item.updated_at || new Date().toISOString(),
+        created_at: item.created_at || new Date().toISOString(),
+        pushed_at: item.pushed_at || new Date().toISOString(),
+        clone_url: item.clone_url || `https://github.com/${clean}.git`,
+        default_branch: item.default_branch || 'main',
+      };
+      safeSetLocalCache(cacheKey, JSON.stringify({ data: mapped, timestamp: Date.now() }));
+      return mapped;
+    } catch {
+      return {
+        id: Math.abs(clean.split('').reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) | 0, 0)),
+        name: name,
+        full_name: clean,
+        owner: {
+          login: owner,
+          avatar_url: `https://github.com/${owner}.png?size=80`,
+          html_url: `https://github.com/${owner}`
+        },
+        description: null,
+        html_url: `https://github.com/${clean}`,
+        stargazers_count: 0,
+        forks_count: 0,
+        open_issues_count: 0,
+        watchers_count: 0,
+        language: null,
+        topics: [],
+        updated_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        pushed_at: new Date().toISOString(),
+        clone_url: `https://github.com/${clean}.git`,
+        default_branch: 'main'
       };
     }
   });

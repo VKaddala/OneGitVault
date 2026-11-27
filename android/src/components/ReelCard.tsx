@@ -51,7 +51,8 @@ const LANGUAGE_COLORS: Record<string, string> = {
 export const ReelCard: React.FC<ReelCardProps> = ({
   repo,
   summary,
-  onToggleBookmark
+  onToggleBookmark,
+  onOpenDetail
 }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -60,22 +61,43 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   const [doubleTapHeart, setDoubleTapHeart] = useState(false);
   const lastTapRef = useRef<number>(0);
   const doubleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       if (doubleTapTimerRef.current) clearTimeout(doubleTapTimerRef.current);
+      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
     };
   }, []);
 
-  const handleCardClick = () => {
+  const handleCardClick = (e: React.MouseEvent) => {
+    // If click happened on interactive elements (buttons, links, image zoom, chips), let them handle it directly
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, input, [role="button"], img')) {
+      return;
+    }
+
     const now = Date.now();
-    const DOUBLE_TAP_DELAY = 300;
+    const DOUBLE_TAP_DELAY = 260;
+
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+      // Double tap detected! Cancel single-tap detail sheet trigger
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
+      }
       try { navigator.vibrate?.([15, 50, 20]); } catch {}
       setDoubleTapHeart(true);
       if (doubleTapTimerRef.current) clearTimeout(doubleTapTimerRef.current);
       doubleTapTimerRef.current = setTimeout(() => setDoubleTapHeart(false), 900);
       onToggleBookmark(repo);
+    } else {
+      // Single tap: queue opening repository detail sheet with instant UI responsiveness
+      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+      singleTapTimerRef.current = setTimeout(() => {
+        try { navigator.vibrate?.(10); } catch {}
+        onOpenDetail(repo, 'info');
+      }, DOUBLE_TAP_DELAY);
     }
     lastTapRef.current = now;
   };
@@ -327,7 +349,10 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           '&::-webkit-scrollbar': { display: 'none' },
           position: 'relative',
           zIndex: 1,
-          p: { xs: 2.2, sm: 2.8 }
+          p: { xs: 2.2, sm: 2.8 },
+          cursor: 'pointer',
+          transition: 'transform 0.14s ease',
+          '&:active': { transform: 'scale(0.993)' }
         }}
       >
         {/* Top Accent Stripe: Curves with the 26px card rounded corners */}
@@ -345,8 +370,21 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           }}
         />
 
-        {/* ── SECTION 1: Identity Header ── */}
-        <Box sx={{ mb: 1.8 }}>
+        {/* ── SECTION 1: Identity Header (Tap to open full details immediately) ── */}
+        <Box
+          onClick={(e) => {
+            e.stopPropagation();
+            if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+            try { navigator.vibrate?.(12); } catch {}
+            onOpenDetail(repo, 'info');
+          }}
+          sx={{
+            mb: 1.8,
+            cursor: 'pointer',
+            transition: 'transform 0.14s ease, opacity 0.14s ease',
+            '&:active': { transform: 'scale(0.985)', opacity: 0.85 }
+          }}
+        >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.8 }}>
             <OwnerAvatar
               owner={repo.owner}
@@ -366,6 +404,12 @@ export const ReelCard: React.FC<ReelCardProps> = ({
             >
               @{repo.owner?.login}
             </Typography>
+
+            <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', opacity: 0.65 }}>
+              <Typography variant="caption" sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'text.secondary' }}>
+                Details ›
+              </Typography>
+            </Box>
           </Box>
 
           {/* Repo Name */}

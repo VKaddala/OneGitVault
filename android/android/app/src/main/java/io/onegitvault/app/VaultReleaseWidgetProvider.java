@@ -67,10 +67,13 @@ public class VaultReleaseWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_vault_update_status, updateStatus);
 
         Intent intent = new Intent(context, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.setAction("io.onegitvault.app.ACTION_OPEN_VAULT");
+        intent.putExtra("targetTab", "vault");
+        intent.setData(android.net.Uri.parse("onegitvault://tab/vault"));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(
             context,
-            1,
+            101,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );

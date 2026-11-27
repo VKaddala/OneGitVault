@@ -1,7 +1,7 @@
 {
   "name": "onegitvault-android",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "High-speed GitHub Observatory & Mobile Client for Android. Discover, stream, inspect READMEs & releases, explore trending repositories, and sync bookmarked vaults with GitHub Gists.",
   "homepage": "https://github.com/VKaddala/OneGitVault/releases/latest",
   "keywords": [

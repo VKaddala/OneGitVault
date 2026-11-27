@@ -1,29 +1,30 @@
 import { getStoredToken } from './githubApi';
 import { isTrustedReleaseAssetUrl } from '../utils/sanitizeMarkdown';
 
-export const CURRENT_ANDROID_VERSION = '2.0.0';
+export const CURRENT_ANDROID_VERSION = '2.0.1';
 const REPO_OWNER = 'VKaddala';
 const REPO_NAME = 'OneGitVault';
 
-export const BUNDLED_RELEASE_NOTES = `## OneGitVault Android v${CURRENT_ANDROID_VERSION} — Feature Launch
+export const BUNDLED_RELEASE_NOTES = `## OneGitVault Android v${CURRENT_ANDROID_VERSION} — Minor Update
 
-### ⚡ Spotlight: Reels for Developers
-- Vertical swipe-up discovery feed featuring instant 5-second elevator pitches (**What It Is & Solves**) and 3 key architectural highlights.
-- Interactive pinch-to-zoom (up to 4×) media viewer with smooth pan and edge-swipe dismissal.
-- Double-tap gesture bookmarking with haptic vibration and animated heart pop.
+### 🔑 Authentication & 401 Auto-Recovery
+- Automatic public guest fallback on expired or revoked tokens so repository requests and search results never disappear or freeze.
+- 1-Tap GitHub Web Redirect to pre-configured token generator (\`public_repo\`, \`gist\`) with automatic clipboard token detection.
+- Real-time profile verification with avatar, quota badge (5,000 req/hr), and single-tap disconnect.
 
-### 🖼️ Pure OLED Black Visual Social Cards
-- One-tap "Share as Card" generates a high-DPI, pure black OLED card for WhatsApp, X (Twitter), and LinkedIn.
-- Zero-blink offscreen headless rendering with immediate UI feedback and native Android FileProvider sharing.
+### 🎬 Spotlight Feed Loading & End Cards
+- Dedicated 100dvh snap loading card when swiping to the end of Spotlight reels while fetching the next batch.
+- Floating bottom pill indicator (\`⟳ Loading next spotlight…\`) with non-blocking feedback.
+- Celebratory "You're All Caught Up! ✨" card with 1-tap "Back to Top" navigation when all items are loaded.
 
-### 🛡️ The Living Vault & Changelog Radar
-- Background WorkManager scans for releases, tags, and major updates on bookmarked repos with an unread badge counter.
-- Full-screen Changelog Dashboard with dismiss-all and per-repo update radar filtering.
-- Private developer notes and custom tags on bookmarked repositories.
+### 📊 Continuous Loading Visuals & Grid Dimming
+- Universal sticky top progress bar right below the app bar during search, filtering, and pagination across all tabs.
+- Active grid dimming (60% opacity) when changing categories or search queries for instant visual responsiveness.
+- Smooth loading feedback in Trending Explorer without jarring blank screen resets.
 
-### 📲 Home Screen Widgets & Native Haptics
-- 4×2 Trending Repository Widget and Vault Release Tracker Widget for your Android home screen.
-- Universal haptic engine with Settings toggle and refined GitHub Dark/Light default themes.
+### 📲 Home Screen Widget Deep-Link Routing
+- Tapping the Home Screen Vault Widget opens directly into the Vault tab (\`onegitvault://tab/vault\`) via native \`onNewIntent\` routing.
+- Trending Widget routes directly to the Trending Explorer tab.
 `;
 
 export interface AndroidUpdateInfo {

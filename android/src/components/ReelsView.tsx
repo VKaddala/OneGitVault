@@ -494,11 +494,13 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
       if (!recentlyOpened) setActionsExpanded(false);
       triggerHaptic(8);
       if (showSwipeHint) setShowSwipeHint(false);
+    }
 
-      if (newIndex >= repos.length - 3 && !loadingMore && hasMore) {
-        pageRef.current += 1;
-        loadFeed(pageRef.current, true);
-      }
+    // Trigger loading next page when scrolling within 2 items of the end or near bottom of container
+    const isNearEnd = newIndex >= repos.length - 2 || (scrollTop + clientHeight >= el.scrollHeight - clientHeight * 1.2);
+    if (isNearEnd && !loadingMore && hasMore && repos.length > 0) {
+      pageRef.current += 1;
+      loadFeed(pageRef.current, true);
     }
   };
 
@@ -895,8 +897,118 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
               </Box>
             );
           })}
+
+          {/* End-of-Feed Loading Card (snaps directly into view when user swipes to the end while fetching) */}
+          {loadingMore && (
+            <Box
+              sx={{
+                width: '100%',
+                height: '100dvh',
+                scrollSnapAlign: 'start',
+                scrollSnapStop: 'always',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 2,
+                bgcolor: 'background.default',
+                px: 3,
+                textAlign: 'center'
+              }}
+            >
+              <Box
+                sx={{
+                  animation: 'spotlightPulse 1.4s ease-in-out infinite',
+                  '@keyframes spotlightPulse': {
+                    '0%, 100%': { transform: 'scale(1)', opacity: 0.95 },
+                    '50%': { transform: 'scale(1.12)', opacity: 0.7 }
+                  }
+                }}
+              >
+                <OneGitVaultLogo size={64} />
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                <CircularProgress size={20} color="primary" thickness={5} />
+                <Typography variant="body1" sx={{ fontWeight: 800, color: 'text.primary', fontSize: '0.95rem' }}>
+                  Spotlighting Next Repositories…
+                </Typography>
+              </Box>
+              <Typography variant="caption" sx={{ color: 'text.secondary', maxWidth: 280, fontSize: '0.78rem' }}>
+                Fetching the next batch of open-source projects
+              </Typography>
+            </Box>
+          )}
+
+          {/* Caught Up End Card (snaps into view when all items are loaded) */}
+          {!hasMore && repos.length > 0 && (
+            <Box
+              sx={{
+                width: '100%',
+                height: '100dvh',
+                scrollSnapAlign: 'start',
+                scrollSnapStop: 'always',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1.5,
+                bgcolor: 'background.default',
+                px: 3,
+                textAlign: 'center'
+              }}
+            >
+              <CheckIcon sx={{ fontSize: 44, color: '#10b981' }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'text.primary', fontSize: '1rem' }}>
+                You're All Caught Up! ✨
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', maxWidth: 300, fontSize: '0.8rem' }}>
+                You have reached the end of Spotlight for this filter. Try another keyword or topic above!
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                startIcon={<KeyboardArrowUpIcon />}
+                sx={{ mt: 2, borderRadius: '12px', textTransform: 'none', fontWeight: 700 }}
+              >
+                Back to Top
+              </Button>
+            </Box>
+          )}
         </Box>
       )}
+
+      {/* ── FLOATING PILL INDICATOR WHEN LOADING NEXT BATCH IN SPOTLIGHT ── */}
+      <Fade in={loadingMore && !loading}>
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 'calc(max(env(safe-area-inset-bottom, 0px), 4px) + 76px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1300,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            px: 2.2,
+            py: 0.9,
+            borderRadius: '30px',
+            bgcolor: alpha(theme.palette.background.paper, 0.94),
+            backdropFilter: 'blur(16px)',
+            border: `1.5px solid ${alpha(theme.palette.primary.main, 0.4)}`,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            color: 'text.primary',
+            pointerEvents: 'none'
+          }}
+        >
+          <CircularProgress size={16} thickness={5} color="primary" />
+          <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.01em' }}>
+            Loading next spotlight…
+          </Typography>
+        </Box>
+      </Fade>
 
       {/* ── FIXED ROUND QUICK-ACTIONS BUTTON AT THE BOTTOM RIGHT EDGE ON SPOTLIGHT PAGE (Non-scrollable!) ── */}
       {activeRepo && !loading && (

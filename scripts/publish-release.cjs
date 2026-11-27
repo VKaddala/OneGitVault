@@ -36,43 +36,40 @@ const IS_ANDROID_ONLY = process.argv.includes('--android');
 
 const TAG_NAME = IS_ANDROID_ONLY ? `v${ANDROID_VERSION}` : `v${VERSION}`;
 const RELEASE_NAME = IS_ANDROID_ONLY
-  ? `v${ANDROID_VERSION} (Android Feature Launch) — Spotlight Reels for Developers, Living Vault Radar, Home Screen Widgets & OLED Visual Cards`
+  ? `v${ANDROID_VERSION} (Android Minor Update) — 401 Auth Auto-Recovery, 1-Tap PAT Redirect, Spotlight Infinite Loaders & Widget Deep Navigation`
   : `v${VERSION} (Desktop) / v${ANDROID_VERSION} (Android) — Full-Screen Settings, List View, Modal Elimination & Native Status Bar`;
 
-const ANDROID_RELEASE_BODY = `## 🚀 What's New in OneGitVault Android v${ANDROID_VERSION} (Feature Launch)
+const ANDROID_RELEASE_BODY = `## 🚀 What's New in OneGitVault Android v${ANDROID_VERSION} (Minor Update)
 
-### 🎬 1. Spotlight: "Instagram Reels & TikTok for Developers"
-- **Vertical Snap-Scroll Discovery Feed**: Full-screen vertical reels, distilling repository READMEs into clean cards with an **Elevator Pitch ("What It Is & Solves")**, **3 Key Highlights**, language/stars telemetry, and demo screenshots.
-- **Pinch-to-Zoom Media Viewer**: Tap any project screenshot or architectural diagram to expand full-screen with 4× pinch zoom, smooth pan, double-tap reset, and Android edge-swipe dismissal.
-- **Double-Tap to Vault**: Double-tap any card for an instant haptic pulse and animated pop-heart bookmarking gesture.
-- **Floating Quick-Actions Dock**: Compact bottom-right trigger (\`⋯\`) expanding an action dock (\`Star\`, \`Vault\`, \`Readme\`, \`Share\`, \`Card\`, \`GitHub\`) that auto-closes when scrolling or switching tabs.
+> **OneGitVault is a spotlighter for developers — something like an Instagram Reels and YouTube Shorts scroll for open-source repositories.**
 
-### 🖼️ 2. Pure OLED Black Visual Social Cards
-- **One-Tap "Share as Card"**: Export a stunning, high-DPI social media card ready for WhatsApp, X (Twitter), and LinkedIn.
-- **Pure OLED Black (#000000) Aesthetic**: Clean, seamless pure black styling with zero grey halos or blurred shadows.
-- **Zero-Blink Headless Render**: Off-screen headless rendering via \`html2canvas\` \`onclone\` with immediate haptic response and non-blocking asynchronous event loop scheduling.
+### 🔑 1. Authentication & 401 Auto-Recovery (No More Disappearing Requests)
+- **Automatic 401 Public Fallback**: Requests never freeze or disappear when a token expires or is revoked. The API client detects 401, clears the invalid token, and transparently re-issues the request via public guest access.
+- **1-Tap GitHub Web Redirect**: Instant token creation with pre-filled scopes (\`public_repo\`, \`gist\`) and description.
+- **Automatic Clipboard Token Detection**: Returning to the app auto-detects \`ghp_...\` on clipboard for 1-tap connection.
+- **Active User Profile & Live Quota**: Displays avatar, \`@username\`, and 5,000 req/hr rate limit badge with 1-tap disconnect.
 
-### 🛡️ 3. The Living Vault: "Never Forget What You Starred"
-- **"What Changed" Changelog Radar**: Background WorkManager periodically scans bookmarked repositories for new releases and tags with an unread badge counter.
-- **Full-Screen Changelog Dashboard**: Browse release notes with direct repo navigation, one-tap "Dismiss All", and per-repo "Ignore Updates" radar controls.
-- **Private Developer Notes & Tags**: Attach personal notes (e.g., *"Use this auth library for billing service"*) and custom tags to any bookmarked repo.
-- **Smart Reminders**: Schedule weekend revisit alerts so discovered tools become real software.
+### 🎬 2. Spotlight Infinite Scroll Loading & Caught-Up Cards
+- **End-of-Feed Snap Card**: Swiping to the end while fetching next batches now snaps into a branded loading card (*"Spotlighting Next Repositories…"*) with zero screen freeze.
+- **Floating Pill Indicator**: Non-blocking \`⟳ Loading next spotlight…\` pill at the bottom center while streaming repositories.
+- **Caught-Up End Card**: Celebratory *"You're All Caught Up! ✨"* card with 1-tap *"Back to Top"* button when reaching the end of the feed.
+- **Smooth Pre-fetch**: Widened scroll threshold so the next batch streams before you hit the bottom.
 
-### 📲 4. Native Android Home Screen Widgets
-- **Trending Repo Widget (4×2)**: Cycles through top daily and weekly trending repositories in preferred languages right on your Android home screen.
-- **Vault Release Tracker Widget**: Glances the latest release tags and changelogs from watched/starred projects directly from your home screen.
+### 📊 3. Universal Loading Progress & Active Grid Dimming
+- **Sticky Top Progress Bar**: Universal \`LinearProgress\` indicator beneath the app bar during search, category filters, and pagination.
+- **Active Grid Dimming**: Results dim to 60% opacity while fetching to provide continuous visual feedback during fast interactions.
+- **Trending Explorer Smooth Loading**: Filter changes in Trending show a top progress bar without jarring blank screen resets.
 
-### 📳 5. Universal Micro-Haptics & GitHub Dark/Light Themes
-- **Native Haptics**: Subtle tactile vibrations across all tabs, buttons, gestures, and actions with a Settings toggle.
-- **GitHub Dark & Light Themes**: Pixel-perfect OLED contrast and automatic system night-mode tracking.
-- **PolyForm Noncommercial License 1.0.0**: Updated project license.
+### 📲 4. Home Screen Widget Deep-Link Routing Fix
+- **Direct Vault Navigation**: Tapping the Home Screen Vault Widget opens directly into the Vault tab (\`onegitvault://tab/vault\`) via native \`onNewIntent\` and intent extra routing.
+- **Trending Widget Direct Routing**: Tapping the Trending Widget opens directly into the Trending Explorer tab.
 
 ---
 
 ### 📦 Official Android Download
 | Platform | Binary | Version | Size | Verification |
 |---|---|---|---|---|
-| **Android** | **\`OneGitVault-Android-${ANDROID_VERSION}.apk\`** | v${ANDROID_VERSION} | ~1.76 MB | Release APK (v1 + v2 signature scheme, \`allowBackup=false\`) |
+| **Android** | **\`OneGitVault-Android-${ANDROID_VERSION}.apk\`** | v${ANDROID_VERSION} | ~1.77 MB | Release APK (v1 + v2 signature scheme, \`allowBackup=false\`) |
 
 *Built with Capacitor 6, React 18, TypeScript, Material UI 5, and Vite.*
 `;

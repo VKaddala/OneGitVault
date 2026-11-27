@@ -4,6 +4,7 @@ import {
   Typography,
   Chip,
   CircularProgress,
+  LinearProgress,
   Grid,
   IconButton,
   Button,
@@ -346,15 +347,22 @@ export const TrendingView: React.FC<TrendingViewProps> = React.memo(({
         )}
       </Box>
 
+      {/* Top Loading Progress for Trending Filters */}
+      {loading && (
+        <Box sx={{ width: '100%', mb: 1.5 }}>
+          <LinearProgress sx={{ height: 2.5, borderRadius: '2px' }} />
+        </Box>
+      )}
+
       {/* Grid of trending projects */}
-      {loading ? (
+      {loading && repos.length === 0 ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 10, gap: 1.5 }}>
           <CircularProgress size={32} color="primary" />
           <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem' }}>
             Fetching live trending repositories from GitHub…
           </Typography>
         </Box>
-      ) : error ? (
+      ) : error && repos.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography variant="body2" sx={{ color: 'error.main', mb: 2, fontWeight: 600 }}>
             {error}
@@ -369,7 +377,14 @@ export const TrendingView: React.FC<TrendingViewProps> = React.memo(({
           <Typography variant="caption">Try switching time range or language filter.</Typography>
         </Box>
       ) : (
-        <Grid container spacing={isCompact ? 1 : 1.5}>
+        <Grid
+          container
+          spacing={isCompact ? 1 : 1.5}
+          sx={{
+            opacity: loading ? 0.6 : 1,
+            transition: 'opacity 0.2s ease'
+          }}
+        >
           {repos.map((repo) => (
             <Grid item xs={12} sm={isCompact ? 12 : 6} md={isCompact ? 6 : 4} key={repo.id}>
               <RepoCard

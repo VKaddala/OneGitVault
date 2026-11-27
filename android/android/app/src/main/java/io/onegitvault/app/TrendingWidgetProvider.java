@@ -66,10 +66,13 @@ public class TrendingWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_stars, stars);
 
         Intent intent = new Intent(context, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.setAction("io.onegitvault.app.ACTION_OPEN_TRENDING");
+        intent.putExtra("targetTab", "trending");
+        intent.setData(android.net.Uri.parse("onegitvault://tab/trending"));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(
             context,
-            0,
+            102,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );

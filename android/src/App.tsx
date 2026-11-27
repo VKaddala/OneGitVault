@@ -12,6 +12,7 @@ import {
   Fab,
   Zoom,
   Button,
+  LinearProgress,
   alpha
 } from '@mui/material';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
@@ -903,6 +904,40 @@ export const App: React.FC = () => {
     [loadExploreData]
   );
 
+  // Handle native widget clicks & deep links (e.g. Vault or Trending widget launched from Home Screen)
+  useEffect(() => {
+    const checkBridgeTargetTab = () => {
+      try {
+        const bridge = (window as any)?.AndroidThemeBridge;
+        if (bridge && typeof bridge.getPendingTargetTab === 'function') {
+          const target = (bridge.getPendingTargetTab() || '').trim();
+          if (target && ['apks', 'trending', 'spotlight', 'vault', 'explore'].includes(target)) {
+            handleTabChange(target);
+          }
+        }
+      } catch {}
+    };
+
+    checkBridgeTargetTab();
+
+    window.addEventListener('focus', checkBridgeTargetTab);
+    document.addEventListener('visibilitychange', checkBridgeTargetTab);
+
+    const handleSwitchTab = (e: any) => {
+      const tab = (e?.detail?.tab || '').trim();
+      if (tab && ['apks', 'trending', 'spotlight', 'vault', 'explore'].includes(tab)) {
+        handleTabChange(tab);
+      }
+    };
+    window.addEventListener('ogv:switch_tab', handleSwitchTab);
+
+    return () => {
+      window.removeEventListener('focus', checkBridgeTargetTab);
+      document.removeEventListener('visibilitychange', checkBridgeTargetTab);
+      window.removeEventListener('ogv:switch_tab', handleSwitchTab);
+    };
+  }, [handleTabChange]);
+
   const handleOpenSettings = useCallback(() => setSettingsOpen(true), []);
   const handleCloseSettings = useCallback(() => setSettingsOpen(false), []);
   const handleOpenTokenDialog = useCallback(() => setTokenDialogOpen(true), []);
@@ -1060,6 +1095,32 @@ export const App: React.FC = () => {
           />
         )}
 
+        {/* Global Loading Bar below Header — provides immediate feedback during filtering, search & pagination */}
+        {currentTab !== 'spotlight' && (apkLoading || exploreLoading || isRefreshing || apkIsLoadingMore || exploreIsLoadingMore) && (
+          <Box
+            sx={{
+              height: 2.5,
+              width: '100%',
+              position: 'fixed',
+              top: 'calc(max(env(safe-area-inset-top, 0px), var(--status-bar-height, 44px)) + 58px)',
+              left: 0,
+              right: 0,
+              zIndex: 1150,
+              pointerEvents: 'none'
+            }}
+          >
+            <LinearProgress
+              sx={{
+                height: 2.5,
+                bgcolor: 'transparent',
+                '& .MuiLinearProgress-bar': {
+                  bgcolor: 'primary.main'
+                }
+              }}
+            />
+          </Box>
+        )}
+
         {/* Fixed Top App Bar Spacer to prevent content from scrolling under or into status bar */}
         {currentTab !== 'spotlight' && (
           <Box
@@ -1108,7 +1169,14 @@ export const App: React.FC = () => {
                 <Typography variant="body2">Try adjusting your search keywords or filter criteria.</Typography>
               </Box>
             ) : (
-              <Grid container spacing={isCompactView ? 1 : 1.5}>
+              <Grid
+                container
+                spacing={isCompactView ? 1 : 1.5}
+                sx={{
+                  opacity: apkLoading && apkRepos.length > 0 ? 0.6 : 1,
+                  transition: 'opacity 0.2s ease'
+                }}
+              >
                 {apkRepos.map((repo) => (
                   <Grid
                     item
@@ -1333,7 +1401,14 @@ export const App: React.FC = () => {
                 <Typography variant="body2">Try adjusting your search keywords or filter criteria.</Typography>
               </Box>
             ) : (
-              <Grid container spacing={isCompactView ? 1 : 1.5}>
+              <Grid
+                container
+                spacing={isCompactView ? 1 : 1.5}
+                sx={{
+                  opacity: apkLoading && apkRepos.length > 0 ? 0.6 : 1,
+                  transition: 'opacity 0.2s ease'
+                }}
+              >
                 {exploreRepos.map((repo) => (
                   <Grid
                     item

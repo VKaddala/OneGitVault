@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="SETUP_ANDROID.md"><img src="https://img.shields.io/badge/Android-v2.0.0--Release-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android v2.0.0" /></a>
+  <a href="SETUP_ANDROID.md"><img src="https://img.shields.io/badge/Android-v2.0.1--Release-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android v2.0.1" /></a>
   <a href="https://github.com/VKaddala/OneGitVault"><img src="https://img.shields.io/badge/Windows-v2.3.0-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows v2.3.0" /></a>
   <a href="https://github.com/VKaddala/OneGitVault/stargazers"><img src="https://img.shields.io/badge/GitHub-Stars-f59e0b?style=for-the-badge&logo=github" alt="Stars" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-PolyForm--Noncommercial-blue?style=for-the-badge" alt="License" /></a>
@@ -22,7 +22,7 @@
 
 | Platform | Latest Version | Package | Download Link |
 | :--- | :--- | :--- | :--- |
-| **Android Mobile** | **v2.0.0** 🚀 *(Major Feature Launch)* | `OneGitVault-Android-2.0.0.apk` (~3.8 MB) | [**Download Android APK**](https://github.com/VKaddala/OneGitVault/releases/tag/v2.0.0) |
+| **Android Mobile** | **v2.0.1** 🚀 *(Minor Update)* | `OneGitVault-Android-2.0.1.apk` (~1.8 MB) | [**Download Android APK**](https://github.com/VKaddala/OneGitVault/releases/tag/v2.0.1) |
 | **Windows Desktop** | **v2.3.0** | `OneGitVault-Setup-2.3.0.exe` (~98 MB) | [**Download Windows Installer**](https://github.com/VKaddala/OneGitVault/releases/tag/v2.3.0) |
 
 ---
@@ -37,7 +37,7 @@
 
 ---
 
-## 📱 OneGitVault for Android — Feature Launch v2.0.0
+## 📱 OneGitVault for Android — v2.0.1 (Update)
 
 OneGitVault 2.0.0 transforms the mobile experience into a blazing-fast, swipeable developer sanctuary.
 
@@ -203,7 +203,7 @@ OneGitVault/
 ## 🚀 Quick Setup & Installation
 
 ### Option 1: Android Native APK (Recommended for Mobile)
-1. Download **`OneGitVault-Android-2.0.0.apk`** from [GitHub Releases](https://github.com/VKaddala/OneGitVault/releases/tag/v2.0.0).
+1. Download **`OneGitVault-Android-2.0.1.apk`** from [GitHub Releases](https://github.com/VKaddala/OneGitVault/releases/tag/v2.0.1).
 2. Install the `.apk` on any device running **Android 8.0 or higher**.
 3. Add the **Trending Repo** or **Vault Release Tracker** widget to your home screen!
 

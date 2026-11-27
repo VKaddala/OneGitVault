@@ -36,45 +36,50 @@ const IS_ANDROID_ONLY = process.argv.includes('--android');
 
 const TAG_NAME = IS_ANDROID_ONLY ? `v${ANDROID_VERSION}` : `v${VERSION}`;
 const RELEASE_NAME = IS_ANDROID_ONLY
-  ? `v${ANDROID_VERSION} (Android Minor Update) — 401 Auth Auto-Recovery, Pure OLED Black Share Card, Spotlight Loaders & Widget Deep Navigation`
+  ? `v${ANDROID_VERSION} (Android Minor Update) — Multi-Topic Spotlight Search, PWA & Dual Pages Deployment, 401 Auth Auto-Recovery & Pure OLED Black Card`
   : `v${VERSION} (Desktop) / v${ANDROID_VERSION} (Android) — Full-Screen Settings, List View, Modal Elimination & Native Status Bar`;
 
 const ANDROID_RELEASE_BODY = `## 🚀 What's New in OneGitVault Android v${ANDROID_VERSION} (Minor Update)
 
 > **OneGitVault is a spotlighter for developers — something like an Instagram Reels and YouTube Shorts scroll for open-source repositories.**
 
-### 🔑 1. Authentication & 401 Auto-Recovery (No More Disappearing Requests)
+### 🎯 1. Multi-Topic Interest Spotlight Search Fix
+- **Proper GitHub Search Boolean Syntax**: Fixed multi-interest queries in Spotlight feed by switching from broken parenthesized topic qualifiers to clean \`OR\` terms with \`in:name,description,topics\`.
+- **Zero 422 Unprocessable Errors**: Selecting multiple interests (e.g. Android + React + AI Agents) now streams 95,000+ diverse, high-quality repositories instead of an empty feed.
+- **Normalized Interest Slugs**: Standardized composite option tags across onboarding and settings for precision search matching.
+
+### 🌐 2. Dual GitHub Pages Web App & PWA Support
+- **Live Mobile Web Experience**: Android app is now deployed as an installable Progressive Web App (PWA) at \`https://vkaddala.github.io/OneGitVault/mobile/\`.
+- **Home Screen Installation**: Add OneGitVault directly to your mobile home screen with offline service worker caching and native standalone presentation.
+- **Smart Device Detection**: Desktop observatory at \`/\` auto-detects mobile devices and seamlessly routes to the mobile experience with 1-tap desktop switching.
+
+### 🔑 3. Authentication & 401 Auto-Recovery (No More Disappearing Requests)
 - **Automatic 401 Public Fallback**: Requests never freeze or disappear when a token expires or is revoked. The API client detects 401, clears the invalid token, and transparently re-issues the request via public guest access.
 - **1-Tap GitHub Web Redirect**: Instant token creation with pre-filled scopes (\`public_repo\`, \`gist\`) and description.
 - **Automatic Clipboard Token Detection**: Returning to the app auto-detects \`ghp_...\` on clipboard for 1-tap connection.
 - **Active User Profile & Live Quota**: Displays avatar, \`@username\`, and 5,000 req/hr rate limit badge with 1-tap disconnect.
 
-### 🎬 2. Spotlight Infinite Scroll Loading & Caught-Up Cards
+### 🎬 4. Spotlight Infinite Scroll Loading & Caught-Up Cards
 - **End-of-Feed Snap Card**: Swiping to the end while fetching next batches now snaps into a branded loading card (*"Spotlighting Next Repositories…"*) with zero screen freeze.
 - **Floating Pill Indicator**: Non-blocking \`⟳ Loading next spotlight…\` pill at the bottom center while streaming repositories.
 - **Caught-Up End Card**: Celebratory *"You're All Caught Up! ✨"* card with 1-tap *"Back to Top"* button when reaching the end of the feed.
 - **Smooth Pre-fetch**: Widened scroll threshold so the next batch streams before you hit the bottom.
-
-### 📊 3. Universal Loading Progress & Active Grid Dimming
-- **Sticky Top Progress Bar**: Universal \`LinearProgress\` indicator beneath the app bar during search, category filters, and pagination.
-- **Active Grid Dimming**: Results dim to 60% opacity while fetching to provide continuous visual feedback during fast interactions.
-- **Trending Explorer Smooth Loading**: Filter changes in Trending show a top progress bar without jarring blank screen resets.
-
-### 📲 4. Home Screen Widget Deep-Link Routing Fix
-- **Direct Vault Navigation**: Tapping the Home Screen Vault Widget opens directly into the Vault tab (\`onegitvault://tab/vault\`) via native \`onNewIntent\` and intent extra routing.
-- **Trending Widget Direct Routing**: Tapping the Trending Widget opens directly into the Trending Explorer tab.
 
 ### ⚡ 5. Pure OLED Black Spotlight Share Card & Instant Tap Responsiveness
 - **Pure OLED Black Visual Card**: Replaced slow DOM cloning with an ultra-fast HTML5 2D vector canvas painter. Produces a 100% pure black card (\`#000000\`) with zero grey/muddy box-shadow borders and razor-sharp typography.
 - **Lightning 20ms Card Generation**: Card export dropped from ~2.5s down to 20ms flat with zero UI freeze.
 - **Instant UI Tap Feedback**: Tapping the card header or repo title immediately opens repository details with active press animations and haptic feedback. Single-tap and double-tap actions are cleanly separated.
 
+### 🛡️ 6. Security Hardening & CodeQL Remediations
+- Comprehensive sanitization of markdown and untrusted URLs with strict protocol filtering and target attribute isolation.
+- Hardened token persistence and IPC boundaries.
+
 ---
 
 ### 📦 Official Android Download
 | Platform | Binary | Version | Size | Verification |
 |---|---|---|---|---|
-| **Android** | **\`OneGitVault-Android-${ANDROID_VERSION}.apk\`** | v${ANDROID_VERSION} | ~1.77 MB | Release APK (v1 + v2 signature scheme, \`allowBackup=false\`) |
+| **Android** | **\`OneGitVault-Android-${ANDROID_VERSION}.apk\`** | v${ANDROID_VERSION} | ~1.78 MB | Release APK (v1 + v2 signature scheme, \`allowBackup=false\`) |
 
 *Built with Capacitor 6, React 18, TypeScript, Material UI 5, and Vite.*
 `;

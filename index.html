@@ -8,6 +8,18 @@
     <script>
       (function() {
         try {
+          var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+          var searchParams = new URLSearchParams(window.location.search);
+          var forceDesktop = searchParams.has('desktop') || localStorage.getItem('ogv_force_desktop') === 'true';
+          if (isMobile && !forceDesktop && !window.location.pathname.includes('/mobile')) {
+            window.location.replace('./mobile/' + window.location.search);
+          }
+        } catch(e) {}
+      })();
+    </script>
+    <script>
+      (function() {
+        try {
           var isExplicit = localStorage.getItem('onegitvault_theme_user_explicit') === 'true';
           var saved = localStorage.getItem('onegitvault_active_theme_plugin');
           var isDark = true;

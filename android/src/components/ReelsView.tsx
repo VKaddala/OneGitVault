@@ -254,6 +254,48 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
       return `${trimmed} in:name,description,topics`;
     }
 
+    // Resolve active user interests for personalization
+    const userTopics = getUserInterests();
+    const validTopics = (userTopics || [])
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean)
+      .map((t) => {
+        if (t === 'android apk') return 'android';
+        if (t === 'rust cli') return 'cli';
+        if (t.includes(' ')) return `"${t.replace(/[^\w\s-]/g, '')}"`;
+        return t.replace(/[^\w-]/g, '');
+      })
+      .filter(Boolean);
+
+    // Multi-topic query string: GitHub Search requires OR separated terms without parentheses
+    // and cannot use qualifier prefixes like topic: across OR clauses.
+    const interestsClause =
+      validTopics.length === 1
+        ? (validTopics[0].includes(' ') || validTopics[0].startsWith('"')
+            ? `${validTopics[0]} in:name,description,topics`
+            : `topic:${validTopics[0]}`)
+        : validTopics.length > 1
+        ? `${validTopics.join(' OR ')} in:name,description,topics`
+        : '';
+
+    if (interestsClause) {
+      switch (selectedFilter) {
+        case 'today':
+          return `${interestsClause} created:>=${utcQueryDate}`;
+        case 'trending':
+          return `${interestsClause} pushed:>=${formatUtcDaysAgo(7)} stars:>20`;
+        case 'newest':
+          return `${interestsClause} created:>=${formatUtcDaysAgo(30)} stars:>20`;
+        case 'forks':
+          return `${interestsClause} forks:>20`;
+        case 'all':
+          return `${interestsClause} stars:>10`;
+        case 'stars':
+        default:
+          return `${interestsClause} stars:>20`;
+      }
+    }
+
     switch (selectedFilter) {
       case 'today':
         return `created:>=${utcQueryDate}`;
@@ -266,18 +308,8 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
       case 'all':
         return 'stars:>100';
       case 'stars':
-      default: {
-        const userTopics = getUserInterests();
-        if (userTopics && userTopics.length > 0) {
-          const topicClauses = userTopics
-            .map((t) => t.trim())
-            .filter(Boolean)
-            .map((t) => (t.includes(' ') ? `"${t}"` : `topic:${t}`))
-            .join(' OR ');
-          return `(${topicClauses}) stars:>20`;
-        }
+      default:
         return 'stars:>5000';
-      }
     }
   }, [activeSearch, selectedFilter]);
 

@@ -10,7 +10,8 @@ import {
   RotateCcw,
   Settings as SettingsIcon,
   Layers,
-  Filter
+  Filter,
+  Smartphone
 } from 'lucide-react';
 import { CategoryId, Category, SortOption, ViewMode } from '../types';
 
@@ -334,32 +335,51 @@ export const SideNav: React.FC<SideNavProps> = ({
       {/* ── SECTION 3: BOTTOM / SETTINGS & COLLAPSE ARROW ── */}
       <div className="border-t border-themeline p-2 flex flex-col gap-1.5 flex-shrink-0 bg-header">
         {isExpanded ? (
-          <div className="flex items-center justify-between gap-1">
-            {/* Settings Main Navigation Button */}
-            <button
-              onClick={() => onSelectView('settings')}
-              className={`flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-sans font-medium transition-all ${
-                activeView === 'settings'
-                  ? 'bg-action text-txt-inverse font-bold shadow-sm'
-                  : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
-              }`}
-              title="Settings (Theme & GitHub API Token)"
+          <>
+            <a
+              href="./mobile/"
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-sans font-medium text-txt-secondary hover:bg-surface hover:text-action transition-all"
+              title="Open Mobile Web App & PWA"
             >
-              <SettingsIcon className={`w-4 h-4 flex-shrink-0 ${activeView === 'settings' ? 'text-txt-inverse animate-spin' : 'text-action'}`} />
-              <span className="truncate">Settings</span>
-            </button>
+              <Smartphone className="w-4 h-4 text-action flex-shrink-0" />
+              <span className="truncate">Mobile / PWA</span>
+            </a>
+            <div className="flex items-center justify-between gap-1">
+              {/* Settings Main Navigation Button */}
+              <button
+                onClick={() => onSelectView('settings')}
+                className={`flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-sans font-medium transition-all ${
+                  activeView === 'settings'
+                    ? 'bg-action text-txt-inverse font-bold shadow-sm'
+                    : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
+                }`}
+                title="Settings (Theme & GitHub API Token)"
+              >
+                <SettingsIcon className={`w-4 h-4 flex-shrink-0 ${activeView === 'settings' ? 'text-txt-inverse animate-spin' : 'text-action'}`} />
+                <span className="truncate">Settings</span>
+              </button>
 
-            {/* Edge Collapse Arrow */}
-            <button
-              onClick={() => setIsExpanded(false)}
-              className="p-1.5 rounded-lg text-txt-muted hover:text-action hover:bg-surface transition-colors"
-              title="Collapse sidebar"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-          </div>
+              {/* Edge Collapse Arrow */}
+              <button
+                onClick={() => setIsExpanded(false)}
+                className="p-1.5 rounded-lg text-txt-muted hover:text-action hover:bg-surface transition-colors"
+                title="Collapse sidebar"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            </div>
+          </>
         ) : (
           <div className="flex flex-col items-center gap-1.5">
+            {/* Collapsed Mobile Link */}
+            <a
+              href="./mobile/"
+              className="w-9 h-9 flex items-center justify-center rounded-xl text-txt-muted hover:text-action hover:bg-surface-active transition-all"
+              title="Open Mobile Web App & PWA"
+            >
+              <Smartphone className="w-4 h-4" />
+            </a>
+
             {/* Collapsed Settings Icon */}
             <button
               onClick={() => onSelectView('settings')}

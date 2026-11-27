@@ -30,11 +30,24 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install Dependencies
+      - name: Install Desktop Dependencies
         run: npm ci
 
-      - name: Build Web Application
+      - name: Build Desktop Web Application
         run: npm run build
+
+      - name: Install Android Mobile Dependencies
+        run: |
+          cd android
+          npm ci
+
+      - name: Build Android Mobile Web App & PWA
+        run: |
+          cd android
+          npm run build
+          cd ..
+          mkdir -p dist/mobile
+          cp -r android/dist/* dist/mobile/
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v4

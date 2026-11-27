@@ -25,13 +25,19 @@ interface OnboardingInterestsModalProps {
   onInterestsSaved?: (topics: string[]) => void;
 }
 
+const normalizeInterestId = (id: string): string => {
+  if (id === 'android apk') return 'android';
+  if (id === 'rust cli') return 'cli';
+  return id;
+};
+
 const INTEREST_OPTIONS: Array<{ id: string; label: string }> = [
-  { id: 'android apk', label: 'Android APKs' },
+  { id: 'android', label: 'Android APKs' },
   { id: 'ai-agents', label: 'AI & Agents' },
   { id: 'ollama', label: 'Local LLMs' },
   { id: 'privacy', label: 'Privacy & Security' },
   { id: 'self-hosted', label: 'Self-Hosted' },
-  { id: 'rust cli', label: 'CLI & DevTools' },
+  { id: 'cli', label: 'CLI & DevTools' },
   { id: 'emulator', label: 'Emulators & Gaming' },
   { id: 'music-player', label: 'Media & Streaming' },
   { id: 'material-you', label: 'Material You Apps' },
@@ -44,11 +50,13 @@ export const OnboardingInterestsModal: React.FC<OnboardingInterestsModalProps> =
   onInterestsSaved,
 }) => {
   const theme = useTheme();
-  const [selected, setSelected] = useState<string[]>(() => getUserInterests());
+  const [selected, setSelected] = useState<string[]>(() =>
+    getUserInterests().map(normalizeInterestId)
+  );
 
   React.useEffect(() => {
     if (open) {
-      setSelected(getUserInterests());
+      setSelected(getUserInterests().map(normalizeInterestId));
     }
   }, [open]);
 

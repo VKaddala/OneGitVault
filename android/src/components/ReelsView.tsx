@@ -535,14 +535,15 @@ export const ReelsView: React.FC<ReelsViewProps> = React.memo(({
     e.stopPropagation();
     if (!activeRepo) return;
     const shareUrl = activeRepo.html_url;
-    const shareTitle = `${activeRepo.name} — ${activeRepo.description || 'Open Source Project'}`;
+    const shareTitle = `${activeRepo.name} — OneGitVault Spotlight`;
+    const shareText = `Shared from OneGitVault ⚡\nYou can visit the following GitHub link:\n${shareUrl}`;
     const result = await shareProject(
-      activeRepo.name,
-      `Check out ${activeRepo.name} on OneGitVault: ${activeRepo.description || shareTitle}`,
+      shareTitle,
+      shareText,
       shareUrl
     );
     if (result === 'copied') {
-      onShareMessage?.('Repository link copied to clipboard!');
+      onShareMessage?.('GitHub repository link copied to clipboard!');
     }
   };
 

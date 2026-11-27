@@ -400,13 +400,15 @@ export const RepoDetailSheet: React.FC<RepoDetailSheetProps> = ({
   };
 
   const handleShareRepo = async () => {
+    const shareTitle = `${repo.name} — OneGitVault`;
+    const shareText = `Shared from OneGitVault ⚡\nYou can visit the following GitHub link:\n${repo.html_url}`;
     const result = await shareProject(
-      repo.name,
-      `${repo.name} — ${repo.description || 'Open-source repository'}`,
+      shareTitle,
+      shareText,
       repo.html_url
     );
     if (result === 'copied' && onShareMessage) {
-      onShareMessage(`Copied ${repo.name} URL`);
+      onShareMessage(`Copied GitHub link for ${repo.name}`);
     }
   };
 

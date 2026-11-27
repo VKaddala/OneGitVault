@@ -61,12 +61,10 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   const [doubleTapHeart, setDoubleTapHeart] = useState(false);
   const lastTapRef = useRef<number>(0);
   const doubleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       if (doubleTapTimerRef.current) clearTimeout(doubleTapTimerRef.current);
-      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
     };
   }, []);
 
@@ -78,27 +76,17 @@ export const ReelCard: React.FC<ReelCardProps> = ({
     }
 
     const now = Date.now();
-    const DOUBLE_TAP_DELAY = 260;
+    const DOUBLE_TAP_DELAY = 280;
 
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
-      // Double tap detected! Cancel single-tap detail sheet trigger
-      if (singleTapTimerRef.current) {
-        clearTimeout(singleTapTimerRef.current);
-        singleTapTimerRef.current = null;
-      }
+      // Double tap detected!
       try { navigator.vibrate?.([15, 50, 20]); } catch {}
       setDoubleTapHeart(true);
       if (doubleTapTimerRef.current) clearTimeout(doubleTapTimerRef.current);
       doubleTapTimerRef.current = setTimeout(() => setDoubleTapHeart(false), 900);
       onToggleBookmark(repo);
-    } else {
-      // Single tap: queue opening repository detail sheet with instant UI responsiveness
-      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
-      singleTapTimerRef.current = setTimeout(() => {
-        try { navigator.vibrate?.(10); } catch {}
-        onOpenDetail(repo, 'info');
-      }, DOUBLE_TAP_DELAY);
     }
+    // Single tap on card body does nothing - casual touches and scrolling remain uninterrupted
     lastTapRef.current = now;
   };
 
@@ -374,7 +362,6 @@ export const ReelCard: React.FC<ReelCardProps> = ({
         <Box
           onClick={(e) => {
             e.stopPropagation();
-            if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
             try { navigator.vibrate?.(12); } catch {}
             onOpenDetail(repo, 'info');
           }}

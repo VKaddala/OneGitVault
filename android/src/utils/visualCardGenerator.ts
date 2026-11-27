@@ -409,7 +409,7 @@ export async function shareVisualCard(
           (window as any).AndroidThemeBridge.shareImage(
             base64,
             repo.name || 'Repository Spotlight',
-            `Check out ${repo.full_name} (${repo.html_url}) on OneGitVault!`
+            `Shared from OneGitVault ⚡\nYou can visit the following GitHub link:\n${repo.html_url}`
           );
           onNotify?.('Opening share sheet...');
           return;
@@ -421,8 +421,8 @@ export async function shareVisualCard(
       if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
         navigator
           .share({
-            title: repo.name,
-            text: `Check out ${repo.full_name} on OneGitVault!`,
+            title: `${repo.name} — OneGitVault Spotlight`,
+            text: `Shared from OneGitVault ⚡\nYou can visit the following GitHub link:\n${repo.html_url}`,
             files: [file],
           })
           .catch(() => {});
